@@ -1,0 +1,26 @@
+# База данных
+*.db
+*.sqlite3
+
+# Загруженные фото
+uploads/*.jpg
+uploads/*.png
+uploads/*.webp
+
+# Логи
+*.log
+logs/
+
+# Конфиденциальные данные
+config_local.py
+.env
+token.json
+
+# Кэш и временные файлы
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Среда
+venv/
+.venv/
