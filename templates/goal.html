@@ -169,6 +169,11 @@
             navigator.clipboard.writeText(text).then(() => {
                 btn.textContent = '✅';
                 setTimeout(() => { btn.textContent = '📋'; }, 1500);
+                // Если скопирован номер телефона — показываем кнопку "Я перевёл"
+                if (text.startsWith('7') || text.startsWith('+7')) {
+                    document.getElementById('confirmForm').style.display = 'block';
+                    document.getElementById('confirmHint').style.display = 'block';
+                }
             });
         }
 
