@@ -276,6 +276,38 @@ def clear_all():
     return 'База очищена. <a href="/register">Зарегистрироваться</a>'
 
 
+
+@app.route('/donate/<int:goal_id>', methods=['POST'])
+def donate(goal_id):
+    user = get_current_user()
+    if not user:
+        flash('Войдите, чтобы подтвердить перевод.', 'warning')
+        return redirect(url_for('login'))
+    amount_str = request.form.get('amount', '0')
+    try:
+        amount = float(amount_str)
+    except ValueError:
+        flash('Некорректная сумма.', 'danger')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    if amount <= 0:
+        flash('Некорректная сумма.', 'danger')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    db = get_db()
+    db.execute(
+        "INSERT INTO donations (goal_id, donor_id, amount_reported, status, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', datetime('now'))",
+        (goal_id, user['id'], amount)
+    )
+    db.commit()
+    db.execute(
+        "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
+        (user['id'], '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
+    )
+    db.commit()
+    db.close()
+    flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
+    return redirect(url_for('goal_page', goal_id=goal_id))
+
+
 @app.route('/health')
 def health():
     return 'OK'
