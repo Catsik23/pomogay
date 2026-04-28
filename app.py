@@ -36,9 +36,15 @@ def login_required(f):
     return decorated_function
 
 def validate_phone(phone):
-    phone = re.sub(r'[^0-9]', '', phone)
-    if len(phone) == 11 and (phone.startswith('7') or phone.startswith('8')):
-        return phone
+    phone = phone.strip()
+    # Приводим к формату +7XXXXXXXXXX
+    phone = re.sub(r'[^0-9+]', '', phone)
+    if phone.startswith('8'):
+        phone = '+7' + phone[1:]
+    elif phone.startswith('7'):
+        phone = '+' + phone
+    if re.match(r'^\+7\d{10}$', phone):
+        return phone[1:]  # сохраняем без +, только 7XXXXXXXXXX
     return None
 
 def is_rate_limited(phone):
