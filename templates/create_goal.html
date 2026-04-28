@@ -7,7 +7,8 @@
     <style>
         body { font-family: -apple-system, sans-serif; margin: 0; background: #F8F9FC; color: #1A202C; }
         .container { max-width: 500px; margin: 0 auto; padding: 20px; }
-        h1 { color: #FF8C69; font-size: 28px; margin-bottom: 20px; }
+        h1 { color: #FF8C69; font-size: 28px; margin-bottom: 10px; }
+        .goal-type { color: #4A5568; font-size: 14px; margin-bottom: 20px; }
         label { display: block; margin: 16px 0 6px; color: #4A5568; font-size: 14px; }
         input, textarea, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
         textarea { resize: vertical; min-height: 80px; }
@@ -19,13 +20,21 @@
         .flash-warning { background: #fff3cd; color: #856404; }
         .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
         .back a { color: #FF8C69; text-decoration: none; }
-        .hint { font-size: 12px; color: #999; margin-top: 4px; }
+        .field-wrapper { position: relative; }
+        .tooltip { display: none; position: absolute; left: 0; top: 100%; z-index: 10; background: #1A202C; color: white; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.4; width: 100%; box-sizing: border-box; margin-top: 4px; }
+        .tooltip .close-tip { display: inline-block; margin-top: 6px; color: #FF8C69; cursor: pointer; font-weight: bold; }
+        input:focus + .tooltip, textarea:focus + .tooltip, select:focus + .tooltip { display: block; }
+        .tooltip.visible { display: block; }
         input[type="file"] { padding: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Создать цель</h1>
+        <div class="goal-type">
+            {% if goal_type == 'super_blitz' %}⚡ Супер-блиц — до 5 000 ₽ на 1 день{% else %}📦 Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
+        </div>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -33,34 +42,65 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+
         <form method="POST" enctype="multipart/form-data">
-            <label>Название цели *</label>
-            <input type="text" name="title" maxlength="140" placeholder="" required>
-            <div class="hint">До 140 символов</div>
+            <div class="field-wrapper">
+                <label>Название цели *</label>
+                <input type="text" name="title" maxlength="140" placeholder="" required>
+                <div class="tooltip">
+                    Коротко опишите, на что сбор. Например: «Ноутбук для учёбы» или «Лечение зуба».<br>
+                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
+                </div>
+            </div>
 
-            <label>Описание</label>
-            <textarea name="description" maxlength="1000" placeholder=""></textarea>
-            <div class="hint">Опишите ситуацию — это повышает доверие</div>
+            <div class="field-wrapper">
+                <label>Описание</label>
+                <textarea name="description" maxlength="1000" placeholder=""></textarea>
+                <div class="tooltip">
+                    Расскажите подробнее. Чем честнее и детальнее — тем больше доверия. Не обязательно, но полезно.<br>
+                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
+                </div>
+            </div>
 
-            <label>Сумма (₽) *</label>
-            <input type="number" name="amount" placeholder="" min="500" max="50000" required>
-            <div class="hint">От 500 до 50 000 ₽</div>
+            <div class="field-wrapper">
+                <label>Сумма (₽) *</label>
+                <input type="number" name="amount" placeholder="" min="{% if goal_type == 'super_blitz' %}100{% else %}500{% endif %}" max="{% if goal_type == 'super_blitz' %}5000{% else %}50000{% endif %}" required>
+                <div class="tooltip">
+                    {% if goal_type == 'super_blitz' %}От 100 до 5 000 ₽. Только самое нужное и срочное.{% else %}От 500 до 50 000 ₽. Укажите точную сумму, которую нужно собрать.{% endif %}<br>
+                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
+                </div>
+            </div>
 
-            <label>Срок (дней) *</label>
-            <select name="days" required>
-                <option value="">Выберите срок</option>
-                <option value="1">1 день</option>
-                <option value="3">3 дня</option>
-                <option value="7">7 дней</option>
-            </select>
+            <div class="field-wrapper">
+                <label>Срок (дней) *</label>
+                <select name="days" required>
+                    <option value="">Выберите срок</option>
+                    {% if goal_type == 'super_blitz' %}
+                    <option value="1">1 день</option>
+                    {% else %}
+                    <option value="1">1 день</option>
+                    <option value="3">3 дня</option>
+                    <option value="7">7 дней</option>
+                    {% endif %}
+                </select>
+                <div class="tooltip">
+                    {% if goal_type == 'super_blitz' %}Супер-блиц длится ровно 1 день. Быстро, срочно, здесь и сейчас.{% else %}Выберите, сколько дней будет идти сбор. Можно продлить позже.{% endif %}<br>
+                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
+                </div>
+            </div>
 
-            <label>Фото (опционально)</label>
-            <input type="file" name="photo" accept="image/*">
-            <div class="hint">Фото, скрин или документ — до 20 МБ, сжимается автоматически</div>
+            <div class="field-wrapper">
+                <label>Фото (опционально)</label>
+                <input type="file" name="photo" accept="image/*">
+                <div class="tooltip">
+                    Загрузите фото, скрин или документ. Это повышает доверие. Файл будет сжат автоматически.<br>
+                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
+                </div>
+            </div>
 
             <button type="submit">Создать цель</button>
         </form>
-        <div class="back"><a href="/goals">← К ленте целей</a></div>
+        <div class="back"><a href="/goals/choose">← Выбрать другой тип</a></div>
     </div>
 </body>
 </html>

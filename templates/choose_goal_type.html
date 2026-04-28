@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выберите тип цели — Помогай</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #F8F9FC; color: #1A202C; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        h1 { color: #FF8C69; font-size: 28px; margin-bottom: 20px; }
+        .card { background: white; border-radius: 16px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); cursor: pointer; text-decoration: none; display: block; color: #1A202C; transition: transform 0.2s; }
+        .card:active { transform: scale(0.98); }
+        .card h3 { margin: 0 0 8px; font-size: 20px; }
+        .card .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; margin-bottom: 8px; }
+        .tag-green { background: #d4edda; color: #155724; }
+        .tag-blue { background: #d1ecf1; color: #0c5460; }
+        .tag-purple { background: #e8d5f5; color: #5a2d82; }
+        .card p { margin: 0; color: #4A5568; font-size: 14px; }
+        .card .info { margin-top: 10px; font-size: 13px; color: #999; }
+        .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
+        .back a { color: #FF8C69; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Создать цель</h1>
+        <p style="color: #4A5568; margin-bottom: 20px;">Выберите тип сбора:</p>
+
+        <a class="card" href="/goals/new/super_blitz">
+            <span class="tag tag-green">Супер-блиц</span>
+            <h3>Молниеносный сбор</h3>
+            <p>Для срочных маленьких нужд. 24 часа, до 5 000 ₽.</p>
+            <div class="info">100–5 000 ₽ · 1 день · Без рейтинга · Бесплатно</div>
+        </a>
+
+        <a class="card" href="/goals/new/blitz">
+            <span class="tag tag-blue">Блиц</span>
+            <h3>Быстрый сбор</h3>
+            <p>Хотелки, подписки, обучение. До 7 дней, до 50 000 ₽.</p>
+            <div class="info">500–50 000 ₽ · 1–7 дней · Без рейтинга · 49–99 ₽ разово</div>
+        </a>
+
+        <a class="card" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро!'); return false;">
+            <span class="tag tag-purple">Серьёзный</span>
+            <h3>Жизненная цель</h3>
+            <p>Лечение, ипотека, важные расходы. С видеообращением.</p>
+            <div class="info">Без лимита · Длительный срок · Рейтинг · 99 ₽/неделя</div>
+        </a>
+
+        <div class="back"><a href="/goals">← К ленте целей</a></div>
+    </div>
+</body>
+</html>
