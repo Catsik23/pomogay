@@ -94,6 +94,11 @@ def admin_panel():
     return '<h2 style="text-align:center;margin-top:50px">🚧 Админка — скоро</h2>'
 
 # === ЗАПУСК ===
+
+@app.route('/health')
+def health():
+    return 'OK'
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"Сервер запущен на порту {port}")
