@@ -166,15 +166,42 @@
         }
 
         function copyText(text, btn) {
-            navigator.clipboard.writeText(text).then(() => {
-                btn.textContent = '✅';
-                setTimeout(() => { btn.textContent = '📋'; }, 1500);
-                // Если скопирован номер телефона — показываем кнопку "Я перевёл"
-                if (text.startsWith('7') || text.startsWith('+7')) {
-                    document.getElementById('confirmForm').style.display = 'block';
-                    document.getElementById('confirmHint').style.display = 'block';
-                }
-            });
+            // Пробуем через Clipboard API
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    onCopied(btn, text);
+                }).catch(() => {
+                    fallbackCopy(text, btn);
+                });
+            } else {
+                fallbackCopy(text, btn);
+            }
+        }
+
+        function fallbackCopy(text, btn) {
+            // Запасной метод через textarea
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                onCopied(btn, text);
+            } catch(e) {
+                // Не получилось — всё равно показываем кнопку
+                onCopied(btn, text);
+            }
+            document.body.removeChild(ta);
+        }
+
+        function onCopied(btn, text) {
+            btn.textContent = '✅';
+            setTimeout(() => { btn.textContent = '📋'; }, 1500);
+            // Показываем кнопку "Я перевёл" всегда после копирования
+            document.getElementById('confirmForm').style.display = 'block';
+            document.getElementById('confirmHint').style.display = 'block';
         }
 
         // Закрытие по клику вне окна
