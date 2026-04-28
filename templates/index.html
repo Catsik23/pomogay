@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Помогай</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #F8F9FC; color: #1A202C; }
+        .container { text-align: center; padding: 20px; }
+        h1 { font-size: 48px; color: #FF8C69; margin-bottom: 10px; }
+        p { color: #4A5568; margin: 10px 0; }
+        a { color: #FF8C69; text-decoration: none; margin: 0 10px; }
+        .flash { padding: 10px; margin: 10px 0; border-radius: 8px; }
+        .flash-success { background: #d4edda; color: #155724; }
+        .flash-danger { background: #f8d7da; color: #721c24; }
+        .flash-info { background: #d1ecf1; color: #0c5460; }
+        .flash-warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Помогай</h1>
+        <p>Платформа для прямой помощи людям</p>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% if user %}
+            <p>Добро пожаловать, {{ user.phone }}!</p>
+            <p><a href="/profile">Профиль</a> | <a href="/goals">Цели</a> | <a href="/logout">Выйти</a></p>
+        {% else %}
+            <p><a href="/register">Регистрация</a> | <a href="/login">Вход</a></p>
+            <p><a href="/goals">Посмотреть цели</a></p>
+        {% endif %}
+    </div>
+</body>
+</html>

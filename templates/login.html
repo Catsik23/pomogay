@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход — Помогай</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #F8F9FC; color: #1A202C; }
+        .container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.05); width: 100%; max-width: 380px; }
+        h1 { text-align: center; color: #FF8C69; font-size: 32px; margin-bottom: 20px; }
+        label { display: block; margin: 12px 0 4px; color: #4A5568; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 18px; cursor: pointer; margin-top: 20px; }
+        button:active { background: #e57a5a; }
+        .flash { padding: 10px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; }
+        .flash-success { background: #d4edda; color: #155724; }
+        .flash-danger { background: #f8d7da; color: #721c24; }
+        .flash-info { background: #d1ecf1; color: #0c5460; }
+        .link { text-align: center; margin-top: 15px; font-size: 14px; color: #4A5568; }
+        .link a { color: #FF8C69; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Вход</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <label>Номер телефона</label>
+            <input type="tel" name="phone" placeholder="+79001234567" required>
+            <label>Пароль</label>
+            <input type="password" name="password" placeholder="******" required>
+            <button type="submit">Войти</button>
+        </form>
+        <div class="link">Ещё нет аккаунта? <a href="/register">Зарегистрироваться</a></div>
+    </div>
+</body>
+</html>
