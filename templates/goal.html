@@ -22,6 +22,29 @@
         .flash-success { background: #d4edda; color: #155724; }
         .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
         .back a { color: #FF8C69; text-decoration: none; }
+
+        /* Модальное окно */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 20px; padding: 24px; width: 90%; max-width: 360px; text-align: center; position: relative; }
+        .modal-close { position: absolute; top: 12px; right: 16px; font-size: 24px; cursor: pointer; color: #999; }
+        .amount-btn { display: block; width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #ddd; border-radius: 12px; font-size: 20px; background: white; cursor: pointer; }
+        .amount-btn:hover, .amount-btn:active { border-color: #FF8C69; background: #fff5f2; }
+        .amount-btn.selected { border-color: #FF8C69; background: #fff5f2; }
+        .donate-submit { width: 100%; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; margin-top: 10px; display: none; }
+        .donate-submit.active { display: block; }
+
+        /* Ручной режим */
+        .manual-mode { display: none; margin-top: 16px; text-align: left; }
+        .manual-mode.active { display: block; }
+        .manual-mode .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .manual-mode .row .label { color: #4A5568; font-size: 14px; }
+        .manual-mode .row .value { font-weight: bold; font-size: 16px; }
+        .copy-btn { background: #F8F9FC; border: 1px solid #ddd; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .copy-btn:active { background: #eee; }
+        .copied { color: #38A169; font-size: 12px; display: none; }
+        .copied.show { display: inline; }
+        .explain { font-size: 11px; color: #999; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -33,33 +56,126 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         <h1>{{ goal.title }}</h1>
         <div class="author">Автор: {{ author.phone }}</div>
-        
+
         {% if goal.photo_url %}
         <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
         {% endif %}
-        
+
         <div class="stats">
             <div>Собрано: <span>{{ "%.0f"|format(goal.amount_collected) }} ₽</span></div>
             <div>Цель: <span>{{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
             <div>Прогресс: <span>{{ progress }}%</span></div>
         </div>
-        
+
         <div class="progress-bar">
             <div class="progress-fill" style="width: {{ progress }}%"></div>
         </div>
-        
+
         {% if goal.description %}
         <div class="description">{{ goal.description }}</div>
         {% endif %}
-        
-        <div class="deadline">⏳ Осталось: {{ goal.ends_at[:10] }}</div>
-        
-        <button onclick="alert('Помощь — скоро')">Помочь</button>
-        
+
+        <div class="deadline">Осталось: {{ goal.ends_at[:10] }}</div>
+
+        <button onclick="openModal()">Помочь</button>
+
         <div class="back"><a href="/goals">← К ленте целей</a></div>
     </div>
+
+    <!-- Модальное окно -->
+    <div class="modal" id="donateModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">×</span>
+            <h3 style="margin: 0 0 16px;">Выберите сумму</h3>
+
+            <button class="amount-btn" onclick="selectAmount(100)">100 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
+
+            <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
+
+            <!-- Ручной режим -->
+            <div class="manual-mode" id="manualMode">
+                <p style="color: #4A5568; font-size: 14px;">Не получилось открыть банк? Скопируйте данные вручную:</p>
+                <div class="row">
+                    <span class="label">Номер</span>
+                    <span class="value" id="manualPhone">{{ author.phone }}</span>
+                    <button class="copy-btn" onclick="copyText('{{ author.phone }}', this)">📋</button>
+                </div>
+                <div class="row">
+                    <span class="label">Сумма</span>
+                    <span class="value" id="manualAmount">—</span>
+                </div>
+                <div class="row">
+                    <span class="label">Комментарий</span>
+                    <span class="value">Благотворительный подарок</span>
+                    <button class="copy-btn" onclick="copyText('Благотворительный подарок', this)">📋</button>
+                </div>
+                <p class="explain">Это слово защищает получателя от претензий банка. Пожалуйста, не меняйте его.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selected = 0;
+
+        function openModal() {
+            document.getElementById('donateModal').classList.add('active');
+            selected = 0;
+            document.getElementById('donateSubmit').classList.remove('active');
+            document.getElementById('manualMode').classList.remove('active');
+            document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+        }
+
+        function closeModal() {
+            document.getElementById('donateModal').classList.remove('active');
+        }
+
+        function selectAmount(amount) {
+            selected = amount;
+            document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+            event.target.classList.add('selected');
+            document.getElementById('selectedAmount').textContent = amount;
+            document.getElementById('donateSubmit').classList.add('active');
+        }
+
+        function startDonate() {
+            if (!selected) return;
+
+            // Пробуем Deeplink СБП
+            let phone = '{{ author.phone }}';
+            let comment = encodeURIComponent('Благотворительный подарок');
+
+            // Пытаемся открыть банковское приложение
+            let deeplink = 'sbp://pay?recipient=' + phone + '&amount=' + selected + '&message=' + comment;
+            let fallback = 'https://qr.nspk.ru/AMOUNT_' + selected + '?recipient=' + phone;
+
+            let start = Date.now();
+            window.location.href = deeplink;
+
+            // Если через 2 секунды всё ещё здесь — показываем ручной режим
+            setTimeout(function() {
+                if (Date.now() - start < 2500) {
+                    document.getElementById('manualMode').classList.add('active');
+                    document.getElementById('manualAmount').textContent = selected + ' ₽';
+                }
+            }, 2000);
+        }
+
+        function copyText(text, btn) {
+            navigator.clipboard.writeText(text).then(() => {
+                btn.textContent = '✅';
+                setTimeout(() => { btn.textContent = '📋'; }, 1500);
+            });
+        }
+
+        // Закрытие по клику вне окна
+        document.getElementById('donateModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
 </body>
 </html>
