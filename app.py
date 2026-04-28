@@ -276,7 +276,7 @@ def create_goal(goal_type):
     if goal_type == 'serious':
         flash('Серьёзные сборы — скоро.', 'info')
         return redirect(url_for('choose_goal_type'))
-    
+
     if request.method == 'POST':
         user = get_current_user()
         title = request.form.get('title', '').strip()
@@ -285,7 +285,6 @@ def create_goal(goal_type):
         days_str = request.form.get('days', '').strip()
         photo = request.files.get('photo')
 
-        # Валидация
         if not title or len(title) > 140:
             flash('Название обязательно и не должно превышать 140 символов.', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
@@ -320,14 +319,11 @@ def create_goal(goal_type):
                 flash('Срок должен быть от 1 до 7 дней.', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
 
-        # Обработка фото
         photo_url = None
         if photo and photo.filename and allowed_file(photo.filename):
             try:
                 photo_data = photo.read()
                 compressed = compress_photo(photo_data)
-                
-                from datetime import datetime
                 import uuid
                 filename = f"{uuid.uuid4().hex}.jpg"
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -337,21 +333,19 @@ def create_goal(goal_type):
             except Exception as e:
                 flash(f'Ошибка при обработке фото: {str(e)}', 'warning')
 
-        # Сохраняем цель
         db = get_db()
         from datetime import datetime, timedelta
         ends_at = datetime.now() + timedelta(days=days)
-        
+
         db.execute(
-            """INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, moderation_status)
-               VALUES (?, ?, ?, ?, ?, 0, ?, 'active', ?, 'approved')""",
+            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, moderation_status) VALUES (?, ?, ?, ?, ?, 0, ?, 'active', ?, 'approved')",
             (user['id'], goal_type, title, description, amount, ends_at.isoformat(), photo_url)
         )
         db.commit()
         goal_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         db.close()
 
-        flash('Цель создана! Теперь ей можно поделиться.', 'success')
+        flash('Цель создана!', 'success')
         return redirect(url_for('goal_page', goal_id=goal_id))
 
     return render_template('create_goal.html', goal_type=goal_type)
