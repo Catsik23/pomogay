@@ -48,15 +48,17 @@ def login_required(f):
 
 def validate_phone(phone):
     phone = phone.strip()
-    phone = re.sub(r'[^0-9+]', '', phone)
-    if phone.startswith('8'):
-        phone = '+7' + phone[1:]
-    elif phone.startswith('7'):
-        phone = '+' + phone
-    if re.match(r'^\+7\d{10}$', phone):
-        return phone[1:]
+    # Убираем всё, кроме цифр
+    digits = re.sub(r'[^0-9]', '', phone)
+    
+    # Если 11 цифр и начинается с 7 или 8 — приводим к 7XXXXXXXXXX
+    if len(digits) == 11 and (digits.startswith('7') or digits.startswith('8')):
+        return '7' + digits[1:]
+    # Если 10 цифр — добавляем 7 в начало
+    if len(digits) == 10:
+        return '7' + digits
+    
     return None
-
 def is_rate_limited(phone):
     db = get_db()
     fifteen_min_ago = time.time() - 900
