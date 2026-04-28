@@ -230,6 +230,19 @@ def goals_list():
 def admin_panel():
     return '<h2>Админка — скоро</h2>'
 
+
+@app.route('/clear')
+def clear_all():
+    db = get_db()
+    db.execute("DELETE FROM donations")
+    db.execute("DELETE FROM goals")
+    db.execute("DELETE FROM users")
+    db.commit()
+    db.close()
+    session.clear()
+    return 'База очищена. <a href="/register">Зарегистрироваться</a>'
+
+
 @app.route('/health')
 def health():
     return 'OK'
