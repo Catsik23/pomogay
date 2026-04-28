@@ -135,17 +135,13 @@ def profile():
     return render_template('profile.html', user=user, goals=goals)
 
 @app.route('/goals/choose')
+@login_required
 def choose_goal_type():
-    if 'user_id' not in session:
-        flash('Сначала войдите в аккаунт.', 'warning')
-        return redirect(url_for('login'))
     return render_template('choose_goal_type.html')
 
 @app.route('/goals/new/<goal_type>', methods=['GET','POST'])
+@login_required
 def create_goal(goal_type):
-    if 'user_id' not in session:
-        flash('Сначала войдите в аккаунт.', 'warning')
-        return redirect(url_for('login'))
     if goal_type not in ('super_blitz','blitz','serious'):
         flash('Неверный тип цели.', 'danger')
         return redirect(url_for('choose_goal_type'))
