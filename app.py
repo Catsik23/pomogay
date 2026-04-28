@@ -7,8 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import init_db, get_db
 from functools import wraps
-from PIL import Image
-from io import BytesIO
+
 
 # --- Конфигурация ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -73,26 +72,8 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def compress_photo(input_data):
-    """Сжимает фото до ~500 KB, возвращает bytes."""
-    img = Image.open(BytesIO(input_data))
-    img = img.convert('RGB')
-    
-    # Уменьшаем до 1200px по большей стороне
-    if max(img.size) > 1200:
-        img.thumbnail((1200, 1200), Image.LANCZOS)
-    
-    # Сохраняем в JPEG с качеством, пока вес не станет <= 500 KB
-    output = BytesIO()
-    quality = 85
-    while quality > 20:
-        output.seek(0)
-        output.truncate()
-        img.save(output, format='JPEG', quality=quality, optimize=True)
-        if output.tell() <= TARGET_PHOTO_SIZE:
-            break
-        quality -= 5
-    
-    return output.getvalue()
+    """Без сжатия — возвращает как есть."""
+    return input_data
 
 # --- Главная ---
 @app.route('/')
@@ -110,7 +91,7 @@ def register():
 
         clean_phone = validate_phone(phone)
         if not clean_phone:
-            flash('Введите корректный номер телефона (начиная с +7).', 'danger')
+            flash('Введите номер телефона (10 цифр после +7).', 'danger')
             return render_template('register.html')
 
         if len(password) < 6:
