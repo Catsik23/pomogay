@@ -192,6 +192,9 @@ def create_goal(goal_type):
                 flash(f'Ошибка фото: {e}', 'warning')
         db = get_db()
         ends = (datetime.now() + timedelta(days=days)).isoformat()
+        if not user:
+            flash('Ошибка: пользователь не найден. Войдите заново.', 'danger')
+            return redirect(url_for('login'))
         db.execute(
             "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, moderation_status) VALUES (?,?,?,?,?,0,?,'active',?,'approved')",
             (user['id'], goal_type, title, desc, amt, ends, photo_url)
