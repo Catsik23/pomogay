@@ -103,7 +103,7 @@
                 <div class="row">
                     <span class="label">Номер</span>
                     <span class="value" id="manualPhone">{{ author.phone }}</span>
-                    <button class="copy-btn" onclick="copyText('{{ author.phone }}', this)">📋</button>
+                    <button class="copy-btn" onclick="copyPhone(this)">📋</button>
                 </div>
                 <div class="row">
                     <span class="label">Сумма</span>
@@ -121,6 +121,40 @@
 
     <script>
         let selected = 0;
+
+        function copyPhone(btn) {
+            var text = '{{ author.phone }}';
+            // Копируем
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showCopied(btn);
+                }).catch(function() {
+                    fallbackCopyPhone(text, btn);
+                });
+            } else {
+                fallbackCopyPhone(text, btn);
+            }
+        }
+
+        function fallbackCopyPhone(text, btn) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showCopied(btn);
+        }
+
+        function showCopied(btn) {
+            btn.textContent = '✅';
+            setTimeout(function() { btn.textContent = '📋'; }, 1500);
+            // Показываем кнопку "Я перевёл"
+            document.getElementById('confirmForm').style.display = 'block';
+            document.getElementById('confirmHint').style.display = 'block';
+        }
 
         function openModal() {
             document.getElementById('donateModal').classList.add('active');
