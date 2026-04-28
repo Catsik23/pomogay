@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ goal.title }} — Помогай</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #F8F9FC; color: #1A202C; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { font-size: 24px; margin-bottom: 10px; }
+        .author { color: #4A5568; font-size: 14px; margin-bottom: 20px; }
+        .photo { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden; }
+        .progress-fill { background: #38A169; height: 100%; border-radius: 10px; transition: width 0.5s; }
+        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; color: #4A5568; }
+        .stats span { font-weight: bold; color: #1A202C; }
+        .description { line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
+        .deadline { font-size: 14px; color: #E53E3E; margin-bottom: 20px; }
+        button { width: 100%; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; }
+        button:active { background: #e57a5a; }
+        .flash { padding: 10px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; }
+        .flash-success { background: #d4edda; color: #155724; }
+        .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
+        .back a { color: #FF8C69; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <h1>{{ goal.title }}</h1>
+        <div class="author">Автор: {{ author.phone }}</div>
+        
+        {% if goal.photo_url %}
+        <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
+        {% endif %}
+        
+        <div class="stats">
+            <div>Собрано: <span>{{ "%.0f"|format(goal.amount_collected) }} ₽</span></div>
+            <div>Цель: <span>{{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
+            <div>Прогресс: <span>{{ progress }}%</span></div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" style="width: {{ progress }}%"></div>
+        </div>
+        
+        {% if goal.description %}
+        <div class="description">{{ goal.description }}</div>
+        {% endif %}
+        
+        <div class="deadline">⏳ Осталось: {{ goal.ends_at[:10] }}</div>
+        
+        <button onclick="alert('Помощь — скоро')">Помочь</button>
+        
+        <div class="back"><a href="/goals">← К ленте целей</a></div>
+    </div>
+</body>
+</html>

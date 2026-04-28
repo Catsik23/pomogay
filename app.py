@@ -4,15 +4,26 @@ import re
 import time
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from models import init_db, get_db
 from functools import wraps
+from PIL import Image
+from io import BytesIO
 
 # --- Конфигурация ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, 'data', 'pomogay.db')
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'goals')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
+TARGET_PHOTO_SIZE = 500 * 1024  # 500 KB после сжатия
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'pomogay-dev-secret-change-in-production')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # --- Инициализация БД ---
 init_db()
@@ -37,14 +48,13 @@ def login_required(f):
 
 def validate_phone(phone):
     phone = phone.strip()
-    # Приводим к формату +7XXXXXXXXXX
     phone = re.sub(r'[^0-9+]', '', phone)
     if phone.startswith('8'):
         phone = '+7' + phone[1:]
     elif phone.startswith('7'):
         phone = '+' + phone
     if re.match(r'^\+7\d{10}$', phone):
-        return phone[1:]  # сохраняем без +, только 7XXXXXXXXXX
+        return phone[1:]
     return None
 
 def is_rate_limited(phone):
@@ -56,6 +66,31 @@ def is_rate_limited(phone):
     ).fetchone()[0]
     db.close()
     return count >= 5
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def compress_photo(input_data):
+    """Сжимает фото до ~500 KB, возвращает bytes."""
+    img = Image.open(BytesIO(input_data))
+    img = img.convert('RGB')
+    
+    # Уменьшаем до 1200px по большей стороне
+    if max(img.size) > 1200:
+        img.thumbnail((1200, 1200), Image.LANCZOS)
+    
+    # Сохраняем в JPEG с качеством, пока вес не станет <= 500 KB
+    output = BytesIO()
+    quality = 85
+    while quality > 20:
+        output.seek(0)
+        output.truncate()
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        if output.tell() <= TARGET_PHOTO_SIZE:
+            break
+        quality -= 5
+    
+    return output.getvalue()
 
 # --- Главная ---
 @app.route('/')
@@ -71,13 +106,11 @@ def register():
         password = request.form.get('password', '').strip()
         password2 = request.form.get('password2', '').strip()
 
-        # Валидация телефона
         clean_phone = validate_phone(phone)
         if not clean_phone:
-            flash('Введите корректный номер телефона (11 цифр, начиная с 7 или 8).', 'danger')
+            flash('Введите корректный номер телефона (начиная с +7).', 'danger')
             return render_template('register.html')
 
-        # Валидация пароля
         if len(password) < 6:
             flash('Пароль должен быть не менее 6 символов.', 'danger')
             return render_template('register.html')
@@ -85,7 +118,6 @@ def register():
             flash('Пароли не совпадают.', 'danger')
             return render_template('register.html')
 
-        # Проверка, не занят ли номер
         db = get_db()
         existing = db.execute("SELECT id FROM users WHERE phone = ?", (clean_phone,)).fetchone()
         if existing:
@@ -93,12 +125,8 @@ def register():
             db.close()
             return render_template('register.html')
 
-        # Создаём пользователя
         password_hash = generate_password_hash(password)
-        db.execute(
-            "INSERT INTO users (phone, password_hash) VALUES (?, ?)",
-            (clean_phone, password_hash)
-        )
+        db.execute("INSERT INTO users (phone, password_hash) VALUES (?, ?)", (clean_phone, password_hash))
         db.commit()
         db.close()
 
@@ -119,12 +147,10 @@ def login():
             flash('Введите корректный номер телефона.', 'danger')
             return render_template('login.html')
 
-        # Rate limit
         if is_rate_limited(clean_phone):
             flash('Слишком много попыток. Попробуйте через 15 минут.', 'danger')
             return render_template('login.html')
 
-        # Логируем попытку
         db = get_db()
         db.execute(
             "INSERT INTO analytics_events (event_type, event_data) VALUES ('login_attempt', ?)",
@@ -132,7 +158,6 @@ def login():
         )
         db.commit()
 
-        # Проверяем пользователя
         user = db.execute("SELECT * FROM users WHERE phone = ?", (clean_phone,)).fetchone()
         db.close()
 
@@ -152,24 +177,120 @@ def logout():
     flash('Вы вышли из аккаунта.', 'info')
     return redirect(url_for('index'))
 
-# --- Профиль (заглушка) ---
+# --- Профиль ---
 @app.route('/profile')
 @login_required
 def profile():
     user = get_current_user()
-    return f'<h2>Профиль {user["phone"]} — скоро</h2>'
+    db = get_db()
+    goals = db.execute("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC", (user['id'],)).fetchall()
+    db.close()
+    return render_template('profile.html', user=user, goals=goals)
 
-# --- Цели (заглушка) ---
-@app.route('/goals')
-def goals_list():
-    return render_template('goals_stub.html')
+# --- Создание цели ---
+@app.route('/goals/new', methods=['GET', 'POST'])
+@login_required
+def create_goal():
+    if request.method == 'POST':
+        user = get_current_user()
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        amount_str = request.form.get('amount', '').strip()
+        days_str = request.form.get('days', '').strip()
+        photo = request.files.get('photo')
 
-# --- Страница цели (заглушка) ---
+        # Валидация
+        if not title or len(title) > 140:
+            flash('Название обязательно и не должно превышать 140 символов.', 'danger')
+            return render_template('create_goal.html')
+
+        try:
+            amount = float(amount_str)
+            if amount < 500 or amount > 50000:
+                raise ValueError
+        except ValueError:
+            flash('Сумма должна быть от 500 до 50 000 ₽.', 'danger')
+            return render_template('create_goal.html')
+
+        try:
+            days = int(days_str)
+            if days < 1 or days > 7:
+                raise ValueError
+        except ValueError:
+            flash('Срок должен быть от 1 до 7 дней.', 'danger')
+            return render_template('create_goal.html')
+
+        # Обработка фото
+        photo_url = None
+        if photo and photo.filename and allowed_file(photo.filename):
+            try:
+                photo_data = photo.read()
+                compressed = compress_photo(photo_data)
+                
+                from datetime import datetime
+                import uuid
+                filename = f"{uuid.uuid4().hex}.jpg"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                with open(filepath, 'wb') as f:
+                    f.write(compressed)
+                photo_url = f"/uploads/goals/{filename}"
+            except Exception as e:
+                flash(f'Ошибка при обработке фото: {str(e)}', 'warning')
+
+        # Определяем тип
+        if amount <= 5000 and days == 1:
+            goal_type = 'super_blitz'
+        else:
+            goal_type = 'blitz'
+
+        # Сохраняем цель
+        db = get_db()
+        from datetime import datetime, timedelta
+        ends_at = datetime.now() + timedelta(days=days)
+        
+        db.execute(
+            """INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, moderation_status)
+               VALUES (?, ?, ?, ?, ?, 0, ?, 'active', ?, 'approved')""",
+            (user['id'], goal_type, title, description, amount, ends_at.isoformat(), photo_url)
+        )
+        db.commit()
+        goal_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        db.close()
+
+        flash('Цель создана! Теперь ей можно поделиться.', 'success')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+
+    return render_template('create_goal.html')
+
+# --- Страница цели ---
 @app.route('/goal/<int:goal_id>')
 def goal_page(goal_id):
-    return f'<h2>Цель #{goal_id} — скоро</h2>'
+    db = get_db()
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        flash('Цель не найдена.', 'danger')
+        return redirect(url_for('goals_list'))
+    
+    author = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
+    db.close()
+    
+    # Прогресс
+    progress = int((goal['amount_collected'] / goal['amount_goal']) * 100) if goal['amount_goal'] > 0 else 0
+    
+    return render_template('goal.html', goal=goal, author=author, progress=progress)
 
-# --- Админка (заглушка) ---
+# --- Лента целей ---
+@app.route('/goals')
+def goals_list():
+    db = get_db()
+    goals = db.execute(
+        "SELECT * FROM goals WHERE status = 'active' ORDER BY created_at DESC LIMIT 50"
+    ).fetchall()
+    db.close()
+    return render_template('goals.html', goals=goals)
+
+# --- Админка ---
 @app.route('/admin')
 def admin_panel():
     return '<h2>Админка — скоро</h2>'
@@ -178,6 +299,12 @@ def admin_panel():
 @app.route('/health')
 def health():
     return 'OK'
+
+# --- Статические файлы (фото) ---
+@app.route('/uploads/goals/<filename>')
+def uploaded_file(filename):
+    from flask import send_from_directory
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # --- Запуск ---
 if __name__ == '__main__':
