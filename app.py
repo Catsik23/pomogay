@@ -125,6 +125,23 @@ def logout():
     flash('Вы вышли.', 'info')
     return redirect(url_for('index'))
 
+
+@app.route('/delete_account', methods=['POST'])
+@login_required
+def delete_account():
+    user = get_current_user()
+    if user:
+        db = get_db()
+        db.execute("DELETE FROM donations WHERE donor_id = ? OR goal_id IN (SELECT id FROM goals WHERE user_id = ?)", (user['id'], user['id']))
+        db.execute("DELETE FROM goals WHERE user_id = ?", (user['id'],))
+        db.execute("DELETE FROM users WHERE id = ?", (user['id'],))
+        db.commit()
+        db.close()
+    session.clear()
+    flash('Аккаунт удалён.', 'info')
+    return redirect(url_for('index'))
+
+
 @app.route('/profile')
 @login_required
 def profile():
