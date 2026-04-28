@@ -39,10 +39,13 @@ def login_required(f):
 
 def validate_phone(phone):
     phone = phone.strip()
+    # Убираем всё, кроме цифр
     digits = re.sub(r'[^0-9]', '', phone)
+    # 11 цифр, начинается с 7 или 8 -> 7XXXXXXXXXX
     if len(digits) == 11 and (digits.startswith('7') or digits.startswith('8')):
         return '7' + digits[1:]
-    if len(digits) == 10:
+    # 10 цифр -> добавляем 7
+    if len(digits) == 10 and digits[0] == '9':
         return '7' + digits
     return None
 
@@ -99,7 +102,7 @@ def login():
         pw = request.form.get('password','').strip()
         clean = validate_phone(phone)
         if not clean:
-            flash('Введите корректный номер телефона.', 'danger')
+            flash('Введите номер (10 цифр после +7).', 'danger')
             return render_template('login.html')
         if is_rate_limited(clean):
             flash('Слишком много попыток. Попробуйте через 15 минут.', 'danger')
