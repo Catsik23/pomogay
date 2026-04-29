@@ -352,6 +352,43 @@ def donate(goal_id):
     return redirect(url_for('goal_page', goal_id=goal_id))
 
 
+
+@app.route('/confirm/<int:donation_id>', methods=['POST'])
+def confirm_donation(donation_id):
+    user = get_current_user()
+    if not user:
+        flash('Войдите, чтобы подтвердить перевод.', 'warning')
+        return redirect(url_for('login'))
+    db = get_db()
+    donation = db.execute("SELECT * FROM donations WHERE id = ?", (donation_id,)).fetchone()
+    if not donation:
+        db.close()
+        flash('Донат не найден.', 'danger')
+        return redirect(url_for('goals_list'))
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
+    if goal['user_id'] != user['id']:
+        db.close()
+        flash('Только автор цели может подтверждать переводы.', 'danger')
+        return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+    if donation['status'] != 'donor_confirmed':
+        db.close()
+        flash('Этот перевод уже обработан.', 'info')
+        return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+    db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
+    db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
+    db.execute("INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_recipient', ?)", (user['id'], '{"donation_id":' + str(donation_id) + '}'))
+    if donation['donor_id']:
+        db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
+    db.commit()
+    db.close()
+    flash('Перевод подтверждён! Шкала обновлена.', 'success')
+    try:
+        upload_db()
+    except:
+        pass
+    return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+
+
 @app.route('/health')
 def health():
     return 'OK'
