@@ -262,6 +262,10 @@ def create_goal(goal_type):
     try:
         upload_db()
     except Exception as e:
+        print(f'Не удалось сохранить базу: {e}')
+    try:
+        upload_db()
+    except Exception as e:
         print(f"Не удалось сохранить базу: {e}")
 
         return redirect(url_for('goal_page', goal_id=gid))
@@ -336,6 +340,10 @@ def donate(goal_id):
     db.commit()
     db.close()
     flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
+    try:
+        upload_db()
+    except Exception as e:
+        print(f'Не удалось сохранить базу: {e}')
     try:
         upload_db()
     except Exception as e:
