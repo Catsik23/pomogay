@@ -20,6 +20,21 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 init_db()
 
+# Принудительно создаём seed-пользователя при каждом запуске
+db = get_db()
+seed = db.execute("SELECT id FROM users WHERE phone = '79885260358'").fetchone()
+if not seed:
+    db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456'),))
+    db.commit()
+    print('Seed 1 создан: 79885260358')
+
+seed2 = db.execute("SELECT id FROM users WHERE phone = '7999999999'").fetchone()
+if not seed2:
+    db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456'),))
+    db.commit()
+    print('Seed 2 создан: 7999999999')
+db.close()
+
 def get_current_user():
     if 'user_id' in session:
         db = get_db()
@@ -248,9 +263,12 @@ def goal_page(goal_id):
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     author = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
+    donations = db.execute("SELECT * FROM donations WHERE goal_id = ? ORDER BY donor_confirmed_at DESC", (goal_id,)).fetchall()
     db.close()
     pct = int((goal['amount_collected'] / goal['amount_goal']) * 100) if goal['amount_goal'] > 0 else 0
-    return render_template('goal.html', goal=goal, author=author, progress=pct)
+    user = get_current_user()
+    is_author = (user and user['id'] == goal['user_id'])
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author)
 
 @app.route('/goals')
 def goals_list():

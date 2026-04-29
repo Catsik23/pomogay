@@ -74,6 +74,26 @@
 
         <div class="deadline">Осталось: {{ goal.ends_at[:10] }}</div>
 
+        
+        {% if donations %}
+        <h3 style="margin-top: 24px;">Переводы</h3>
+        {% for d in donations %}
+        <div style="background:white;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
+            <span>{{ "%.0f"|format(d.amount_reported) }} ₽ — 
+            {% if d.status == 'donor_confirmed' %}ожидает
+            {% elif d.status == 'recipient_confirmed' %}подтверждён
+            {% elif d.status == 'completed' %}засчитан
+            {% else %}{{ d.status }}
+            {% endif %}</span>
+            {% if is_author and d.status == 'donor_confirmed' %}
+            <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
+                <button type="submit" style="background:#38A169;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;">✅ Подтверждаю</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
         <button class="help-btn" onclick="openModal()">Помочь</button>
 
         {% if pending_donations %}
