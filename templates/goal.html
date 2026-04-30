@@ -85,6 +85,7 @@
             {% elif d.status == 'completed' %}засчитан
             {% else %}{{ d.status }}
             {% endif %}</span>
+            {% if d.warm_word %}<div style="font-size:13px;color:#4A5568;margin-top:4px;font-style:italic;">«{{ d.warm_word }}»</div>{% endif %}
             {% if is_author and d.status == 'donor_confirmed' %}
             <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
                 <button type="submit" style="background:#38A169;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;">✅ Подтверждаю</button>
@@ -143,7 +144,10 @@
 
                 <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
-                    <button type="submit" style="width:100%;padding:16px;background:#38A169;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;">✅ Я перевёл(ла)</button>
+                    <button type="submit" style="width:100%;padding:16px;background:#38A169;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;"><div style="margin-top:8px;">
+                    <input type="text" name="warm_word" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
+                </div>
+                ✅ Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
