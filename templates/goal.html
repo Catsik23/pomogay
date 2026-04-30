@@ -58,6 +58,12 @@
         <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
         {% endif %}
 
+        {% if donor_count > 0 %}
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#4A5568;margin-bottom:8px;">
+            <span>🤝 Помогли {{ donor_count }} чел.</span>
+            {% if last_donation %}<span>🕐 Последний донат: {{ last_donation[:16] }}</span>{% endif %}
+        </div>
+        {% endif %}
         <div class="stats">
             <div>Собрано: <span>{{ "%.0f"|format(goal.amount_collected) }} ₽</span></div>
             <div>Цель: <span>{{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>

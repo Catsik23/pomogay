@@ -25,6 +25,12 @@
 <body>
     <div class="container">
         <h1>Цели</h1>
+        {% if today_closed > 0 or week_helped > 0 %}
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#4A5568;margin-bottom:16px;background:white;padding:12px;border-radius:10px;">
+            {% if today_closed > 0 %}<span>🎉 Сегодня закрыто: {{ today_closed }} целей</span>{% endif %}
+            {% if week_helped > 0 %}<span>💰 За неделю помогли на {{ "%.0f"|format(week_helped) }} ₽</span>{% endif %}
+        </div>
+        {% endif %}
         <a class="create-btn" href="/goals/choose">+ Создать цель</a>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
