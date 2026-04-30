@@ -79,7 +79,7 @@
         <h3 style="margin-top: 24px;">Переводы</h3>
         {% for d in donations %}
         <div style="background:white;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
-            <span>{{ "%.0f"|format(d.amount_reported) }} ₽ — 
+            <span>{{ "%.0f"|format(d.amount_reported) }} ₽ — {% if d.donor_id is none %}Аноним · {% endif %} 
             {% if d.status == 'donor_confirmed' %}ожидает
             {% elif d.status == 'recipient_confirmed' %}подтверждён
             {% elif d.status == 'completed' %}засчитан
@@ -100,7 +100,7 @@
         <h3 style="margin-top: 24px;">Последние переводы</h3>
         {% for d in pending_donations %}
         <div style="background:white;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:14px;">
-            {{ "%.0f"|format(d.amount_reported) }} ₽ — 
+            {{ "%.0f"|format(d.amount_reported) }} ₽ — {% if d.donor_id is none %}Аноним · {% endif %} 
             {% if d.status == 'donor_confirmed' %}ожидает подтверждения
             {% elif d.status == 'recipient_confirmed' %}подтверждён
             {% elif d.status == 'completed' %}засчитан

@@ -315,9 +315,7 @@ def clear_all():
 @app.route('/donate/<int:goal_id>', methods=['POST'])
 def donate(goal_id):
     user = get_current_user()
-    if not user:
-        flash('Войдите, чтобы подтвердить перевод.', 'warning')
-        return redirect(url_for('login'))
+    # Разрешаем донат без регистрации
     amount_str = request.form.get('amount', '0')
     try:
         amount = float(amount_str)
