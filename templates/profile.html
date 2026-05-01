@@ -10,6 +10,13 @@
         h1 { color: #FF8C69; font-size: 28px; }
         .info { margin: 20px 0; }
         .info p { margin: 8px 0; color: #4A5568; }
+        .level-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 14px; margin: 8px 0; }
+        .streak { color: #E53E3E; font-weight: bold; }
+        .progress-bar { background: #e0e0e0; border-radius: 8px; height: 10px; margin: 8px 0; }
+        .progress-fill { background: #FF8C69; height: 10px; border-radius: 8px; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; margin: 4px 4px 4px 0; }
+        .badge-gold { background: #fff3cd; color: #856404; }
+        .badge-green { background: #d4edda; color: #155724; }
         .goal-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .goal-card h3 { margin: 0; font-size: 16px; }
         .goal-card h3 a { color: #1A202C; text-decoration: none; }
@@ -34,7 +41,16 @@
         {% endwith %}
         <div class="info">
             <p>Телефон: {{ user.phone }}</p>
-            <p>Рейтинг: {{ user.rating }}</p>
+            <p>Уровень: {{ get_level_name(user) }}</p>
+            {% set pct = get_level_progress(user) %}
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ pct }}%;"></div>
+            </div>
+            <p style="font-size:12px;color:#4A5568;">Прогресс: {{ pct }}%</p>
+            {% if user.xp > 0 %}<p>XP: {{ user.xp }}</p>{% endif %}
+            {% if user.streak_days > 0 %}<p>Серия: <span class="streak">{{ user.streak_days }} дн. 🔥</span></p>{% endif %}
+            {% if user.author_badge %}<span class="badge badge-gold">🏅 {{ user.author_badge }}</span>{% endif %}
+            <p>Помог на сумму: {{ user.total_helped_amount or 0 }} ₽</p>
             <p>На платформе с: {{ user.created_at[:10] }}</p>
         </div>
         <h2>Мои цели</h2>
