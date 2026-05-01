@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import init_db, get_db
-from gdrive import download_db, upload_db
 from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,11 +20,6 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 init_db()
 
-# Загружаем базу с Google Диска при старте
-try:
-    download_db()
-except Exception as e:
-    print(f"Не удалось загрузить базу: {e}")
 
 
 # Принудительно создаём seed-пользователя при каждом запуске
@@ -259,10 +253,7 @@ def create_goal(goal_type):
         gid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         db.close()
         flash('Цель создана!', 'success')
-    try:
-        upload_db()
-    except Exception as e:
-        print(f'Не удалось сохранить базу: {e}')
+    
     try:
         upload_db()
     except Exception as e:
@@ -360,10 +351,7 @@ def donate(goal_id):
         db.commit()
     
     flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
-    try:
-        upload_db()
-    except Exception as e:
-        print(f'Не удалось сохранить базу: {e}')
+    
     try:
         upload_db()
     except Exception as e:
@@ -404,10 +392,7 @@ def confirm_donation(donation_id):
     db.commit()
     db.close()
     flash('Перевод подтверждён! Шкала обновлена.', 'success')
-    try:
-        upload_db()
-    except:
-        pass
+    
     return redirect(url_for('goal_page', goal_id=donation['goal_id']))
 
 
