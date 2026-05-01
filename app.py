@@ -304,6 +304,89 @@ def clear_all():
 
 
 
+
+# ============================================
+# XP ENGINE
+# ============================================
+
+XP_VALUES = {
+    'donate_100': 10,
+    'donate_500': 30,
+    'donate_1000': 50,
+    'donate_new': 15,
+    'confirm': 5,
+    'goal_closed': 20,
+    'received_external': 10,
+    'daily_login': 3
+}
+
+LEVELS = [
+    (0, 'novice', '🌱 Новичок'),
+    (30, 'member', '🌿 Участник'),
+    (100, 'reliable', '🌳 Надёжный'),
+    (300, 'pillar', '💎 Опора'),
+    (800, 'hero', '⭐ Герой'),
+    (2000, 'legend', '👑 Легенда')
+]
+
+def get_level(xp):
+    info = LEVELS[0]
+    for threshold, key, name in LEVELS:
+        if xp >= threshold:
+            info = (threshold, key, name)
+    return info
+
+def add_xp(user_id, action, amount=0):
+    if user_id is None:
+        return 0
+    db = get_db()
+    if action == 'donate':
+        if amount >= 1000:
+            xp = XP_VALUES['donate_1000']
+        elif amount >= 500:
+            xp = XP_VALUES['donate_500']
+        else:
+            xp = XP_VALUES['donate_100']
+    else:
+        xp = XP_VALUES.get(action, 0)
+    if xp > 0:
+        db.execute("UPDATE users SET xp = xp + ? WHERE id = ?", (xp, user_id))
+    user = db.execute("SELECT xp, xp_level FROM users WHERE id = ?", (user_id,)).fetchone()
+    if user and user['xp'] >= 100:
+        total = db.execute("SELECT COUNT(*) FROM donations WHERE donor_id = ?", (user_id,)).fetchone()[0]
+        big = db.execute("SELECT COUNT(*) FROM donations WHERE donor_id = ? AND amount_reported >= 1000", (user_id,)).fetchone()[0]
+        if total > 0 and (big / total) > 0.5:
+            db.execute("UPDATE users SET author_badge = 'Меценат' WHERE id = ?", (user_id,))
+    _, level_key, _ = get_level(user['xp'])
+    db.execute("UPDATE users SET xp_level = ? WHERE id = ?", (level_key, user_id))
+    from datetime import datetime, timedelta
+    today = datetime.now().strftime('%Y-%m-%d')
+    u = db.execute("SELECT last_action_date, streak_days FROM users WHERE id = ?", (user_id,)).fetchone()
+    if u['last_action_date'] == today:
+        pass
+    elif u['last_action_date'] == (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'):
+        db.execute("UPDATE users SET streak_days = streak_days + 1, last_action_date = ? WHERE id = ?", (today, user_id))
+    else:
+        db.execute("UPDATE users SET streak_days = 1, last_action_date = ? WHERE id = ?", (today, user_id))
+    db.commit()
+    db.close()
+    return xp
+
+def get_level_progress(user):
+    xp = user['xp'] or 0
+    current, next_lvl = 0, 30
+    for threshold, _, _ in LEVELS:
+        if xp >= threshold:
+            current = threshold
+        else:
+            next_lvl = threshold
+            break
+    return int((xp - current) / (next_lvl - current) * 100) if next_lvl > current else 100
+
+def get_level_name(user):
+    _, _, name = get_level(user['xp'] or 0)
+    return name
+
 @app.route('/donate/<int:goal_id>', methods=['POST'])
 def donate(goal_id):
     user = get_current_user()
