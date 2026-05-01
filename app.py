@@ -254,10 +254,7 @@ def create_goal(goal_type):
         db.close()
         flash('Цель создана!', 'success')
     
-    try:
-        upload_db()
-    except Exception as e:
-        print(f"Не удалось сохранить базу: {e}")
+
 
         return redirect(url_for('goal_page', goal_id=gid))
     return render_template('create_goal.html', goal_type=goal_type)
@@ -354,10 +351,7 @@ def donate(goal_id):
     
     flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
     
-    try:
-        upload_db()
-    except Exception as e:
-        print(f"Не удалось сохранить базу: {e}")
+
 
     return redirect(url_for('goal_page', goal_id=goal_id))
 
