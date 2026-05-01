@@ -328,7 +328,6 @@ def donate(goal_id):
         (user['id'], '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
     )
     db.commit()
-    db.close()
     # Создаём напоминания получателю
     goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if goal:
