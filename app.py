@@ -307,7 +307,7 @@ def clear_all():
 @app.route('/donate/<int:goal_id>', methods=['POST'])
 def donate(goal_id):
     user = get_current_user()
-    # Разрешаем донат без регистрации
+    donor_id = user['id'] if user else None
     amount_str = request.form.get('amount', '0')
     try:
         amount = float(amount_str)
@@ -317,47 +317,51 @@ def donate(goal_id):
     if amount <= 0:
         flash('Некорректная сумма.', 'danger')
         return redirect(url_for('goal_page', goal_id=goal_id))
+    warm_word = request.form.get('warm_word', '').strip()[:200]
+    is_anonymous = 1 if request.form.get('anonymous') == '1' else 0
+    ip_address = request.remote_addr
+
     db = get_db()
-    donor_id = user['id'] if user else None
-    db.execute(
-        "INSERT INTO donations (goal_id, donor_id, amount_reported, status, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', datetime('now'))",
-        (goal_id, donor_id, amount)
-    )
-    db.commit()
-    db.execute(
-        "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
-        (donor_id, '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
-    )
-    db.commit()
-    # Создаём напоминания получателю
-    goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
-    if goal:
-        # +2 минуты
+    try:
         db.execute(
-            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_2m', ?, ?, 'fcm')",
-            (goal['user_id'], donation_id, goal_id)
-        )
-        # +1 час
-        db.execute(
-            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_1h', ?, ?, 'fcm')",
-            (goal['user_id'], donation_id, goal_id)
-        )
-        # +6 часов
-        db.execute(
-            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_6h', ?, ?, 'fcm')",
-            (goal['user_id'], donation_id, goal_id)
+            "INSERT INTO donations (goal_id, donor_id, amount_reported, status, warm_word, is_anonymous, ip_address, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', ?, ?, ?, datetime('now'))",
+            (goal_id, donor_id, amount, warm_word if warm_word else None, is_anonymous, ip_address)
         )
         db.commit()
-    
-    add_xp(donor_id, 'donate')
-    add_xp(donor_id, 'donate_new')
-    flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
-    
+        donation_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
 
+        db.execute(
+            "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
+            (donor_id, '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
+        )
+        db.commit()
+
+        # Напоминания получателю
+        goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        if goal:
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_2m', ?, ?, 'fcm')",
+                (goal['user_id'], donation_id, goal_id)
+            )
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_1h', ?, ?, 'fcm')",
+                (goal['user_id'], donation_id, goal_id)
+            )
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_6h', ?, ?, 'fcm')",
+                (goal['user_id'], donation_id, goal_id)
+            )
+            db.commit()
+
+        # XP
+        add_xp(donor_id, 'donate')
+        add_xp(donor_id, 'donate_new')
+
+        flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
+    finally:
+        db.close()
 
     return redirect(url_for('goal_page', goal_id=goal_id))
-
-
 
 @app.route('/confirm/<int:donation_id>', methods=['POST'])
 def confirm_donation(donation_id):
