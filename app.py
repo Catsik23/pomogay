@@ -43,6 +43,7 @@ def get_current_user():
         user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
         db.close()
         return user
+    db.close()
     return None
 
 def login_required(f):
