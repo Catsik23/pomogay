@@ -318,14 +318,15 @@ def donate(goal_id):
         flash('Некорректная сумма.', 'danger')
         return redirect(url_for('goal_page', goal_id=goal_id))
     db = get_db()
+    donor_id = user['id'] if user else None
     db.execute(
         "INSERT INTO donations (goal_id, donor_id, amount_reported, status, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', datetime('now'))",
-        (goal_id, user['id'], amount)
+        (goal_id, donor_id, amount)
     )
     db.commit()
     db.execute(
         "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
-        (user['id'], '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
+        (donor_id, '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
     )
     db.commit()
     # Создаём напоминания получателю
