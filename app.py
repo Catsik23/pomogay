@@ -284,7 +284,6 @@ def goal_page(goal_id):
 def goals_list():
     db = get_db()
     goals = db.execute("SELECT * FROM goals WHERE status = 'active' ORDER BY created_at DESC LIMIT 50").fetchall()
-    db.close()
     today_closed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed' AND date(created_at) = date('now')").fetchone()[0]
     week_helped = db.execute("SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE status IN ('recipient_confirmed','completed') AND date(donor_confirmed_at) >= date('now', '-7 days')").fetchone()[0]
     db.close()
