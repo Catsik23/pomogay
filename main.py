@@ -463,7 +463,10 @@ def donate(goal_id):
             flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
             return redirect(url_for('goal_page', goal_id=goal_id))
 
-    flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
+    if auto_confirm_seed3(goal_id, donation_id, amount):
+        flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
+    else:
+        flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
     finally:
         db.close()
 
