@@ -301,6 +301,16 @@ def goals_list():
     db.close()
     return render_template('goals.html', goals=goals, today_closed=today_closed, week_helped=week_helped)
 
+@app.route('/manifest.json')
+def manifest():
+    from flask import send_from_directory
+    return send_from_directory(os.path.join(BASE_DIR, 'static'), 'manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    from flask import send_from_directory
+    return send_from_directory(os.path.join(BASE_DIR, 'static'), 'sw.js')
+
 @app.route('/admin')
 def admin_panel():
     return '<h2>Админка — скоро</h2>'
