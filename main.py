@@ -14,8 +14,6 @@ MAX_FILE_SIZE = 20 * 1024 * 1024
 TARGET_PHOTO_SIZE = 500 * 1024
 
 app = Flask(__name__)
-app.jinja_env.globals['get_level_progress'] = get_level_progress
-app.jinja_env.globals['get_level_name'] = get_level_name
 app.secret_key = os.environ.get('SECRET_KEY', 'pomogay-dev-secret-change-in-production')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
@@ -501,6 +499,9 @@ def health():
 @app.route('/uploads/goals/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+app.jinja_env.globals['get_level_progress'] = get_level_progress
+app.jinja_env.globals['get_level_name'] = get_level_name
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
