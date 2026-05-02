@@ -101,7 +101,9 @@
         {% endfor %}
         {% endif %}
 
+        {% if not is_author %}
         <button class="help-btn" onclick="openModal()">Помочь</button>
+        {% endif %}
 
         {% if pending_donations %}
         <h3 style="margin-top: 24px;">Последние переводы</h3>
