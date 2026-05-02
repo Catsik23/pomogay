@@ -513,6 +513,9 @@ def confirm_donation(donation_id):
     db.commit()
     db.close()
     add_xp(user['id'], 'confirm')
+    # Обновляем сумму помощи у получателя
+    db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (donation['amount_reported'], user['id']))
+    db.commit()
     flash('Перевод подтверждён! Шкала обновлена.', 'success')
     
     return redirect(url_for('goal_page', goal_id=donation['goal_id']))
