@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Выберите тип цели — Помогай</title>
+    <title>Создать цель — Помогай</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
+        .container { text-align: center; padding: 24px 16px; }
+        h1 { color: var(--cta); margin-bottom: 8px; }
+        .subtitle { color: var(--text-soft); margin-bottom: 24px; font-size: 15px; }
         .type-card {
             background: var(--card);
             border-radius: var(--radius-lg);
@@ -16,10 +19,12 @@
             text-decoration: none;
             color: var(--text);
             display: block;
+            text-align: left;
             transition: transform 0.1s ease;
         }
         .type-card:active { transform: scale(0.98); }
         .type-card h3 { margin: 0 0 6px; font-size: 20px; }
+        .type-card p { margin: 0; font-size: 14px; }
         .tag {
             display: inline-block;
             padding: 4px 12px;
@@ -32,35 +37,36 @@
         .tag-blue { background: #d1ecf1; color: #0c5460; }
         .tag-purple { background: #e8d5f5; color: #5a2d82; }
         .info { font-size: 13px; color: var(--text-soft); margin-top: 8px; }
+        .back { margin-top: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Создать цель</h1>
-        <p style="margin-bottom:20px;">Выберите тип сбора:</p>
+        <h1>✨ Создать цель</h1>
+        <p class="subtitle">Выберите, какой сбор вам подходит</p>
 
         <a class="type-card" href="/goals/new/super_blitz">
             <span class="tag tag-green">Супер-блиц</span>
-            <h3>Молниеносный сбор</h3>
-            <p>Для срочных маленьких нужд. 24 часа, до 5 000 ₽.</p>
+            <h3>⚡ Молниеносный сбор</h3>
+            <p>Срочные маленькие нужды: лекарство, проезд, еда.</p>
             <div class="info">100–5 000 ₽ · 1 день · Без рейтинга · Бесплатно</div>
         </a>
 
         <a class="type-card" href="/goals/new/blitz">
             <span class="tag tag-blue">Блиц</span>
-            <h3>Быстрый сбор</h3>
-            <p>Хотелки, подписки, обучение. До 7 дней, до 50 000 ₽.</p>
-            <div class="info">500–50 000 ₽ · 1–7 дней · Без рейтинга · 49–99 ₽ разово</div>
+            <h3>🎯 Быстрый сбор</h3>
+            <p>Хотелки, подписки, курсы, мелкая техника.</p>
+            <div class="info">500–50 000 ₽ · 1–7 дней · Без рейтинга · 49–99 ₽</div>
         </a>
 
         <a class="type-card" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро!'); return false;">
             <span class="tag tag-purple">Серьёзный</span>
-            <h3>Жизненная цель</h3>
+            <h3>🏥 Жизненная цель</h3>
             <p>Лечение, ипотека, важные расходы. С видеообращением.</p>
             <div class="info">Без лимита · Длительный срок · Рейтинг · 99 ₽/неделя</div>
         </a>
 
-        <div style="text-align:center;margin-top:16px;">
+        <div class="back">
             <a href="/goals">← К ленте целей</a>
         </div>
     </div>
