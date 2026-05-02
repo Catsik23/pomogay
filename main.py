@@ -451,9 +451,13 @@ def donate(goal_id):
             )
             db.commit()
 
-        # XP
-        add_xp(donor_id, 'donate')
-        add_xp(donor_id, 'donate_new')
+        # XP и сумма помощи (только если не самодонат)
+        goal_owner = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        if goal_owner and donor_id != goal_owner['user_id']:
+            add_xp(donor_id, 'donate')
+            add_xp(donor_id, 'donate_new')
+            db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (amount, donor_id))
+            db.commit()
 
         # Автоподтверждение для seed3
         goal_data = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
