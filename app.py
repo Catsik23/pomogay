@@ -1,8 +1,6 @@
 import os, re, time, uuid
 from datetime import datetime, timedelta
-from flask import Flask
-app.jinja_env.globals['get_level_name'] = get_level_name
-app.jinja_env.globals['get_level_progress'] = get_level_progress, render_template, request, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import init_db, get_db
