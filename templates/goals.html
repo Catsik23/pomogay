@@ -43,7 +43,7 @@
         
         {% if goals %}
             {% for goal in goals %}
-            <div class="goal-card">
+            <div class="goal-card" onclick="location.href='/goal/{{ goal.id }}'" style="cursor:pointer;">
                 <h3><a href="/goal/{{ goal.id }}">{{ goal.title }}</a></h3>
                 <div class="meta">
                     {{ "%.0f"|format(goal.amount_collected) }} ₽ из {{ "%.0f"|format(goal.amount_goal) }} ₽ · 
@@ -54,7 +54,7 @@
                     {% set pct = (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 %}
                     <div class="progress-fill" style="width: {{ pct|int }}%"></div>
                 </div>
-            </div></a>
+            </div>
             {% endfor %}
         {% else %}
             <div class="empty">
