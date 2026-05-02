@@ -405,51 +405,44 @@ def donate(goal_id):
     ip_address = request.remote_addr
 
     db = get_db()
-    db.execute(
-        "INSERT INTO donations (goal_id, donor_id, amount_reported, status, warm_word, is_anonymous, ip_address, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', ?, ?, ?, datetime('now'))",
-        (goal_id, donor_id, amount, warm_word if warm_word else None, is_anonymous, ip_address)
-    )
-    db.commit()
-    donation_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-    db.execute(
-        "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
-        (donor_id, '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
-    )
-    db.commit()
-
-    # Напоминания получателю
-    goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
-    if goal:
+    try:
         db.execute(
-            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_2m', ?, ?, 'fcm')",
-            (goal['user_id'], donation_id, goal_id)
+            "INSERT INTO donations (goal_id, donor_id, amount_reported, status, warm_word, is_anonymous, ip_address, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', ?, ?, ?, datetime('now'))",
+            (goal_id, donor_id, amount, warm_word if warm_word else None, is_anonymous, ip_address)
         )
+        db.commit()
+        donation_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+
         db.execute(
-            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_1h', ?, ?, 'fcm')",
-            (goal['user_id'], donation_id, goal_id)
-        )
-        db.execute(
-            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_6h', ?, ?, 'fcm')",
-            (goal['user_id'], donation_id, goal_id)
+            "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
+            (donor_id, '{"goal_id":' + str(goal_id) + ',"amount":' + str(amount) + '}')
         )
         db.commit()
 
-    # XP и автоподтверждение seed3
-    recipient = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
-    if recipient and recipient['phone'] == '7888888888':
-        # Автоподтверждение сразу
-        db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
-        db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (amount, goal_id))
-        db.commit()
-        flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
-    else:
+        # Напоминания получателю
+        goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        if goal:
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_2m', ?, ?, 'fcm')",
+                (goal['user_id'], donation_id, goal_id)
+            )
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_1h', ?, ?, 'fcm')",
+                (goal['user_id'], donation_id, goal_id)
+            )
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_6h', ?, ?, 'fcm')",
+                (goal['user_id'], donation_id, goal_id)
+            )
+            db.commit()
+
+        # XP
         add_xp(donor_id, 'donate')
         add_xp(donor_id, 'donate_new')
-        flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
 
-    db.close()
-    return redirect(url_for('goal_page', goal_id=goal_id))
+        # Автоподтверждение для seed3
+    goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if goal:
         recipient = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
         if recipient and recipient['phone'] == '7888888888':
             # Автоподтверждаем сразу
