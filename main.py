@@ -35,6 +35,21 @@ if not seed2:
     db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456'),))
     db.commit()
     print('Seed 2 создан: 7999999999')
+
+# Seed 3 с готовой целью
+seed3 = db.execute("SELECT id FROM users WHERE phone = '7888888888'").fetchone()
+if not seed3:
+    db.execute("INSERT INTO users (phone, password_hash) VALUES ('7888888888', ?)", (generate_password_hash('123456'),))
+    db.commit()
+    seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+    from datetime import datetime, timedelta
+    ends = (datetime.now() + timedelta(days=7)).isoformat()
+    db.execute(
+        "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, moderation_status) VALUES (?, 'blitz', 'на ноутбук', 'для работы', 25000, 0, ?, 'active', 'approved')",
+        (seed3_id, ends)
+    )
+    db.commit()
+    print('Seed 3 создан: 7888888888 с целью')
 db.close()
 
 def get_current_user():
