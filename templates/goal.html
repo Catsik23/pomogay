@@ -151,13 +151,19 @@
                 <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <button type="submit" style="width:100%;padding:16px;background:#38A169;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;"><div style="margin-top:8px;">
-                    <input type="text" name="warm_word" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
+                    <div style="margin-top:8px;">
+                    <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
+                </div>
                 <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#4A5568;">
-                    <input type="checkbox" name="anonymous" value="1" id="anonymousCheck" style="width:auto;margin-right:8px;">
+                    <input type="checkbox" id="anonymousCheck" style="width:auto;margin-right:8px;">
                     <label for="anonymousCheck" style="cursor:pointer;">Помочь анонимно</label>
                 </div>
-                </div>
-                ✅ Я перевёл(ла)</button>
+
+                <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
+                    <input type="hidden" name="amount" id="confirmAmount">
+                    <input type="hidden" name="warm_word" id="confirmWarmWord">
+                    <input type="hidden" name="anonymous" id="confirmAnonymous">
+                    <button type="submit" style="width:100%;padding:16px;background:#38A169;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;">✅ Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
@@ -239,6 +245,12 @@
         function showConfirm() {
             document.getElementById('confirmForm').style.display = 'block';
         }
+
+        // Перед отправкой копируем значения из внешних полей в скрытые поля формы
+        document.getElementById('confirmForm').addEventListener('submit', function() {
+            document.getElementById('confirmWarmWord').value = document.getElementById('warmWordInput').value;
+            document.getElementById('confirmAnonymous').value = document.getElementById('anonymousCheck').checked ? '1' : '0';
+        });
 
         // Закрытие по клику вне окна
         document.getElementById('donateModal').addEventListener('click', function(e) {
