@@ -9,72 +9,86 @@
         .container {
             max-width: 480px;
             margin: 0 auto;
-            padding: 20px 16px;
+            padding: 16px 16px 24px;
         }
-        .header-card {
-            background: linear-gradient(135deg, #FFF0EB 0%, #FFE0D6 100%);
-            border-radius: 14px;
-            padding: 20px 16px;
-            text-align: center;
-            margin-bottom: 24px;
-            display: inline-block;
-            width: auto;
-            min-width: 200px;
+        .top-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
         }
-        .header-card h1 {
-            font-size: 26px;
-            font-weight: 700;
+        .back-arrow {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            color: var(--text-soft);
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+        .back-arrow:active { background: #f0f0f0; }
+        .header-text h1 {
+            font-size: 24px;
+            font-weight: 500;
             margin: 0;
             line-height: 1.2;
+            color: var(--text);
+            letter-spacing: -0.3px;
         }
-        .header-card p {
+        .header-text p {
             font-size: 15px;
-            color: #BF7A6A;
+            color: var(--text-soft);
             margin: 2px 0 0;
+            font-weight: 400;
         }
         .option {
             display: flex;
             align-items: center;
             gap: 14px;
-            padding: 16px 14px;
-            border-radius: 14px;
-            margin-bottom: 10px;
+            padding: 18px 14px;
+            border-radius: 16px;
+            margin-bottom: 12px;
             text-decoration: none;
             color: var(--text);
             transition: transform 0.1s, opacity 0.15s;
+            min-height: 72px;
         }
         .option:active {
             transform: scale(0.98);
             opacity: 0.85;
         }
         .option-icon {
-            width: 44px;
-            height: 44px;
+            width: 48px;
+            height: 48px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        .option-green .option-icon { background: #E8F5E9; color: #388E3C; }
-        .option-blue .option-icon { background: #E3F2FD; color: #1976D2; }
-        .option-purple .option-icon { background: #F3E5F5; color: #7B1FA2; }
-
+        .option-green .option-icon { background: #E8F5E9; }
+        .option-blue .option-icon { background: #E3F2FD; }
+        .option-purple .option-icon { background: #F3E5F5; }
         .option-green { background: #F5FBF6; border: 1px solid #C8E6C9; }
         .option-blue { background: #F5F9FD; border: 1px solid #BBDEFB; }
         .option-purple { background: #FDF5FF; border: 1px solid #E1BEE7; }
-
         .option-title { font-size: 17px; font-weight: 600; }
         .option-desc { font-size: 13px; color: var(--text-soft); margin-top: 2px; }
         .option-meta { font-size: 12px; color: var(--text-soft); margin-top: 4px; display: flex; gap: 8px; }
         .option-meta span { background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 6px; }
-        .back { margin-top: 20px; text-align: center; font-size: 15px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div style="text-align:center;">
-            <div class="header-card">
+        <div class="top-bar">
+            <a href="/goals" class="back-arrow">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </a>
+            <div class="header-text">
                 <h1>Создать цель</h1>
                 <p>Выберите тип сбора</p>
             </div>
@@ -82,7 +96,7 @@
 
         <a class="option option-green" href="/goals/new/super_blitz">
             <div class="option-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#388E3C"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             </div>
             <div>
                 <div class="option-title">Молниеносный сбор</div>
@@ -93,7 +107,7 @@
 
         <a class="option option-blue" href="/goals/new/blitz">
             <div class="option-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#1976D2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5" fill="white"/><circle cx="12" cy="12" r="2" fill="#1976D2"/></svg>
             </div>
             <div>
                 <div class="option-title">Быстрый сбор</div>
@@ -104,7 +118,7 @@
 
         <a class="option option-purple" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро'); return false;">
             <div class="option-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#7B1FA2"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             </div>
             <div>
                 <div class="option-title">Жизненная цель</div>
@@ -112,10 +126,6 @@
                 <div class="option-meta"><span>без лимита</span><span>долгий срок</span><span>99 ₽/нед</span></div>
             </div>
         </a>
-
-        <div class="back">
-            <a href="/goals">← К ленте целей</a>
-        </div>
     </div>
 </body>
 </html>
