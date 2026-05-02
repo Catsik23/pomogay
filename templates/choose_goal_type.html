@@ -19,96 +19,118 @@
             flex-direction: column;
         }
 
-        /* Верхняя часть с градиентом */
+        /* Шапка */
         .header-section {
-            background: linear-gradient(135deg, #FFB39A 0%, #FF8C69 100%);
-            padding: 32px 20px 20px 60px;
+            background: linear-gradient(160deg, #FF9A7C 0%, #FF6B4A 30%, #FF8C69 100%);
+            padding: 36px 20px 28px 52px;
             color: white;
-            border-radius: 0 0 24px 24px;
-            flex-shrink: 0;
+            border-radius: 0 0 32px 32px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(255, 108, 74, 0.2);
         }
-        .header-section a {
-            color: white;
+        .header-section::after {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -30px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .back-link {
+            color: rgba(255,255,255,0.85);
             text-decoration: none;
             font-size: 14px;
+            font-weight: 500;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            letter-spacing: 0.3px;
         }
         .header-section h1 {
-            font-size: 28px;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            line-height: 1.2;
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            margin-bottom: 6px;
         }
         .header-section p {
-            font-size: 16px;
-            font-weight: 300;
-            opacity: 0.9;
-            margin-top: 4px;
+            font-size: 17px;
+            font-weight: 400;
+            opacity: 0.85;
         }
 
-        /* Кнопки — заполняют оставшееся место */
+        /* Кнопки */
         .options-section {
             flex: 1;
             display: flex;
             flex-direction: column;
-            padding: 20px 16px;
-            gap: 12px;
+            padding: 24px 16px;
+            gap: 14px;
         }
         .option {
             flex: 1;
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 0 16px;
-            border-radius: 16px;
+            gap: 16px;
+            padding: 0 18px;
+            border-radius: 20px;
             text-decoration: none;
             color: #2D2D2D;
-            transition: transform 0.1s, opacity 0.15s;
-            min-height: 0;
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         .option:active {
-            transform: scale(0.98);
-            opacity: 0.85;
+            transform: scale(0.97);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
         }
         .option-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 12px;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
-        .option-green .option-icon { background: #E8F5E9; }
-        .option-blue .option-icon { background: #E3F2FD; }
-        .option-purple .option-icon { background: #F3E5F5; }
-        .option-green { background: #F5FBF6; border: 1px solid #C8E6C9; }
-        .option-blue { background: #F5F9FD; border: 1px solid #BBDEFB; }
-        .option-purple { background: #FDF5FF; border: 1px solid #E1BEE7; }
-        .option-title { font-size: 18px; font-weight: 600; }
-        .option-desc { font-size: 13px; color: #8C7A6B; margin-top: 2px; }
-        .option-meta { font-size: 12px; color: #8C7A6B; margin-top: 4px; display: flex; gap: 8px; }
-        .option-meta span { background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 6px; }
+        .option-green .option-icon { background: linear-gradient(135deg, #C8E6C9, #A5D6A7); }
+        .option-blue .option-icon { background: linear-gradient(135deg, #BBDEFB, #90CAF9); }
+        .option-purple .option-icon { background: linear-gradient(135deg, #E1BEE7, #CE93D8); }
+        .option-title {
+            font-size: 19px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+        .option-desc { font-size: 14px; color: #8C7A6B; margin-top: 3px; }
+        .option-meta { font-size: 12px; color: #8C7A6B; margin-top: 5px; display: flex; gap: 8px; }
+        .option-meta span {
+            background: #F5F5F5;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header-section">
-            <a href="/goals">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <a href="/goals" class="back-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                 Назад
             </a>
-            <h1>Создать цель</h1>
+            <h1>Создать<br>цель</h1>
             <p>Выберите тип сбора</p>
         </div>
 
         <div class="options-section">
             <a class="option option-green" href="/goals/new/super_blitz">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#388E3C"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#2E7D32"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Супер-блиц</div>
@@ -119,7 +141,7 @@
 
             <a class="option option-blue" href="/goals/new/blitz">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#1976D2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5" fill="white"/><circle cx="12" cy="12" r="2" fill="#1976D2"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#1565C0"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5" fill="white"/><circle cx="12" cy="12" r="2" fill="#1565C0"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Блиц</div>
@@ -130,7 +152,7 @@
 
             <a class="option option-purple" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро'); return false;">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#7B1FA2"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="#6A1B9A"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Жизненные цели</div>
