@@ -6,64 +6,96 @@
     <title>Создать цель — Помогай</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        .container { text-align: center; padding: 24px 16px; }
-        h1 { color: var(--cta); margin-bottom: 8px; }
-        .subtitle { color: var(--text-soft); margin-bottom: 24px; font-size: 15px; }
-        .type-card {
-            background: var(--card);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-            margin-bottom: 12px;
-            box-shadow: var(--card-shadow);
-            cursor: pointer;
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .page-subtitle {
+            color: var(--text-soft);
+            font-size: 15px;
+            margin-bottom: 28px;
+        }
+        .option {
+            display: block;
+            padding: 20px 16px;
+            border: 1px solid #e8e8e8;
+            border-radius: 14px;
+            margin-bottom: 10px;
             text-decoration: none;
             color: var(--text);
-            display: block;
-            text-align: left;
-            transition: transform 0.1s ease;
+            transition: border-color 0.15s, background 0.15s;
         }
-        .type-card:active { transform: scale(0.98); }
-        .type-card h3 { margin: 0 0 6px; font-size: 20px; }
-        .type-card p { margin: 0; font-size: 14px; }
-        .tag {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 13px;
+        .option:active {
+            border-color: var(--cta);
+            background: #FFF5F2;
+        }
+        .option-title {
+            font-size: 18px;
             font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .option-desc {
+            font-size: 14px;
+            color: var(--text-soft);
             margin-bottom: 8px;
         }
-        .tag-green { background: #d4edda; color: #155724; }
-        .tag-blue { background: #d1ecf1; color: #0c5460; }
-        .tag-purple { background: #e8d5f5; color: #5a2d82; }
-        .info { font-size: 13px; color: var(--text-soft); margin-top: 8px; }
-        .back { margin-top: 20px; }
+        .option-meta {
+            font-size: 13px;
+            color: var(--text-soft);
+            display: flex;
+            gap: 12px;
+        }
+        .option-meta span {
+            background: #f5f5f5;
+            padding: 2px 8px;
+            border-radius: 6px;
+        }
+        .back {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>✨ Создать цель</h1>
-        <p class="subtitle">Выберите, какой сбор вам подходит</p>
+        <h1 class="page-title">Создать цель</h1>
+        <p class="page-subtitle">Выберите тип сбора</p>
 
-        <a class="type-card" href="/goals/new/super_blitz">
-            <span class="tag tag-green">Супер-блиц</span>
-            <h3>⚡ Молниеносный сбор</h3>
-            <p>Срочные маленькие нужды: лекарство, проезд, еда.</p>
-            <div class="info">100–5 000 ₽ · 1 день · Без рейтинга · Бесплатно</div>
+        <a class="option" href="/goals/new/super_blitz">
+            <div class="option-title">Молниеносный сбор</div>
+            <div class="option-desc">Срочные небольшие нужды</div>
+            <div class="option-meta">
+                <span>до 5 000 ₽</span>
+                <span>1 день</span>
+                <span>бесплатно</span>
+            </div>
         </a>
 
-        <a class="type-card" href="/goals/new/blitz">
-            <span class="tag tag-blue">Блиц</span>
-            <h3>🎯 Быстрый сбор</h3>
-            <p>Хотелки, подписки, курсы, мелкая техника.</p>
-            <div class="info">500–50 000 ₽ · 1–7 дней · Без рейтинга · 49–99 ₽</div>
+        <a class="option" href="/goals/new/blitz">
+            <div class="option-title">Быстрый сбор</div>
+            <div class="option-desc">Хотелки, курсы, техника</div>
+            <div class="option-meta">
+                <span>500–50 000 ₽</span>
+                <span>1–7 дней</span>
+                <span>49–99 ₽</span>
+            </div>
         </a>
 
-        <a class="type-card" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро!'); return false;">
-            <span class="tag tag-purple">Серьёзный</span>
-            <h3>🏥 Жизненная цель</h3>
-            <p>Лечение, ипотека, важные расходы. С видеообращением.</p>
-            <div class="info">Без лимита · Длительный срок · Рейтинг · 99 ₽/неделя</div>
+        <a class="option" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро'); return false;">
+            <div class="option-title">Жизненная цель</div>
+            <div class="option-desc">Лечение, ипотека, важные расходы</div>
+            <div class="option-meta">
+                <span>без лимита</span>
+                <span>долгий срок</span>
+                <span>99 ₽/нед</span>
+            </div>
         </a>
 
         <div class="back">
