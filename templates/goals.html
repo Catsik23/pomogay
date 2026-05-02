@@ -54,7 +54,7 @@
                     {% set pct = (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 %}
                     <div class="progress-fill" style="width: {{ pct|int }}%"></div>
                 </div>
-            </div>
+            </div></a>
             {% endfor %}
         {% else %}
             <div class="empty">
