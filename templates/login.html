@@ -33,7 +33,7 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        <form method="POST">
+        <form method="POST" onsubmit="return false" id="loginForm">
             <label>Номер телефона</label>
             <div class="phone-wrap">
                 <span class="phone-prefix">+7</span>
@@ -42,7 +42,7 @@
             </div>
             <label>Пароль</label>
             <input type="password" name="password" placeholder="" required>
-            <button type="submit">Войти</button>
+            <button type="button" onclick="document.getElementById('loginForm').submit()">Войти</button>
         </form>
         <div class="link">Ещё нет аккаунта? <a href="/register">Зарегистрироваться</a></div>
     </div>
