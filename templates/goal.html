@@ -148,10 +148,10 @@
                 </div>
                 <p class="explain">Это слово защищает получателя. Пожалуйста, не меняйте его.</p>
 
-                <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" onsubmit="return true" onkeydown="if(event.key==='Enter' && event.target.name=='warm_word'){event.preventDefault(); return false;}" style="display:none;">
+                <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" onsubmit="return event.submitter !== undefined" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <button type="submit" style="width:100%;padding:16px;background:#38A169;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;"><div style="margin-top:8px;">
-                    <input type="text" name="warm_word" onkeypress="event.stopPropagation()" onkeydown="event.stopPropagation()" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
+                    <input type="text" name="warm_word" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
                 <label style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#4A5568;cursor:pointer;">
                     <input type="checkbox" name="anonymous" value="1" style="width:auto;margin-right:8px;"> Помочь анонимно
                 </label>
