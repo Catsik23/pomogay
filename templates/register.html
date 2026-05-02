@@ -4,12 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Регистрация — Помогай</title>
-    
-<link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #FDF8F5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .register-box {
+            width: 100%;
+            max-width: 400px;
+        }
+        .register-box h1 {
+            font-size: 28px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 32px;
+            color: #2D2D2D;
+        }
+        .field {
+            margin-bottom: 16px;
+        }
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #8C7A6B;
+            margin-bottom: 6px;
+            padding-left: 4px;
+        }
+        .phone-wrap {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            padding: 0 16px;
+            transition: border-color 0.2s;
+        }
+        .phone-wrap:focus-within {
+            border-color: #FF8C69;
+        }
+        .phone-prefix {
+            font-size: 17px;
+            color: #2D2D2D;
+            font-weight: 500;
+            padding-right: 8px;
+            border-right: 1px solid #E0E0E0;
+            margin-right: 8px;
+        }
+        .phone-wrap input {
+            border: none;
+            outline: none;
+            font-size: 17px;
+            font-family: 'Inter', sans-serif;
+            padding: 16px 0;
+            flex: 1;
+            background: transparent;
+        }
+        .field input[type="password"] {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 17px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .field input[type="password"]:focus {
+            border-color: #FF8C69;
+        }
+        .btn-register {
+            width: 100%;
+            padding: 16px;
+            background: #FF8C69;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn-register:active {
+            background: #E57A5A;
+            transform: scale(0.98);
+        }
+        .bottom-link {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: #8C7A6B;
+        }
+        .bottom-link a {
+            color: #FF8C69;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .flash {
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .flash-danger { background: #f8d7da; color: #721c24; }
+        .flash-success { background: #d4edda; color: #155724; }
+    </style>
 </head>
 <body>
-    <div class="container">
+    <div class="register-box">
         <h1>Регистрация</h1>
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -17,22 +131,33 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
+
         <form method="POST" id="regForm">
             <input type="text" name="honeypot" style="position:absolute;left:-9999px;top:-9999px;" tabindex="-1" autocomplete="off">
             <input type="hidden" name="form_time" id="formTime">
-            <label>Номер телефона</label>
-            <div class="phone-wrap">
-                <span class="phone-prefix">+7</span>
-                <input type="tel" name="phone" placeholder="" required>
+
+            <div class="field">
+                <label>Номер телефона</label>
+                <div class="phone-wrap">
+                    <span class="phone-prefix">+7</span>
+                    <input type="tel" name="phone" placeholder="" autofocus required>
+                </div>
             </div>
-            <label>Пароль (минимум 6 символов)</label>
-            <input type="password" name="password" placeholder="" required>
-            <label>Повторите пароль</label>
-            <input type="password" name="password2" placeholder="" required>
-            <button type="submit">Зарегистрироваться</button>
+            <div class="field">
+                <label>Пароль (минимум 6 символов)</label>
+                <input type="password" name="password" placeholder="" required>
+            </div>
+            <div class="field">
+                <label>Подтвердите пароль</label>
+                <input type="password" name="password2" placeholder="" required>
+            </div>
+            <button type="submit" class="btn-register">Зарегистрироваться</button>
         </form>
-        <div class="link">Уже есть аккаунт? <a href="/login">Войти</a></div>
+
+        <div class="bottom-link">
+            Уже есть аккаунт? <a href="/login">Войти</a>
+        </div>
     </div>
-<script>document.getElementById("formTime").value = Date.now()/1000;</script>
 </body>
+<script>document.getElementById("formTime").value = Date.now()/1000;</script>
 </html>
