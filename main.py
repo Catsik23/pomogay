@@ -452,6 +452,17 @@ def donate(goal_id):
             flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
             return redirect(url_for('goal_page', goal_id=goal_id))
 
+    # Автоподтверждение для seed3
+    goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if goal:
+        recipient = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
+        if recipient and recipient['phone'] == '7888888888':
+            db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
+            db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (amount, goal_id))
+            db.commit()
+            flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
+            return redirect(url_for('goal_page', goal_id=goal_id))
+
     flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
     finally:
         db.close()
