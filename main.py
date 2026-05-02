@@ -441,16 +441,16 @@ def donate(goal_id):
         add_xp(donor_id, 'donate_new')
 
         # Автоподтверждение для seed3
-            flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
-            return redirect(url_for('goal_page', goal_id=goal_id))
+        goal_data = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        if goal_data:
+            recipient = db.execute("SELECT phone FROM users WHERE id = ?", (goal_data['user_id'],)).fetchone()
+            if recipient and recipient['phone'] == '7888888888':
+                db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
+                db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (amount, goal_id))
+                db.commit()
+                flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
+                return redirect(url_for('goal_page', goal_id=goal_id))
 
-    # Автоподтверждение для seed3
-            flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
-            return redirect(url_for('goal_page', goal_id=goal_id))
-
-    if auto_confirm_seed3(goal_id, donation_id, amount):
-        flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
-    else:
         flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
     finally:
         db.close()
