@@ -17,7 +17,9 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        <form method="POST">
+        <form method="POST" id="regForm">
+            <input type="text" name="honeypot" style="position:absolute;left:-9999px;top:-9999px;" tabindex="-1" autocomplete="off">
+            <input type="hidden" name="form_time" id="formTime">
             <label>Номер телефона</label>
             <div class="phone-wrap">
                 <span class="phone-prefix">+7</span>
@@ -31,5 +33,6 @@
         </form>
         <div class="link">Уже есть аккаунт? <a href="/login">Войти</a></div>
     </div>
+<script>document.getElementById("formTime").value = Date.now()/1000;</script>
 </body>
 </html>
