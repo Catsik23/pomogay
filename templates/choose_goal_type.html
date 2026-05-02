@@ -148,6 +148,17 @@
         .option-desc { font-size: 14px; color: #8C7A6B; margin-top: 3px; }
         .option-meta { font-size: 12px; color: #8C7A6B; margin-top: 5px; display: flex; gap: 8px; }
         .option-meta span { background: #F5F5F5; padding: 3px 10px; border-radius: 8px; font-weight: 500; }
+    
+        .option-orange .option-icon { background: linear-gradient(135deg, #FFE0B2, #FFB74D); }
+        .option-orange:active::after {
+            height: 6px;
+            background: linear-gradient(90deg, #FFB74D, #FF9800);
+        }
+        .option-teal .option-icon { background: linear-gradient(135deg, #B2DFDB, #80CBC4); }
+        .option-teal:active::after {
+            height: 6px;
+            background: linear-gradient(90deg, #80CBC4, #009688);
+        }
     </style>
 </head>
 <body>
@@ -202,6 +213,36 @@
                     <div class="option-title">Жизненные цели</div>
                     <div class="option-desc">Лечение, ипотека, важные расходы</div>
                     <div class="option-meta"><span>без лимита</span><span>долгий срок</span><span>99 ₽/нед</span></div>
+                </div>
+            </a>
+        
+            <a class="option option-orange" href="/goals/new/urgent" onclick="alert('Срочные сборы — скоро'); return false;">
+                <div class="option-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="option-title">Срочный сбор</div>
+                    <div class="option-desc">Жёсткий дедлайн, конкретная дата</div>
+                    <div class="option-meta"><span>любая сумма</span><span>до даты</span><span>99 ₽</span></div>
+                </div>
+            </a>
+
+            <a class="option option-teal" href="/goals/new/group" onclick="alert('Общие сборы — скоро'); return false;">
+                <div class="option-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00695C" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="option-title">Общий сбор</div>
+                    <div class="option-desc">Коллективная складчина: классом, офисом, друзьями</div>
+                    <div class="option-meta"><span>любая сумма</span><span>гибкий срок</span><span>бесплатно</span></div>
                 </div>
             </a>
         </div>
