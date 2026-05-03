@@ -144,8 +144,10 @@ def register():
         db.execute("INSERT INTO users (phone, password_hash) VALUES (?,?)", (clean, generate_password_hash(pw)))
         db.commit()
         db.close()
-        flash('Регистрация успешна! Войдите.', 'success')
-        return redirect(url_for('login'))
+        flash('Регистрация успешна!', 'success')
+        # Автоматически входим
+        session['user_id'] = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()['id']
+        return redirect(url_for('goals_list'))
     return render_template('register.html')
 
 @app.route('/login', methods=['GET','POST'])
@@ -168,7 +170,7 @@ def login():
         if user and check_password_hash(user['password_hash'], pw):
             session['user_id'] = user['id']
             flash('Вы вошли!', 'success')
-            return redirect(url_for('index'))
+            return redirect(url_for('goals_list'))
         # Если пользователь не найден — пробуем создать seed
         if clean == '79885260358':
             from werkzeug.security import generate_password_hash
