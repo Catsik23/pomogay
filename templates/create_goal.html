@@ -3,15 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Создать цель — Помогай</title>
-    
-<link rel="stylesheet" href="/static/style.css">
+    <title>Создать цель — помогай.рф</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; }
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+        h1 { color: #FF6B4A; font-size: 28px; margin-bottom: 10px; }
+        .goal-type { color: #8C7A6B; font-size: 14px; margin-bottom: 24px; }
+        label { display: block; margin: 16px 0 6px; color: #8C7A6B; font-size: 14px; }
+        input, textarea, select {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus, select:focus { border-color: #FF6B4A; }
+        textarea { resize: vertical; min-height: 80px; }
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.1s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
+        }
+        button:active { transform: scale(0.97); }
+        .flash { padding: 10px; margin-bottom: 10px; border-radius: 10px; font-size: 14px; }
+        .flash-success { background: #d4edda; color: #155724; }
+        .flash-danger { background: #f8d7da; color: #721c24; }
+        .flash-warning { background: #fff3cd; color: #856404; }
+        .back { display: block; margin-top: 15px; text-align: center; color: #8C7A6B; font-size: 14px; }
+        .back a { color: #FF6B4A; text-decoration: none; }
+        .hint { font-size: 12px; color: #999; margin-top: 4px; }
+        input[type="file"] { padding: 10px; }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>Создать цель</h1>
         <div class="goal-type">
-            {% if goal_type == 'super_blitz' %}⚡ Супер-блиц — до 5 000 ₽ на 1 день{% else %}📦 Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
+            {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -23,59 +65,33 @@
         {% endwith %}
 
         <form method="POST" enctype="multipart/form-data">
-            <div class="field-wrapper">
-                <label>Название цели *</label>
-                <input type="text" name="title" maxlength="140" placeholder="" required>
-                <div class="tooltip">
-                    Коротко опишите, на что сбор. Например: «Ноутбук для учёбы» или «Лечение зуба».<br>
-                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
-                </div>
-            </div>
+            <label>Название цели *</label>
+            <input type="text" name="title" maxlength="140" placeholder="" required autofocus>
+            <div class="hint">До 140 символов</div>
 
-            <div class="field-wrapper">
-                <label>Описание</label>
-                <textarea name="description" maxlength="1000" placeholder=""></textarea>
-                <div class="tooltip">
-                    Расскажите подробнее. Чем честнее и детальнее — тем больше доверия. Не обязательно, но полезно.<br>
-                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
-                </div>
-            </div>
+            <label>Описание</label>
+            <textarea name="description" maxlength="1000" placeholder=""></textarea>
+            <div class="hint">Опишите ситуацию — это повышает доверие</div>
 
-            <div class="field-wrapper">
-                <label>Сумма (₽) *</label>
-                <input type="number" name="amount" placeholder="" min="{% if goal_type == 'super_blitz' %}100{% else %}500{% endif %}" max="{% if goal_type == 'super_blitz' %}5000{% else %}50000{% endif %}" required>
-                <div class="tooltip">
-                    {% if goal_type == 'super_blitz' %}От 100 до 5 000 ₽. Только самое нужное и срочное.{% else %}От 500 до 50 000 ₽. Укажите точную сумму, которую нужно собрать.{% endif %}<br>
-                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
-                </div>
-            </div>
+            <label>Сумма (₽) *</label>
+            <input type="number" name="amount" placeholder="" min="{% if goal_type == 'super_blitz' %}100{% else %}500{% endif %}" max="{% if goal_type == 'super_blitz' %}5000{% else %}50000{% endif %}" required>
+            <div class="hint">{% if goal_type == 'super_blitz' %}От 100 до 5 000 ₽{% else %}От 500 до 50 000 ₽{% endif %}</div>
 
-            <div class="field-wrapper">
-                <label>Срок (дней) *</label>
-                <select name="days" required>
-                    <option value="">Выберите срок</option>
-                    {% if goal_type == 'super_blitz' %}
-                    <option value="1">1 день</option>
-                    {% else %}
-                    <option value="1">1 день</option>
-                    <option value="3">3 дня</option>
-                    <option value="7">7 дней</option>
-                    {% endif %}
-                </select>
-                <div class="tooltip">
-                    {% if goal_type == 'super_blitz' %}Супер-блиц длится ровно 1 день. Быстро, срочно, здесь и сейчас.{% else %}Выберите, сколько дней будет идти сбор. Можно продлить позже.{% endif %}<br>
-                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
-                </div>
-            </div>
+            <label>Срок (дней) *</label>
+            <select name="days" required>
+                <option value="">Выберите срок</option>
+                {% if goal_type == 'super_blitz' %}
+                <option value="1">1 день</option>
+                {% else %}
+                <option value="1">1 день</option>
+                <option value="3">3 дня</option>
+                <option value="7">7 дней</option>
+                {% endif %}
+            </select>
 
-            <div class="field-wrapper">
-                <label>Фото (опционально)</label>
-                <input type="file" name="photo" accept="image/*">
-                <div class="tooltip">
-                    Загрузите фото, скрин или документ. Это повышает доверие. Файл будет сжат автоматически.<br>
-                    <span class="close-tip" onclick="this.parentElement.classList.remove('visible')">Ясно</span>
-                </div>
-            </div>
+            <label>Фото (опционально)</label>
+            <input type="file" name="photo" accept="image/*">
+            <div class="hint">Фото, скрин или документ — повышает доверие</div>
 
             <button type="submit">Создать цель</button>
         </form>
