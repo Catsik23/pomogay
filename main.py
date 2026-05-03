@@ -99,7 +99,7 @@ def index():
     user = get_current_user()
     db = get_db()
     goals = db.execute(
-        "SELECT g.*, u.name as author_name FROM goals g JOIN users u ON g.user_id = u.id WHERE g.status = 'active' ORDER BY g.created_at DESC LIMIT 10"
+        "SELECT g.*, u.name as author_name, u.xp_level as author_level FROM goals g JOIN users u ON g.user_id = u.id WHERE g.status = 'active' ORDER BY g.created_at DESC LIMIT 10"
     ).fetchall()
     months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
     goals_list = []
@@ -344,7 +344,7 @@ def goals_list():
     months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
     goals = []
     for g in db.execute(
-        "SELECT g.*, u.name as author_name FROM goals g JOIN users u ON g.user_id = u.id WHERE g.status = 'active' ORDER BY g.created_at DESC LIMIT 50"
+        "SELECT g.*, u.name as author_name, u.xp_level as author_level FROM goals g JOIN users u ON g.user_id = u.id WHERE g.status = 'active' ORDER BY g.created_at DESC LIMIT 50"
     ).fetchall():
         g = dict(g)
         try:

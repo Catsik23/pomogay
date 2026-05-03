@@ -158,7 +158,16 @@
                     </div>
                     <div class="meta">
                         <span>до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span>
-                        <span>{{ goal.author_name or 'Аноним' }}</span>
+                        <span>
+                {% if goal.author_level == 'novice' %}🌱
+                {% elif goal.author_level == 'member' %}🌿
+                {% elif goal.author_level == 'reliable' %}🌳
+                {% elif goal.author_level == 'pillar' %}💎
+                {% elif goal.author_level == 'hero' %}⭐
+                {% elif goal.author_level == 'legend' %}👑
+                {% endif %}
+                {{ goal.author_name or 'Аноним' }}
+            </span>
                     </div>
                 </a>
                 {% endfor %}
