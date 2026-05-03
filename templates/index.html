@@ -3,30 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>помогай.рф</title>
-    
-<link rel="manifest" href="/manifest.json">
-<link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="/static/style.css">
+    <title>Помогай — платформа прямой помощи</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #FDF8F5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .welcome-box {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .logo {
+            font-size: 48px;
+            font-weight: 700;
+            color: #FF8C69;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 16px;
+            color: #8C7A6B;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            margin-bottom: 12px;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary {
+            background: #FF8C69;
+            color: white;
+            border: none;
+        }
+        .btn-secondary {
+            background: white;
+            color: #FF8C69;
+            border: 1px solid #FF8C69;
+        }
+        .bottom-text {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #8C7A6B;
+        }
+        .bottom-text a {
+            color: #FF8C69;
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>помогай.рф</h1>
-        <p>Платформа для прямой помощи людям</p>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        {% if user %}
-            <p>Добро пожаловать, {{ user.phone }}!</p>
-            <p><a href="/profile">Профиль</a> | <a href="/goals">Цели</a> | <a href="/logout">Выйти</a></p>
-        {% else %}
-            <p><a href="/register">Регистрация</a> | <a href="/login">Вход</a></p>
-            <p><a href="/goals">Посмотреть цели</a></p>
-        {% endif %}
+    <div class="welcome-box">
+        <div class="logo">Помогай</div>
+        <p class="subtitle">Платформа, где люди помогают людям напрямую. Без комиссий, без посредников.</p>
+        <a href="/register" class="btn btn-primary">Зарегистрироваться</a>
+        <a href="/login" class="btn btn-secondary">Войти</a>
+        <div class="bottom-text">
+            <a href="/goals">Посмотреть цели</a> без регистрации
+        </div>
     </div>
 </body>
 </html>

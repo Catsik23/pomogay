@@ -97,7 +97,9 @@ def compress_photo(data):
 @app.route('/')
 def index():
     user = get_current_user()
-    return render_template('index.html', user=user)
+    if user:
+        return redirect(url_for('goals_list'))
+    return render_template('index.html')
 
 @app.route('/register', methods=['GET','POST'])
 def register():
