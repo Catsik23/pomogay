@@ -92,7 +92,7 @@
             font-family: 'Inter', sans-serif;
             cursor: pointer;
             margin-top: 8px;
-            transition: transform 0.1s;
+            transition: transform 0.15s, box-shadow 0.3s;
             box-shadow: 0 2px 8px rgba(255,107,74,0.12);
             position: relative;
             overflow: hidden;
@@ -104,12 +104,17 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%);
             opacity: 0;
             transition: opacity 0.3s;
         }
-        .btn-login:active::after { opacity: 1; }
-        .btn-login:active { transform: scale(0.98); }
+        .btn-login:active::after {
+            opacity: 1;
+        }
+        .btn-login:active {
+            transform: scale(0.96);
+            box-shadow: 0 1px 4px rgba(255,107,74,0.2);
+        }
 
         .bottom-link {
             text-align: center;
