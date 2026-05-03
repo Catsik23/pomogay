@@ -21,7 +21,7 @@
         /* Шапка профиля */
         .profile-header {
             border: 2px solid #FF8C69;
-            border-radius: 14px 14px 0 0;
+            border-radius: 0;
             border-bottom: 3px solid #FF8C69;
             padding: 24px 20px 20px;
             margin: 0;
@@ -195,7 +195,7 @@
         </div>
 
         <div class="card">
-            <span class="level-badge">{{ user.xp_level or 'Новичок' }}</span>
+            <span class="level-badge">{% if user.xp_level == 'novice' %}Новичок{% elif user.xp_level == 'member' %}Участник{% elif user.xp_level == 'reliable' %}Надёжный{% elif user.xp_level == 'pillar' %}Опора{% elif user.xp_level == 'hero' %}Герой{% elif user.xp_level == 'legend' %}Легенда{% else %}Новичок{% endif %}</span>
             {% set pct = get_level_progress(user) %}
             <div class="progress-bar">
                 <div class="progress-fill" style="width: {{ pct }}%;"></div>
@@ -206,7 +206,7 @@
         <div class="card">
             <p>Помог на сумму: {{ user.total_helped_amount or 0 }} ₽</p>
             <p>Серия: {{ user.streak_days or 0 }} дн.</p>
-            <p>На платформе с: {{ user.created_at[:10] }}</p>
+            <p>На платформе с: {% set m = user.created_at[5:7] %}{{ user.created_at[8:10]|int }} {% if m == '01' %}января{% elif m == '02' %}февраля{% elif m == '03' %}марта{% elif m == '04' %}апреля{% elif m == '05' %}мая{% elif m == '06' %}июня{% elif m == '07' %}июля{% elif m == '08' %}августа{% elif m == '09' %}сентября{% elif m == '10' %}октября{% elif m == '11' %}ноября{% elif m == '12' %}декабря{% endif %} {{ user.created_at[:4] }}</p>
         </div>
 
         <h3 style="margin: 16px 16px 8px; font-size:18px; font-weight:700;">Мои цели</h3>
@@ -224,7 +224,7 @@
             </a>
             {% endfor %}
         {% else %}
-            <p style="color:#8C7A6B; margin: 8px 16px;">У вас пока нет целей. <a href="/goals/choose">Создать</a></p>
+            <p style="color:#8C7A6B; margin: 8px 16px;">У вас пока нет целей. Создать</p>
         {% endif %}
 
         <a href="/goals/choose" class="fab">+ Создать цель</a>
