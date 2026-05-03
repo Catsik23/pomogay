@@ -107,17 +107,16 @@
             border: none;
         }
         .auth-icon {
-            width: 22px;
-            height: 22px;
-            border-radius: 6px;
+            width: 28px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            font-size: 12px;
         }
-        .auth-vk { background: #0077FF; color: white; }
-        .auth-max { background: #1A1A1A; color: white; }
+        .auth-icon svg {
+            width: 24px;
+            height: 24px;
+        }
 
         .divider {
             display: flex;
@@ -165,10 +164,14 @@
             <div class="divider">или через</div>
             <div class="auth-row">
                 <a href="/auth/vk" class="auth-btn auth-outline">
-                    <span class="auth-icon auth-vk">V</span>
+                    <span class="auth-icon">
+                        <svg viewBox="0 0 24 24" fill="#FF8C69"><path d="M22.4 5.9c-.2-.6-.8-.9-1.4-.9H3c-.6 0-1.2.3-1.4.9-.2.6 0 1.2.4 1.6l7.2 7.2c.4.4 1 .6 1.6.6h2.4c.6 0 1.2-.2 1.6-.6l7.2-7.2c.4-.4.6-1 .4-1.6z"/></svg>
+                    </span>
                 </a>
                 <a href="/auth/max" class="auth-btn auth-outline">
-                    <span class="auth-icon auth-max">M</span>
+                    <span class="auth-icon">
+                        <svg viewBox="0 0 24 24" fill="#FF8C69"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke="white" stroke-width="2" fill="none"/></svg>
+                    </span>
                 </a>
             </div>
         </div>
