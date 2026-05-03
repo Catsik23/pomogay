@@ -7,94 +7,35 @@
     <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #FDF8F5;
-            padding-bottom: 40px;
-        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 40px; }
         .container { max-width: 480px; margin: 0 auto; padding: 20px 16px 0; }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .logo { font-size: 20px; font-weight: 700; color: #FF8C69; }
         .header-btns { display: flex; gap: 8px; }
-        .btn-sm {
-            padding: 8px 14px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: transform 0.1s, box-shadow 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-sm:active { transform: scale(0.97); }
+        .btn-sm { padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; }
         .btn-outline { border: 1px solid #FF8C69; color: #FF8C69; background: white; }
-        .btn-filled {
-            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
-            color: white;
-            border: none;
-            box-shadow: 0 4px 12px rgba(255,108,74,0.3);
-        }
-        .btn-filled::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .btn-filled:active::after { opacity: 1; }
-
+        .btn-filled { background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border: none; }
         .hero { text-align: center; margin-bottom: 32px; }
-        .hero h1 { font-size: 26px; font-weight: 700; color: #2D2D2D; margin-bottom: 6px; letter-spacing: -0.3px; }
+        .hero h1 { font-size: 26px; font-weight: 700; color: #2D2D2D; margin-bottom: 6px; }
         .hero p { font-size: 15px; color: #8C7A6B; margin-bottom: 16px; }
         .trust-icons { display: flex; justify-content: center; gap: 18px; font-size: 13px; color: #8C7A6B; }
         .trust-icons span { display: flex; align-items: center; gap: 4px; }
         .trust-icons svg { width: 16px; height: 16px; stroke: #8C7A6B; }
-
         .section-title { font-size: 20px; font-weight: 700; color: #2D2D2D; margin-bottom: 16px; }
-
-        .goals-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
-        .goal-card { display: block; background: white; border-radius: 18px; padding: 18px 16px; text-decoration: none; color: #2D2D2D; box-shadow: 0 2px 10px rgba(0,0,0,0.04); transition: transform 0.2s; }
+        .goals-list { display: flex; flex-direction: column; gap: 12px; }
+        .goal-card { display: block; background: white; border-radius: 18px; padding: 18px 16px; text-decoration: none; color: #2D2D2D; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
         .goal-card:active { transform: scale(0.98); }
         .goal-card .top { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .goal-card .title { font-size: 18px; font-weight: 700; color: #2D2D2D; }
+        .goal-card .title { font-size: 18px; font-weight: 700; }
         .type-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px; }
         .badge-green { background: #E8F5E9; color: #388E3C; }
         .badge-blue { background: #E3F2FD; color: #1976D2; }
-        .badge-orange { background: #FFF3E0; color: #E65100; }
-        .badge-purple { background: #F3E5F5; color: #7B1FA2; }
-        .badge-teal { background: #E0F2F1; color: #00695C; }
         .amount-row { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 8px; }
         .amount-row .collected { font-weight: 700; color: #2D2D2D; }
         .progress-bar { background: #F0F0F0; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 10px; }
         .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 6px; }
         .meta { display: flex; justify-content: space-between; font-size: 13px; color: #8C7A6B; }
-
-        .btn-all {
-            display: block;
-            text-align: center;
-            padding: 14px;
-            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
-            border: none;
-            border-radius: 14px;
-            color: white;
-            font-size: 15px;
-            font-weight: 600;
-            text-decoration: none;
-            margin-top: 8px;
-            box-shadow: 0 4px 12px rgba(255,108,74,0.3);
-            transition: transform 0.1s;
-        }
-        .btn-all:active { transform: scale(0.97); }
-
+        .btn-all { display: block; text-align: center; padding: 14px; background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border-radius: 14px; font-size: 15px; font-weight: 600; text-decoration: none; margin-top: 16px; }
         .empty-state { text-align: center; padding: 48px 16px; color: #8C7A6B; }
     </style>
 </head>
@@ -103,7 +44,8 @@
         <div class="header">
             <div class="logo">помогай.рф</div>
             <div class="header-btns">
-                <a href="/login" class="btn-sm btn-outline">Войти</a>
+                <a href="/login" class="btn-sm btn-outline">Вход</a>
+                <a href="/goals" class="btn-sm btn-outline">Цели</a>
                 <a href="/register" class="btn-sm btn-filled">Регистрация</a>
             </div>
         </div>
@@ -124,7 +66,7 @@
             {% if goals %}
                 {% for goal in goals %}
                 <a class="goal-card" href="/goal/{{ goal.id }}">
-                    <div class="top"><div class="title">{{ goal.title }}</div><span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' else 'orange' if goal.type == 'urgent' else 'purple' if goal.type == 'serious' else 'teal' }}">{{ 'Супер-блиц' if goal.type == 'super_blitz' else 'Блиц' if goal.type == 'blitz' else 'Срочный' if goal.type == 'urgent' else 'Жизненный' if goal.type == 'serious' else 'Общий' }}</span></div>
+                    <div class="top"><div class="title">{{ goal.title }}</div><span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' }}">{{ 'Блиц' }}</span></div>
                     <div class="amount-row"><span class="collected">{{ "%.0f"|format(goal.amount_collected) }} ₽</span><span>из {{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
                     <div class="progress-bar"><div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div></div>
                     <div class="meta"><span>⏰ до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span><span>{{ goal.author_name or 'Аноним' }}</span></div>

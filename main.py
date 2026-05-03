@@ -117,7 +117,7 @@ def index():
     today_closed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed' AND date(created_at) = date('now')").fetchone()[0]
     week_helped = db.execute("SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE status IN ('recipient_confirmed','completed') AND date(donor_confirmed_at) >= date('now', '-7 days')").fetchone()[0]
     db.close()
-    return render_template('index.html', user=user, goals=goals_list, today_closed=today_closed, week_helped=week_helped)
+    return render_template('index.html', goals=goals_list, today_closed=today_closed, week_helped=week_helped)
 
 @app.route('/register', methods=['GET','POST'])
 def register():
