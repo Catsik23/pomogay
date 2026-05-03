@@ -166,15 +166,28 @@
             left: 16px;
             top: 24px;
         }
+    
+        .fab {
+            display: block;
+            padding: 16px;
+            text-align: center;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            text-decoration: none;
+            margin: 8px 16px;
+            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 16px rgba(255,108,74,0.3);
+        }
+        .fab:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="profile-header">
-            <a href="/goals" class="back-link">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                Назад
-            </a>
+            
             <div class="avatar">🐱</div>
             <h1>{{ user.name or 'Аноним' }}</h1>
             <p class="phone">{{ user.phone }}</p>
@@ -213,7 +226,7 @@
             <p style="color:#8C7A6B; margin: 8px 16px;">У вас пока нет целей. <a href="/goals/choose">Создать</a></p>
         {% endif %}
 
-        <a href="/goals/choose" class="btn btn-outline">+ Создать цель</a>
+        <a href="/goals/choose" class="fab">+ Создать цель</a>
         <a href="/logout" class="btn-danger">Выйти из профиля</a>
     </div>
 </body>
