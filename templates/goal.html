@@ -177,6 +177,13 @@
             <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
             <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
             <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
+            <div style="margin-top:8px;">
+                <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #E0E0E0;border-radius:10px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#8C7A6B;">
+                <input type="checkbox" id="anonymousCheck" style="width:auto;margin-right:8px;">
+                <label for="anonymousCheck" style="cursor:pointer;">Помочь анонимно</label>
+            </div>
             <div id="manualMode" style="display:none;margin-top:16px;">
                 <p style="color:#8C7A6B;font-size:14px;margin-bottom:12px;">Переведите деньги по реквизитам:</p>
                 <div class="row">
@@ -194,8 +201,10 @@
                     <button class="copy-btn" onclick="copyText('Благотворительный подарок', this)">📋</button>
                 </div>
                 <p style="font-size:11px;color:#999;margin-top:8px;">Это слово защищает получателя. Пожалуйста, не меняйте его.</p>
-                <form method="POST" action="/donate/{{ goal.id }}" style="margin-top:12px;">
+                <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;margin-top:12px;">
                     <input type="hidden" name="amount" id="confirmAmount">
+                    <input type="hidden" name="warm_word" id="confirmWarmWord">
+                    <input type="hidden" name="anonymous" id="confirmAnonymous">
                     <button type="submit" style="width:100%;padding:16px;background:#5B9A6B;color:white;border:none;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;transition:transform 0.1s;">Я перевёл(ла)</button>
                 </form>
             </div>
@@ -207,8 +216,43 @@
         function openModal() { document.getElementById('donateModal').classList.add('active'); selectedAmount=0; document.getElementById('donateSubmit').classList.remove('active'); document.getElementById('manualMode').style.display='none'; document.querySelectorAll('.amount-btn').forEach(function(b){b.classList.remove('selected');}); }
         function closeModal() { document.getElementById('donateModal').classList.remove('active'); }
         function selectAmount(amount) { selectedAmount=amount; document.querySelectorAll('.amount-btn').forEach(function(b){b.classList.remove('selected');}); event.target.classList.add('selected'); document.getElementById('selectedAmount').textContent=amount; document.getElementById('donateSubmit').classList.add('active'); document.getElementById('manualAmount').textContent=amount+' ₽'; document.getElementById('confirmAmount').value=amount; }
-        function startDonate() { if(!selectedAmount) return; var phone='{{ author.phone }}'; var deeplink='sbp://pay?recipient='+phone+'&amount='+selectedAmount; var start=Date.now(); window.location.href=deeplink; setTimeout(function(){ if(Date.now()-start<2000){ document.getElementById('manualMode').style.display='block'; } },1500); }
-        function copyText(text,btn){ if(navigator.clipboard){ navigator.clipboard.writeText(text).then(function(){ btn.textContent='✅'; setTimeout(function(){ btn.textContent='📋'; },1500); }); } }
+        function startDonate() {
+            if(!selectedAmount) return;
+            var phone='{{ author.phone }}';
+            var deeplink='sbp://pay?recipient='+phone+'&amount='+selectedAmount;
+            var start=Date.now();
+            window.location.href=deeplink;
+            setTimeout(function(){
+                if(Date.now()-start<2000){
+                    // План Б: показываем ручной режим
+                    document.getElementById('manualMode').style.display='block';
+                } else {
+                    // СБП сработал — показываем "Я перевёл"
+                    document.getElementById('confirmForm').style.display='block';
+                    document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
+                    document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
+                }
+            },2000);
+        }
+        function copyText(text,btn){
+            if(navigator.clipboard){
+                navigator.clipboard.writeText(text).then(function(){
+                    btn.textContent='✅';
+                    setTimeout(function(){ btn.textContent='📋'; },1500);
+                    // Если скопирован номер телефона — показываем "Я перевёл"
+                    if(text==='{{ author.phone }}'){
+                        document.getElementById('confirmForm').style.display='block';
+                        document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
+                        document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
+                    }
+                });
+            }
+        }
+        // Обновляем скрытые поля перед отправкой
+        document.getElementById('confirmForm').addEventListener('submit',function(){
+            document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
+            document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
+        });
         document.getElementById('donateModal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
     </script>
 </body>
