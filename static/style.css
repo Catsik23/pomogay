@@ -29,6 +29,7 @@
 
 body {
     font-family: var(--font);
+    font-display: swap;
     font-size: 16px;
     line-height: 1.5;
     background: var(--bg);
@@ -53,6 +54,7 @@ a { color: var(--cta); text-decoration: none; }
     border: none;
     border-radius: var(--radius);
     font-family: var(--font);
+    font-display: swap;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
