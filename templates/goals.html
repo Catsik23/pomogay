@@ -207,7 +207,7 @@
         {% endwith %}
 
         <div class="greeting">
-            <h1>Цели</h1>
+            <h1>помогай.рф</h1>
             <p>
                 {% if today_closed %}Сегодня закрыто <span>{{ today_closed }}</span> целей{% else %}Выберите, кому помочь{% endif %}
                 {% if week_helped %} · Помогли на <span>{{ "%.0f"|format(week_helped) }} ₽</span> за неделю{% endif %}
@@ -269,6 +269,8 @@
         </div>
     </div>
 
+    {% if user %}
     <a class="fab" href="/goals/choose">+ Создать цель</a>
+    {% endif %}
 </body>
 </html>
