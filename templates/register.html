@@ -67,7 +67,7 @@
             flex: 1;
             background: transparent;
         }
-        .field input[type="password"] {
+        .field input[type="text"], .field input[type="password"] {
             width: 100%;
             padding: 16px;
             border: 1px solid #E0E0E0;
@@ -137,6 +137,10 @@
             <input type="text" name="honeypot" style="display:none;" tabindex="-1" autocomplete="off">
             <input type="hidden" name="form_time" id="formTime">
 
+            <div class="field">
+                <label>Как к вам обращаться?</label>
+                <input type="text" name="name" placeholder="Необязательно" maxlength="50">
+            </div>
             <div class="field">
                 <label>Номер телефона</label>
                 <div class="phone-wrap">

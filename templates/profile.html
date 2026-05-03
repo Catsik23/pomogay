@@ -18,6 +18,7 @@
             {% endif %}
         {% endwith %}
         <div class="info">
+            <p>Имя: {{ user.name or "Не указано" }}</p>
             <p>Телефон: {{ user.phone }}</p>
             <p>Уровень: {{ get_level_name(user) }}</p>
             {% set pct = get_level_progress(user) %}
