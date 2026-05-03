@@ -249,11 +249,11 @@
                                         {{ h }}
                                     {% endif %}
                                 {% endif %}
-                                ⏳ {{ goal.ends_at[:10] }}
+                                ⏳ {{ goal.ends_at_formatted or goal.ends_at[:10] }}
                             {% elif goal.type == 'blitz' %}
-                                ⏰ до {{ goal.ends_at[:10] }}
+                                ⏰ до {{ goal.ends_at_formatted or goal.ends_at[:10] }}
                             {% else %}
-                                до {{ goal.ends_at[:10] }}
+                                до {{ goal.ends_at_formatted or goal.ends_at[:10] }}
                             {% endif %}
                         </span>
                         <span>{{ goal.author_name or 'Аноним' }}</span>
