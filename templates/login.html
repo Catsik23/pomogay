@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Вход — Помогай</title>
+    <title>Вход — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,7 +48,7 @@
             transition: border-color 0.2s;
         }
         .phone-wrap:focus-within {
-            border-color: #FF8C69;
+            border-color: #FF6B4A;
         }
         .phone-prefix {
             font-size: 17px;
@@ -78,12 +78,12 @@
             transition: border-color 0.2s;
         }
         .field input[type="password"]:focus {
-            border-color: #FF8C69;
+            border-color: #FF6B4A;
         }
         .btn-login {
             width: 100%;
             padding: 16px;
-            background: #FF8C69;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
             color: white;
             border: none;
             border-radius: 14px;
@@ -92,12 +92,25 @@
             font-family: 'Inter', sans-serif;
             cursor: pointer;
             margin-top: 8px;
-            transition: background 0.2s, transform 0.1s;
+            transition: transform 0.1s;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
+            position: relative;
+            overflow: hidden;
         }
-        .btn-login:active {
-            background: #E57A5A;
-            transform: scale(0.98);
+        .btn-login::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
         }
+        .btn-login:active::after { opacity: 1; }
+        .btn-login:active { transform: scale(0.98); }
+
         .bottom-link {
             text-align: center;
             margin-top: 24px;
@@ -105,7 +118,7 @@
             color: #8C7A6B;
         }
         .bottom-link a {
-            color: #FF8C69;
+            color: #FF6B4A;
             text-decoration: none;
             font-weight: 500;
         }
