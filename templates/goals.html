@@ -11,47 +11,67 @@
         .container { max-width: 480px; margin: 0 auto; padding: 0; }
 
         /* Шапка */
-        .header {
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+        .header-section {
+            background: linear-gradient(160deg, #FF9A7C 0%, #FF6B4A 30%, #FF8C69 100%);
             padding: 16px 16px 20px;
             color: white;
-            border-radius: 0 0 28px 28px;
+            border-radius: 0;
             display: flex;
             align-items: center;
-            gap: 14px;
-            box-shadow: 0 4px 16px rgba(255,107,74,0.15);
-            position: relative;
-            z-index: 10;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(255,108,74,0.15);
         }
-        .hamburger {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 5px;
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: transform 0.1s;
-        }
-        .hamburger:active { transform: scale(0.9); }
-        .hamburger span {
-            display: block;
-            height: 2.5px;
-            background: white;
-            border-radius: 2px;
-            transition: all 0.2s;
-        }
-        .header-title {
-            font-size: 20px;
+        .header-section h1 {
+            font-size: 22px;
             font-weight: 700;
-            letter-spacing: -0.3px;
+            margin: 0;
+        }
+        .header-btns {
+            display: flex;
+            gap: 0;
+            align-items: stretch;
+        }
+        .h-divider {
+            width: 1px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 6px;
+            align-self: stretch;
+        }
+        .btn-sm {
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .btn-outline-white {
+            border: 1px solid rgba(255,255,255,0.7);
+            color: white;
+            background: transparent;
+        }
+        .btn-filled-white {
+            background: white;
+            color: #FF6B4A;
+            border: none;
+        }
+        .section-header {
+            background: white;
+            margin: -8px 16px 16px;
+            padding: 12px 16px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            font-size: 16px;
+            font-weight: 700;
+            color: #2D2D2D;
         }
 
         /* Боковое меню */
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 90; }
+        .overlay-old { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 90; }
         .overlay.active { display: block; }
-        .sidebar {
+        .sidebar-old {
             position: fixed; top: 0; left: -280px; width: 270px; height: 100%;
             background: white; z-index: 95; transition: left 0.25s ease;
             display: flex; flex-direction: column; padding: 20px;
@@ -132,17 +152,23 @@
 <body>
     <div class="container">
         <!-- Шапка -->
-        <div class="header">
-            <div class="hamburger" onclick="toggleMenu()">
-                <span></span><span></span><span></span>
+        <div class="header-section">
+            <div class="header-text">
+                <h1>помогай.рф</h1>
             </div>
-            <div class="header-title">помогай.рф</div>
+            <div class="header-btns">
+                {% if user %}
+                    <a href="/profile" class="btn-sm btn-outline-white">Профиль</a>
+                    <div class="h-divider"></div>
+                    <a href="/logout" class="btn-sm btn-outline-white">Выйти</a>
+                {% else %}
+                    <a href="/login" class="btn-sm btn-outline-white">Войти</a>
+                    <div class="h-divider"></div>
+                    <a href="/register" class="btn-sm btn-filled-white">Регистрация</a>
+                {% endif %}
+            </div>
         </div>
-
-        <!-- Заголовок-плашка -->
-        <div class="section-header">Выберите тип сбора</div>
-
-        <!-- Карточки -->
+        <div class="section-header">Цели</div>
         <div class="goals-list">
             {% if goals %}
                 {% for goal in goals %}
