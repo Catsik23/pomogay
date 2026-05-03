@@ -189,7 +189,18 @@
     <div class="container">
         <div class="profile-header">
             
+            <div style="position:relative; display:inline-block;">
             <div class="avatar">🐱</div>
+            <span style="position:absolute; bottom:-2px; right:-2px; font-size:18px;">
+                {% if user.xp_level == 'novice' %}🌱
+                {% elif user.xp_level == 'member' %}🌿
+                {% elif user.xp_level == 'reliable' %}🌳
+                {% elif user.xp_level == 'pillar' %}💎
+                {% elif user.xp_level == 'hero' %}⭐
+                {% elif user.xp_level == 'legend' %}👑
+                {% else %}🌱{% endif %}
+            </span>
+        </div>
             <h1>{{ user.name or 'Аноним' }}</h1>
             <p class="phone">{{ user.phone }}</p>
         </div>
@@ -229,7 +240,7 @@
             <a class="goal-item" href="/goal/{{ goal.id }}">
                 <div class="top">
                     <span class="title">{{ goal.title }}</span>
-                    <span class="status status-{{ goal.status }}">{{ goal.status }}</span>
+                    <span class="status status-{% if goal.status == 'active' %}активна{% elif goal.status == 'completed' %}завершена{% elif goal.status == 'frozen' %}заморожена{% else %}{{ goal.status }}{% endif %}">{% if goal.status == 'active' %}активна{% elif goal.status == 'completed' %}завершена{% elif goal.status == 'frozen' %}заморожена{% else %}{{ goal.status }}{% endif %}</span>
                 </div>
                 <div style="font-size:13px;color:#8C7A6B;">
                     {{ "%.0f"|format(goal.amount_collected) }} ₽ из {{ "%.0f"|format(goal.amount_goal) }} ₽
@@ -241,7 +252,8 @@
         {% endif %}
 
         <a href="/goals/choose" class="fab">+ Создать цель</a>
-        <a href="/logout" class="btn-danger">Выйти из профиля</a>
+        <a href="/goals" class="fab" style="background:white; color:#FF8C69; border:1px solid #FF8C69; margin-top:8px;">Помогать</a>
+        <a href="/logout" style="position:fixed; bottom:16px; left:16px; color:#E57373; font-size:13px; text-decoration:none;">Выйти</a>
     </div>
 </body>
 </html>
