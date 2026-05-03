@@ -8,58 +8,162 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 100px; }
-        .container { max-width: 480px; margin: 0 auto; padding: 20px 16px 0; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .brand-plate { border: 2px solid #FF8C69; border-radius: 14px 14px 0 0; border-bottom: 3px solid #FF8C69; padding: 10px 18px; }
-        .brand-text { font-size: 22px; font-weight: 700; color: #FF8C69; }
-        .header-btns { display: flex; gap: 0; align-items: stretch; }
-        .h-divider { width: 1px; background: #E8E3E0; margin: 0 8px; align-self: stretch; }
-        .btn-sm { padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; }
-        .btn-outline { border: 1px solid #FF8C69; color: #FF8C69; background: white; }
-        .btn-filled { background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border: none; }
-        .goals-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
-        .goal-card { display: block; background: white; border-radius: 18px; padding: 18px 16px; text-decoration: none; color: #2D2D2D; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+        .container { max-width: 480px; margin: 0 auto; padding: 0; }
+
+        /* Шапка */
+        .header {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            padding: 16px 16px 20px;
+            color: white;
+            border-radius: 0 0 28px 28px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 16px rgba(255,107,74,0.15);
+            position: relative;
+            z-index: 10;
+        }
+        .hamburger {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        .hamburger:active { transform: scale(0.9); }
+        .hamburger span {
+            display: block;
+            height: 2.5px;
+            background: white;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        /* Боковое меню */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 90; }
+        .overlay.active { display: block; }
+        .sidebar {
+            position: fixed; top: 0; left: -280px; width: 270px; height: 100%;
+            background: white; z-index: 95; transition: left 0.25s ease;
+            display: flex; flex-direction: column; padding: 20px;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+        }
+        .sidebar.active { left: 0; }
+        .sidebar .logo { font-size: 22px; font-weight: 700; color: #FF6B4A; margin-bottom: 32px; }
+        .sidebar a {
+            display: block;
+            padding: 14px 12px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #2D2D2D;
+            text-decoration: none;
+            border-radius: 12px;
+            transition: background 0.15s;
+        }
+        .sidebar a:active { background: #F5F5F5; }
+        .sidebar .divider { height: 1px; background: #F0EDEA; margin: 12px 0; }
+
+        /* Заголовок-плашка */
+        .section-header {
+            background: white;
+            margin: -10px 16px 20px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D2D2D;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Карточки */
+        .goals-list { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+        .goal-card {
+            display: block;
+            background: white;
+            border-radius: 18px;
+            padding: 18px 16px;
+            text-decoration: none;
+            color: #2D2D2D;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
         .goal-card:active { transform: scale(0.98); }
         .goal-card .top { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .goal-card .title { font-size: 18px; font-weight: 700; }
         .type-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px; }
         .badge-green { background: #E8F5E9; color: #388E3C; }
         .badge-blue { background: #E3F2FD; color: #1976D2; }
+        .badge-orange { background: #FFF3E0; color: #E65100; }
+        .badge-purple { background: #F3E5F5; color: #7B1FA2; }
+        .badge-teal { background: #E0F2F1; color: #00695C; }
         .amount-row { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 8px; }
         .amount-row .collected { font-weight: 700; color: #2D2D2D; }
         .progress-bar { background: #F0F0F0; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 10px; }
         .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 6px; }
         .meta { display: flex; justify-content: space-between; font-size: 13px; color: #8C7A6B; }
-        .fab { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 448px; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 16px; font-size: 18px; font-weight: 600; text-decoration: none; text-align: center; box-shadow: 0 8px 24px rgba(255,108,74,0.3); z-index: 50; }
+
+        .fab {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 32px); max-width: 448px; padding: 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white; border: none; border-radius: 16px;
+            font-size: 18px; font-weight: 600; font-family: 'Inter', sans-serif;
+            text-decoration: none; text-align: center;
+            box-shadow: 0 2px 12px rgba(255,107,74,0.2);
+            z-index: 50;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
         .fab:active { transform: translateX(-50%) scale(0.97); }
+
         .empty-state { text-align: center; padding: 48px 16px; color: #8C7A6B; }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Шапка -->
         <div class="header">
-            <div class="brand-plate"><span class="brand-text">помогай.рф</span></div>
-            <div class="header-btns">
-                {% if user %}
-                    <a href="/profile" class="btn-sm btn-outline">Профиль</a>
-                    <div class="h-divider"></div>
-                    <a href="/logout" class="btn-sm btn-outline">Выйти</a>
-                {% else %}
-                    <a href="/login" class="btn-sm btn-outline">Войти</a>
-                    <div class="h-divider"></div>
-                    <a href="/register" class="btn-sm btn-filled">Регистрация</a>
-                {% endif %}
+            <div class="hamburger" onclick="toggleMenu()">
+                <span></span><span></span><span></span>
             </div>
+            <div class="header-title">помогай.рф</div>
         </div>
 
+        <!-- Заголовок-плашка -->
+        <div class="section-header">Выберите тип сбора</div>
+
+        <!-- Карточки -->
         <div class="goals-list">
             {% if goals %}
                 {% for goal in goals %}
                 <a class="goal-card" href="/goal/{{ goal.id }}">
-                    <div class="top"><div class="title">{{ goal.title }}</div><span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' }}">{{ 'Блиц' }}</span></div>
-                    <div class="amount-row"><span class="collected">{{ "%.0f"|format(goal.amount_collected) }} ₽</span><span>из {{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
-                    <div class="progress-bar"><div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div></div>
-                    <div class="meta"><span>⏰ до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span><span>{{ goal.author_name or 'Аноним' }}</span></div>
+                    <div class="top">
+                        <div class="title">{{ goal.title }}</div>
+                        <span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' else 'orange' if goal.type == 'urgent' else 'purple' if goal.type == 'serious' else 'teal' }}">
+                            {{ 'Супер-блиц' if goal.type == 'super_blitz' else 'Блиц' if goal.type == 'blitz' else 'Срочный' if goal.type == 'urgent' else 'Жизненный' if goal.type == 'serious' else 'Общий' }}
+                        </span>
+                    </div>
+                    <div class="amount-row">
+                        <span class="collected">{{ "%.0f"|format(goal.amount_collected) }} ₽</span>
+                        <span>из {{ "%.0f"|format(goal.amount_goal) }} ₽</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div>
+                    </div>
+                    <div class="meta">
+                        <span>до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span>
+                        <span>{{ goal.author_name or 'Аноним' }}</span>
+                    </div>
                 </a>
                 {% endfor %}
             {% else %}
@@ -71,5 +175,29 @@
             <a class="fab" href="/goals/choose">+ Создать цель</a>
         {% endif %}
     </div>
+
+    <!-- Затемнение -->
+    <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+
+    <!-- Боковое меню -->
+    <div class="sidebar" id="sidebar">
+        <div class="logo">помогай.рф</div>
+        {% if user %}
+            <a href="/profile">Профиль</a>
+            <a href="/logout">Выйти</a>
+        {% else %}
+            <a href="/login">Вход</a>
+            <a href="/register">Регистрация</a>
+        {% endif %}
+        <div class="divider"></div>
+        <a href="/goals">Все цели</a>
+    </div>
+
+    <script>
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+    </script>
 </body>
 </html>
