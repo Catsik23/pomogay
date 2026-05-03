@@ -7,77 +7,88 @@
     <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 40px; }
-        .container { max-width: 480px; margin: 0 auto; padding: 20px 16px 0; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .logo { font-size: 20px; font-weight: 700; color: #FF8C69; }
-        .header-btns { display: flex; gap: 8px; }
-        .btn-sm { padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; }
-        .btn-outline { border: 1px solid #FF8C69; color: #FF8C69; background: white; }
-        .btn-filled { background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border: none; }
-        .hero { text-align: center; margin-bottom: 32px; }
-        .hero h1 { font-size: 26px; font-weight: 700; color: #2D2D2D; margin-bottom: 6px; }
-        .hero p { font-size: 15px; color: #8C7A6B; margin-bottom: 16px; }
-        .trust-icons { display: flex; justify-content: center; gap: 18px; font-size: 13px; color: #8C7A6B; }
-        .trust-icons span { display: flex; align-items: center; gap: 4px; }
-        .trust-icons svg { width: 16px; height: 16px; stroke: #8C7A6B; }
-        .section-title { font-size: 20px; font-weight: 700; color: #2D2D2D; margin-bottom: 16px; }
-        .goals-list { display: flex; flex-direction: column; gap: 12px; }
-        .goal-card { display: block; background: white; border-radius: 18px; padding: 18px 16px; text-decoration: none; color: #2D2D2D; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
-        .goal-card:active { transform: scale(0.98); }
-        .goal-card .top { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .goal-card .title { font-size: 18px; font-weight: 700; }
-        .type-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px; }
-        .badge-green { background: #E8F5E9; color: #388E3C; }
-        .badge-blue { background: #E3F2FD; color: #1976D2; }
-        .amount-row { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 8px; }
-        .amount-row .collected { font-weight: 700; color: #2D2D2D; }
-        .progress-bar { background: #F0F0F0; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 10px; }
-        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 6px; }
-        .meta { display: flex; justify-content: space-between; font-size: 13px; color: #8C7A6B; }
-        .btn-all { display: block; text-align: center; padding: 14px; background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border-radius: 14px; font-size: 15px; font-weight: 600; text-decoration: none; margin-top: 16px; }
-        .empty-state { text-align: center; padding: 48px 16px; color: #8C7A6B; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #FDF8F5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .welcome {
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        .brand {
+            font-size: 36px;
+            font-weight: 700;
+            color: #FF8C69;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        .context {
+            font-size: 16px;
+            color: #8C7A6B;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-bottom: 36px;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 15px;
+            color: #2D2D2D;
+        }
+        .feature svg {
+            width: 20px;
+            height: 20px;
+            stroke: #8C7A6B;
+            flex-shrink: 0;
+        }
+        .btn-goals {
+            display: block;
+            padding: 16px;
+            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
+            color: white;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 4px 16px rgba(255,108,74,0.3);
+            transition: transform 0.1s;
+        }
+        .btn-goals:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">помогай.рф</div>
-            <div class="header-btns">
-                <a href="/login" class="btn-sm btn-outline">Вход</a>
-                <a href="/goals" class="btn-sm btn-outline">Цели</a>
-                <a href="/register" class="btn-sm btn-filled">Регистрация</a>
+    <div class="welcome">
+        <div class="brand">помогай.рф</div>
+        <p class="context">Платформа, где люди помогают людям напрямую. Без комиссий, без посредников.</p>
+
+        <div class="features">
+            <div class="feature">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                100% суммы доходит до получателя
+            </div>
+            <div class="feature">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                Каждый перевод подтверждается получателем
+            </div>
+            <div class="feature">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                Помогайте тем, что вам близко
             </div>
         </div>
 
-        <div class="hero">
-            <h1>Люди помогают людям</h1>
-            <p>Напрямую. Без комиссий. Проверенные цели.</p>
-            <div class="trust-icons">
-                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Без посредников</span>
-                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Подтверждение</span>
-                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>100% доходят</span>
-            </div>
-        </div>
-
-        <h2 class="section-title">Сейчас помогают</h2>
-
-        <div class="goals-list">
-            {% if goals %}
-                {% for goal in goals %}
-                <a class="goal-card" href="/goal/{{ goal.id }}">
-                    <div class="top"><div class="title">{{ goal.title }}</div><span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' }}">{{ 'Блиц' }}</span></div>
-                    <div class="amount-row"><span class="collected">{{ "%.0f"|format(goal.amount_collected) }} ₽</span><span>из {{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
-                    <div class="progress-bar"><div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div></div>
-                    <div class="meta"><span>⏰ до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span><span>{{ goal.author_name or 'Аноним' }}</span></div>
-                </a>
-                {% endfor %}
-            {% else %}
-                <div class="empty-state"><h2>Пока нет целей</h2><p>Станьте первым — создайте сбор</p></div>
-            {% endif %}
-        </div>
-
-        <a href="/goals" class="btn-all">Все цели</a>
+        <a href="/goals" class="btn-goals">Смотреть цели</a>
     </div>
 </body>
 </html>
