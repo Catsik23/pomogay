@@ -16,58 +16,72 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .welcome { text-align: center; max-width: 420px; width: 100%; }
+        .welcome {
+            max-width: 420px;
+            width: 100%;
+        }
 
-        .brand {
-            font-size: 38px;
-            font-weight: 700;
-            color: white;
-            margin-bottom: 12px;
-            letter-spacing: -0.5px;
-            border-radius: 16px;
-            display: inline-flex;
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            padding: 14px 24px;
-            line-height: 1;
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
-            position: relative;
-            overflow: hidden;
+            margin-bottom: 48px;
         }
-        .brand::after {
-            content: '';
-            position: absolute;
-            top: -30px;
-            right: -30px;
-            width: 80px;
-            height: 80px;
-            background: rgba(255,255,255,0.08);
-            border-radius: 50%;
+        .top-logo {
+            font-size: 26px;
+            font-weight: 700;
+            color: #FF8C69;
+            border: 1.5px solid #FF8C69;
+            border-radius: 12px;
+            padding: 10px 18px;
         }
-        .brand::before {
-            content: '';
-            position: absolute;
-            bottom: -15px;
-            left: 15px;
-            width: 40px;
-            height: 40px;
-            background: rgba(255,255,255,0.06);
-            border-radius: 50%;
+        .top-btns { display: flex; gap: 8px; align-items: stretch; }
+        .top-divider {
+            width: 1px;
+            background: #E8E3E0;
+            margin: 0 8px;
         }
+        .btn-sm {
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .btn-outline { border: 1px solid #FF8C69; color: #FF8C69; background: white; }
+        .btn-filled { background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border: none; }
 
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .brand-plate {
+            display: inline-block;
+            border: 2px solid #FF8C69;
+            border-radius: 16px 16px 0 0;
+            border-bottom: 3px solid #FF8C69;
+            padding: 14px 28px;
+            margin-bottom: 6px;
+        }
+        .brand {
+            font-size: 36px;
+            font-weight: 700;
+            color: #FF8C69;
+            letter-spacing: -0.5px;
+        }
         .context {
             font-size: 15px;
             color: #8C7A6B;
             line-height: 1.5;
-            margin-bottom: 40px;
+            margin-top: 16px;
         }
 
         .features {
             display: flex;
             flex-direction: column;
             margin-bottom: 36px;
-            text-align: left;
         }
         .feature {
             display: flex;
@@ -78,91 +92,49 @@
             color: #2D2D2D;
             border-bottom: 1px solid #F0EDEA;
         }
-        .feature:last-child { border-bottom: none; }
-        .feature svg { width: 20px; height: 20px; stroke: #8C7A6B; flex-shrink: 0; }
+        .feature:last-child {
+            border-bottom: none;
+        }
+        .feature svg {
+            width: 20px;
+            height: 20px;
+            stroke: #8C7A6B;
+            flex-shrink: 0;
+        }
 
         .btn-goals {
             display: block;
             padding: 16px;
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
             color: white;
             border-radius: 14px;
             font-size: 17px;
             font-weight: 600;
             text-decoration: none;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(255,108,74,0.3);
             transition: transform 0.1s;
-            margin-bottom: 32px;
-            position: relative;
-            overflow: hidden;
         }
-        .btn-goals::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .btn-goals:active::after { opacity: 1; }
         .btn-goals:active { transform: scale(0.97); }
-
-        .auth-section { display: flex; flex-direction: column; gap: 6px; }
-        .auth-row { display: flex; gap: 10px; }
-        .auth-btn {
-            flex: 1;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: transform 0.1s;
-        }
-        .auth-btn:active { transform: scale(0.97); }
-        .auth-outline { border: 1.5px solid #FF6B4A; background: white; color: #FF6B4A; }
-        .auth-filled {
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            color: white;
-            border: none;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
-            position: relative;
-            overflow: hidden;
-        }
-        .auth-filled::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .auth-filled:active::after { opacity: 1; }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 12px;
-            color: #B0A8A0;
-            margin: 4px 0;
-        }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #E8E5E2; }
     </style>
 </head>
 <body>
     <div class="welcome">
-        <div class="brand">помогай.рф</div>
-        <p class="context">Платформа, где люди помогают людям напрямую. Без комиссий, без посредников.</p>
+        <div class="top-bar">
+            <div class="top-logo">помогай.рф</div>
+            <div class="top-btns">
+                <a href="/login" class="btn-sm btn-outline">Вход</a>
+                <div class="top-divider"></div>
+                <a href="/register" class="btn-sm btn-filled">Регистрация</a>
+            </div>
+        </div>
+
+        <div class="hero">
+            <div class="brand-plate">
+                <div class="brand">помогай.рф</div>
+            </div>
+            <p class="context">Платформа, где люди помогают людям напрямую. Без комиссий, без посредников.</p>
+        </div>
 
         <div class="features">
             <div class="feature">
@@ -180,18 +152,6 @@
         </div>
 
         <a href="/goals" class="btn-goals">Смотреть цели</a>
-
-        <div class="auth-section">
-            <div class="auth-row">
-                <a href="/login" class="auth-btn auth-outline">Вход</a>
-                <a href="/register" class="auth-btn auth-filled">Регистрация</a>
-            </div>
-            <div class="divider">или через</div>
-            <div class="auth-row">
-                <a href="/auth/vk" class="auth-btn auth-outline">VK</a>
-                <a href="/auth/max" class="auth-btn auth-outline">MAX</a>
-            </div>
-        </div>
     </div>
 </body>
 </html>
