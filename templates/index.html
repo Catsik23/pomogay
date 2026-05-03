@@ -21,15 +21,38 @@
         .brand {
             font-size: 38px;
             font-weight: 700;
-            color: #FF8C69;
+            color: white;
             margin-bottom: 12px;
             letter-spacing: -0.5px;
-            border: 2px solid #FF8C69;
             border-radius: 16px;
             display: inline-block;
             padding: 10px 24px;
             line-height: 1;
             vertical-align: middle;
+            background: linear-gradient(160deg, #FF9A7C 0%, #FF6B4A 30%, #FF8C69 100%);
+            box-shadow: 0 6px 24px rgba(255,108,74,0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        .brand::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .brand::before {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
         }
         .context {
             font-size: 15px;
@@ -58,16 +81,30 @@
         .btn-goals {
             display: block;
             padding: 16px;
-            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
+            background: linear-gradient(160deg, #FF9A7C 0%, #FF6B4A 30%, #FF8C69 100%);
             color: white;
             border-radius: 14px;
             font-size: 17px;
             font-weight: 600;
             text-decoration: none;
-            box-shadow: 0 4px 16px rgba(255,108,74,0.3);
+            box-shadow: 0 6px 24px rgba(255,108,74,0.3);
             transition: transform 0.1s;
             margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
         }
+        .btn-goals::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn-goals:active::after { opacity: 1; }
         .btn-goals:active { transform: scale(0.97); }
 
         .auth-section { display: flex; flex-direction: column; gap: 6px; }
@@ -87,7 +124,26 @@
         }
         .auth-btn:active { transform: scale(0.97); }
         .auth-outline { border: 1px solid #E0E0E0; background: white; color: #2D2D2D; }
-        .auth-filled { background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border: none; }
+        .auth-filled {
+            background: linear-gradient(160deg, #FF9A7C 0%, #FF6B4A 30%, #FF8C69 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 16px rgba(255,108,74,0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-filled::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .auth-filled:active::after { opacity: 1; }
         .divider {
             display: flex;
             align-items: center;
