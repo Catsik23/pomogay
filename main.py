@@ -97,9 +97,27 @@ def compress_photo(data):
 @app.route('/')
 def index():
     user = get_current_user()
-    if user:
-        return redirect(url_for('goals_list'))
-    return render_template('index.html')
+    db = get_db()
+    goals = db.execute(
+        "SELECT g.*, u.name as author_name FROM goals g JOIN users u ON g.user_id = u.id WHERE g.status = 'active' ORDER BY g.created_at DESC LIMIT 10"
+    ).fetchall()
+    months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
+    goals_list = []
+    for g in goals:
+        g = dict(g)
+        try:
+            parts = g['ends_at'][:10].split('-')
+            d = int(parts[2])
+            m = months[int(parts[1])-1]
+            y = parts[0]
+            g['ends_at_formatted'] = f'{d} {m} {y}'
+        except:
+            g['ends_at_formatted'] = g['ends_at'][:10]
+        goals_list.append(g)
+    today_closed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed' AND date(created_at) = date('now')").fetchone()[0]
+    week_helped = db.execute("SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE status IN ('recipient_confirmed','completed') AND date(donor_confirmed_at) >= date('now', '-7 days')").fetchone()[0]
+    db.close()
+    return render_template('index.html', user=user, goals=goals_list, today_closed=today_closed, week_helped=week_helped)
 
 @app.route('/register', methods=['GET','POST'])
 def register():

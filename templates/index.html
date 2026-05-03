@@ -10,73 +10,160 @@
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background: #FDF8F5;
+            padding-bottom: 100px;
+        }
+        .container { max-width: 480px; margin: 0 auto; padding: 20px 16px 0; }
+
+        .header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            padding: 20px;
+            margin-bottom: 24px;
         }
-        .welcome-box {
+        .logo { font-size: 24px; font-weight: 700; color: #FF8C69; }
+        .header-btns { display: flex; gap: 8px; }
+        .btn-sm {
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.1s;
+        }
+        .btn-sm:active { transform: scale(0.97); }
+        .btn-outline { border: 1px solid #FF8C69; color: #FF8C69; background: white; }
+        .btn-filled { background: #FF8C69; color: white; }
+
+        .hero {
             text-align: center;
-            max-width: 400px;
-            width: 100%;
+            margin-bottom: 28px;
         }
-        .logo {
-            font-size: 48px;
+        .hero h1 {
+            font-size: 28px;
             font-weight: 700;
-            color: #FF8C69;
+            color: #2D2D2D;
             margin-bottom: 8px;
         }
-        .subtitle {
-            font-size: 16px;
+        .hero p {
+            font-size: 15px;
             color: #8C7A6B;
-            margin-bottom: 40px;
             line-height: 1.5;
         }
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 16px;
-            border-radius: 14px;
-            font-size: 18px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            text-decoration: none;
-            margin-bottom: 12px;
-            transition: transform 0.1s, opacity 0.2s;
-        }
-        .btn:active { transform: scale(0.97); }
-        .btn-primary {
-            background: #FF8C69;
-            color: white;
-            border: none;
-        }
-        .btn-secondary {
-            background: white;
-            color: #FF8C69;
-            border: 1px solid #FF8C69;
-        }
-        .bottom-text {
-            margin-top: 24px;
+        .trust-icons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 16px;
             font-size: 13px;
             color: #8C7A6B;
         }
-        .bottom-text a {
-            color: #FF8C69;
+        .trust-icons span { display: flex; align-items: center; gap: 4px; }
+
+        .goals-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
+        .goal-card {
+            display: block;
+            background: white;
+            border-radius: 18px;
+            padding: 18px 16px;
             text-decoration: none;
+            color: #2D2D2D;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: cardIn 0.4s ease forwards;
+            opacity: 0;
+            transform: translateY(16px);
         }
+        @keyframes cardIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .goal-card:active { transform: scale(0.98); }
+        .goal-card .top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .goal-card .title { font-size: 18px; font-weight: 700; }
+        .type-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px; }
+        .badge-green { background: #E8F5E9; color: #388E3C; }
+        .badge-blue { background: #E3F2FD; color: #1976D2; }
+        .amount-row { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 8px; }
+        .amount-row .collected { font-weight: 700; color: #2D2D2D; }
+        .progress-bar { background: #F0F0F0; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 10px; }
+        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 6px; }
+        .meta { display: flex; justify-content: space-between; font-size: 13px; color: #8C7A6B; }
+
+        .fab {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 32px); max-width: 448px; padding: 16px;
+            background: #FF8C69; color: white; border: none; border-radius: 16px;
+            font-size: 18px; font-weight: 600; font-family: 'Inter', sans-serif;
+            cursor: pointer; text-align: center; text-decoration: none;
+            box-shadow: 0 8px 24px rgba(255,108,74,0.3); z-index: 50;
+        }
+        .fab:active { transform: translateX(-50%) scale(0.97); }
+
+        .empty-state { text-align: center; padding: 48px 16px; color: #8C7A6B; }
+        .back { text-align: center; margin-top: 16px; }
     </style>
 </head>
 <body>
-    <div class="welcome-box">
-        <div class="logo">Помогай</div>
-        <p class="subtitle">Платформа, где люди помогают людям напрямую. Без комиссий, без посредников.</p>
-        <a href="/register" class="btn btn-primary">Зарегистрироваться</a>
-        <a href="/login" class="btn btn-secondary">Войти</a>
-        <div class="bottom-text">
-            <a href="/goals">Посмотреть цели</a> без регистрации
+    <div class="container">
+        <div class="header">
+            <div class="logo">Помогай</div>
+            <div class="header-btns">
+                <a href="/login" class="btn-sm btn-outline">Войти</a>
+                <a href="/register" class="btn-sm btn-filled">Регистрация</a>
+            </div>
+        </div>
+
+        <div class="hero">
+            <h1>Люди помогают людям</h1>
+            <p>Напрямую. Без комиссий. Проверенные цели.</p>
+            <div class="trust-icons">
+                <span>🔒 Без посредников</span>
+                <span>✅ Подтверждение</span>
+                <span>❤️ 100% доходят</span>
+            </div>
+        </div>
+
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:16px;">Сейчас помогают</h2>
+
+        <div class="goals-list">
+            {% if goals %}
+                {% for goal in goals %}
+                <a class="goal-card" href="/goal/{{ goal.id }}" style="animation-delay: {{ loop.index0 * 0.06 }}s">
+                    <div class="top">
+                        <div class="title">{{ goal.title }}</div>
+                        <span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' else 'orange' if goal.type == 'urgent' else 'purple' if goal.type == 'serious' else 'teal' }}">
+                            {{ 'Супер-блиц' if goal.type == 'super_blitz' else 'Блиц' if goal.type == 'blitz' else 'Срочный' if goal.type == 'urgent' else 'Жизненный' if goal.type == 'serious' else 'Общий' }}
+                        </span>
+                    </div>
+                    <div class="amount-row">
+                        <span class="collected">{{ "%.0f"|format(goal.amount_collected) }} ₽</span>
+                        <span>из {{ "%.0f"|format(goal.amount_goal) }} ₽</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div>
+                    </div>
+                    <div class="meta">
+                        <span>⏰ до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span>
+                        <span>{{ goal.author_name or 'Аноним' }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <h2>Пока нет целей</h2>
+                    <p>Станьте первым — создайте сбор</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="back">
+            <a href="/goals">Все цели →</a>
         </div>
     </div>
+
+    {% if user %}
+    <a class="fab" href="/goals/choose">+ Создать цель</a>
+    {% else %}
+    <a class="fab" href="/register">Зарегистрироваться и помочь</a>
+    {% endif %}
 </body>
 </html>
