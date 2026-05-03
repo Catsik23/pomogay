@@ -20,14 +20,35 @@
 
         /* Шапка профиля */
         .profile-header {
-            border: 2px solid #FF8C69;
-            border-radius: 0;
-            border-bottom: 3px solid #FF8C69;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
             padding: 24px 20px 20px;
-            margin: 0;
+            color: white;
+            border-radius: 0;
             text-align: center;
-            background: linear-gradient(160deg, #FF9A7C 0%, #FF6B4A 30%, #FF8C69 100%);
-            
+            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-header::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .profile-header::before {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
         }
         .profile-header h1 {
             font-size: 22px;
