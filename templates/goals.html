@@ -239,8 +239,24 @@
                         <div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div>
                     </div>
                     <div class="meta">
-                        <span>{% if goal.type == 'super_blitz' %}⚡{% elif goal.type == 'blitz' %}🎯{% elif goal.type == 'urgent' %}🔥{% elif goal.type == 'serious' %}❤️{% else %}🤝{% endif %} {{ goal.ends_at[:10] }}</span>
-                        <span>↗ Поделиться</span>
+                        <span>
+                            {% if goal.type == 'super_blitz' %}
+                                {% set hours_left = ((goal.ends_at | string)[:19] | default('') ) %}
+                                {% if hours_left %}
+                                    {% set h = (goal.ends_at[:19] | replace('T',' ') | default('')) %}
+                                    {% if h != '' %}
+                                        {% set end_dt = h | trim %}
+                                        {{ h }}
+                                    {% endif %}
+                                {% endif %}
+                                ⏳ {{ goal.ends_at[:10] }}
+                            {% elif goal.type == 'blitz' %}
+                                ⏰ до {{ goal.ends_at[:10] }}
+                            {% else %}
+                                до {{ goal.ends_at[:10] }}
+                            {% endif %}
+                        </span>
+                        <span>{{ goal.author_name or 'Аноним' }}</span>
                     </div>
                 </a>
                 {% endfor %}
