@@ -16,11 +16,8 @@
             min-height: 100vh;
             padding: 20px;
         }
-        .welcome {
-            text-align: center;
-            max-width: 420px;
-            width: 100%;
-        }
+        .welcome { text-align: center; max-width: 420px; width: 100%; }
+
         .brand {
             font-size: 38px;
             font-weight: 700;
@@ -55,6 +52,7 @@
         }
         .feature:last-child { border-bottom: none; }
         .feature svg { width: 20px; height: 20px; stroke: #8C7A6B; flex-shrink: 0; }
+
         .btn-goals {
             display: block;
             padding: 16px;
@@ -69,15 +67,9 @@
             margin-bottom: 32px;
         }
         .btn-goals:active { transform: scale(0.97); }
-        .auth-section {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .auth-row {
-            display: flex;
-            gap: 10px;
-        }
+
+        .auth-section { display: flex; flex-direction: column; gap: 10px; }
+        .auth-row { display: flex; gap: 10px; }
         .auth-btn {
             flex: 1;
             padding: 14px;
@@ -92,27 +84,8 @@
             transition: transform 0.1s;
         }
         .auth-btn:active { transform: scale(0.97); }
-        .auth-outline {
-            border: 1px solid #E0E0E0;
-            background: white;
-            color: #2D2D2D;
-        }
-        .auth-filled {
-            background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%);
-            color: white;
-            border: none;
-        }
-        .auth-icon {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .auth-icon svg {
-            width: 24px;
-            height: 24px;
-        }
+        .auth-outline { border: 1px solid #E0E0E0; background: white; color: #2D2D2D; }
+        .auth-filled { background: linear-gradient(135deg, #FF8C69 0%, #FF6B4A 100%); color: white; border: none; }
         .divider {
             display: flex;
             align-items: center;
@@ -121,18 +94,14 @@
             color: #B0A8A0;
             margin: 8px 0;
         }
-        .divider::before, .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #E8E5E2;
-        }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #E8E5E2; }
     </style>
 </head>
 <body>
     <div class="welcome">
         <div class="brand">помогай.рф</div>
         <p class="context">Платформа, где люди помогают людям напрямую. Без комиссий, без посредников.</p>
+
         <div class="features">
             <div class="feature">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -147,7 +116,9 @@
                 Помогайте тем, что вам близко
             </div>
         </div>
+
         <a href="/goals" class="btn-goals">Смотреть цели</a>
+
         <div class="auth-section">
             <div class="auth-row">
                 <a href="/login" class="auth-btn auth-outline">Вход</a>
@@ -155,17 +126,8 @@
             </div>
             <div class="divider">или через</div>
             <div class="auth-row">
-                <a href="/auth/vk" class="auth-btn auth-outline">
-                    <span class="auth-icon" style="font-weight:800;font-size:15px;color:#FF8C69;">VK</span>
-                </a>
-                <a href="/auth/max" class="auth-btn auth-outline">
-                    <span class="auth-icon">
-                        <svg viewBox="0 0 48 48" fill="none">
-                            <path d="M24 4C12.96 4 4 12.96 4 24s8.96 20 20 20 20-8.96 20-20S35.04 4 24 4z" fill="#FF8C69"/>
-                            <path d="M24 12l-6 18h4l1.5-4.5h5l1.5 4.5h4L28 12h-4zm-1.5 10.5L24 18l1.5 4.5h-3z" fill="white"/>
-                        </svg>
-                    </span>
-                </a>
+                <a href="/auth/vk" class="auth-btn auth-outline">VK</a>
+                <a href="/auth/max" class="auth-btn auth-outline">MAX</a>
             </div>
         </div>
     </div>
