@@ -135,7 +135,11 @@
 
         <!-- Карточки -->
         
-        <div class="goals-list">
+        
+        <div class="lenta-wrapper">
+            <div class="lenta-header">Лента доброты</div>
+            <div class="goals-list">
+
             {% if goals %}
                 {% for goal in goals %}
                 <a class="goal-card" href="/goal/{{ goal.id }}">
@@ -161,6 +165,7 @@
             {% else %}
                 <div class="empty-state"><h2>Пока нет целей</h2><p>Станьте первым — создайте сбор</p></div>
             {% endif %}
+        </div>
         </div>
 
         {% if user %}
