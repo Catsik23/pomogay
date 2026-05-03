@@ -223,16 +223,9 @@
             var start=Date.now();
             window.location.href=deeplink;
             setTimeout(function(){
-                if(Date.now()-start<2000){
-                    // План Б: показываем ручной режим
-                    document.getElementById('manualMode').style.display='block';
-                } else {
-                    // СБП сработал — показываем "Я перевёл"
-                    document.getElementById('confirmForm').style.display='block';
-                    document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
-                    document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
-                }
-            },2000);
+                // План Б: всегда показываем ручной режим после попытки Deeplink
+                document.getElementById('manualMode').style.display='block';
+            },1500);
         }
         function copyText(text,btn){
             if(navigator.clipboard){
