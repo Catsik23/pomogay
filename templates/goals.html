@@ -13,15 +13,17 @@
         /* Шапка */
         .header {
             background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            padding: 16px 16px 20px;
+            padding: 10px 12px 12px;
             color: white;
-            border-radius: 0 0 28px 28px;
+            border-radius: 18px;
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 8px;
             box-shadow: 0 4px 16px rgba(255,107,74,0.15);
             position: relative;
             z-index: 10;
+            width: 300px;
+            margin: 0 auto;
         }
         .hamburger {
             width: 32px;
@@ -40,12 +42,50 @@
             height: 2.5px;
             background: white;
             border-radius: 2px;
-            transition: all 0.2s;
         }
-        .header-title {
+        .brand-plate {
+            border: 1.5px solid rgba(255,255,255,0.7);
+            border-radius: 10px 10px 0 0;
+            border-bottom: 2px solid rgba(255,255,255,0.9);
+            padding: 8px 12px;
+        }
+        .brand-text {
             font-size: 20px;
             font-weight: 700;
+            color: white;
             letter-spacing: -0.3px;
+        }
+        .header-btns {
+            display: flex;
+            gap: 0;
+            align-items: stretch;
+            margin-left: auto;
+        }
+        .h-divider {
+            width: 1px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 6px;
+            align-self: stretch;
+        }
+        .btn-sm {
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .btn-outline-white {
+            border: 1px solid rgba(255,255,255,0.7);
+            color: white;
+            background: transparent;
+        }
+        .btn-filled-white {
+            background: white;
+            color: #FF6B4A;
+            border: none;
         }
 
         /* Боковое меню */
@@ -87,7 +127,7 @@
         }
 
         /* Карточки */
-        .goals-list { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+        .goals-list { display: flex; flex-direction: column; gap: 12px; padding: 16px 16px 16px; }
         .goal-card {
             display: block;
             background: white;
@@ -136,7 +176,20 @@
             <div class="hamburger" onclick="toggleMenu()">
                 <span></span><span></span><span></span>
             </div>
-            <div class="header-title">помогай.рф</div>
+            <div class="brand-plate">
+                <span class="brand-text">помогай.рф</span>
+            </div>
+            <div class="header-btns">
+                {% if user %}
+                    <a href="/profile" class="btn-sm btn-outline-white">Профиль</a>
+                    <div class="h-divider"></div>
+                    <a href="/logout" class="btn-sm btn-outline-white">Выйти</a>
+                {% else %}
+                    <a href="/login" class="btn-sm btn-outline-white">Войти</a>
+                    <div class="h-divider"></div>
+                    <a href="/register" class="btn-sm btn-filled-white">Регистрация</a>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Заголовок-плашка -->
