@@ -75,19 +75,7 @@
         .sidebar a:active { background: #F5F5F5; }
         .sidebar .divider { height: 1px; background: #F0EDEA; margin: 12px 0; }
 
-        /* Заголовок-плашка */
-        .section-header {
-            background: white;
-            margin: -10px 16px 20px;
-            padding: 14px 18px;
-            border-radius: 14px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            font-size: 18px;
-            font-weight: 700;
-            color: #2D2D2D;
-            position: relative;
-            z-index: 5;
-        }
+        
 
         /* Карточки */
         .goals-list { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
@@ -146,7 +134,7 @@
         
 
         <!-- Карточки -->
-        <div class="section-header">Лента доброты</div>
+        
         <div class="goals-list">
             {% if goals %}
                 {% for goal in goals %}
