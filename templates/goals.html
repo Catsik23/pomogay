@@ -18,14 +18,14 @@
             border-radius: 0 0 28px 28px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 14px;
             box-shadow: 0 4px 16px rgba(255,107,74,0.15);
             position: relative;
             z-index: 10;
         }
         .hamburger {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -40,51 +40,12 @@
             height: 2.5px;
             background: white;
             border-radius: 2px;
+            transition: all 0.2s;
         }
-        .brand-plate {
-            border: 1.5px solid rgba(255,255,255,0.7);
-            border-radius: 10px 10px 0 0;
-            border-bottom: 2px solid rgba(255,255,255,0.9);
-            padding: 8px 14px;
-            flex-shrink: 0;
-        }
-        .brand-text {
+        .header-title {
             font-size: 20px;
             font-weight: 700;
-            color: white;
             letter-spacing: -0.3px;
-        }
-        .header-btns {
-            display: flex;
-            gap: 0;
-            align-items: stretch;
-            margin-left: auto;
-        }
-        .h-divider {
-            width: 1px;
-            background: rgba(255,255,255,0.3);
-            margin: 0 6px;
-            align-self: stretch;
-        }
-        .btn-sm {
-            padding: 6px 10px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            white-space: nowrap;
-        }
-        .btn-outline-white {
-            border: 1px solid rgba(255,255,255,0.7);
-            color: white;
-            background: transparent;
-        }
-        .btn-filled-white {
-            background: white;
-            color: #FF6B4A;
-            border: none;
         }
 
         /* Боковое меню */
@@ -97,7 +58,7 @@
             box-shadow: 4px 0 20px rgba(0,0,0,0.1);
         }
         .sidebar.active { left: 0; }
-        .sidebar .logo { font-size: 20px; font-weight: 700; color: #FF6B4A; margin-bottom: 28px; }
+        .sidebar .logo { font-size: 22px; font-weight: 700; color: #FF6B4A; margin-bottom: 32px; }
         .sidebar a {
             display: block;
             padding: 14px 12px;
