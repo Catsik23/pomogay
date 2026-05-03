@@ -3,30 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Создать цель — Помогай</title>
+    <title>Создать цель — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: #FDF8F5;
-        }
-        .container {
-            max-width: 480px;
-            margin: 0 auto;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; }
+        .container { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
 
         .header-section {
-            background: linear-gradient(160deg, #F5A08C 0%, #E8826A 30%, #E8826A 100%);
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
             padding: 18px 20px 26px;
             color: white;
             border-radius: 0 0 36px 36px;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 6px 24px rgba(255, 108, 74, 0.18);
+            box-shadow: 0 6px 24px rgba(255,107,74,0.15);
         }
         .header-section::after {
             content: '';
@@ -61,32 +52,14 @@
             text-decoration: none;
             border-radius: 10px;
             z-index: 2;
+            transition: transform 0.1s, box-shadow 0.2s;
         }
         .back-link:active { background: rgba(255,255,255,0.12); }
-        .header-text {
-            text-align: right;
-            padding-right: 24px;
-        }
-        .header-text h1 {
-            font-size: 26px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-            line-height: 1.25;
-            margin-bottom: 3px;
-        }
-        .header-text p {
-            font-size: 14px;
-            font-weight: 400;
-            opacity: 0.65;
-        }
+        .header-text { text-align: right; padding-right: 24px; }
+        .header-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.25; margin-bottom: 3px; }
+        .header-text p { font-size: 14px; font-weight: 400; opacity: 0.65; }
 
-        .options-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 24px 16px;
-            gap: 16px;
-        }
+        .options-section { flex: 1; display: flex; flex-direction: column; padding: 24px 16px; gap: 16px; }
         .option {
             display: flex;
             align-items: center;
@@ -100,34 +73,14 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.05);
             position: relative;
         }
-        .option:active {
-            transform: scale(0.97);
-        }
-        .option-green:active {
-            box-shadow: 0 0 0 3px rgba(56,142,60,0.25), 0 8px 24px rgba(56,142,60,0.12);
-        }
-        .option-blue:active {
-            box-shadow: 0 0 0 3px rgba(25,118,210,0.25), 0 8px 24px rgba(25,118,210,0.12);
-        }
-        .option-orange:active {
-            box-shadow: 0 0 0 3px rgba(230,81,0,0.25), 0 8px 24px rgba(230,81,0,0.12);
-        }
-        .option-purple:active {
-            box-shadow: 0 0 0 3px rgba(123,31,162,0.25), 0 8px 24px rgba(123,31,162,0.12);
-        }
-        .option-teal:active {
-            box-shadow: 0 0 0 3px rgba(0,105,92,0.25), 0 8px 24px rgba(0,105,92,0.12);
-        }
+        .option:active { transform: scale(0.97); }
+        .option-green:active { box-shadow: 0 0 0 3px rgba(56,142,60,0.25), 0 8px 24px rgba(56,142,60,0.12); }
+        .option-blue:active { box-shadow: 0 0 0 3px rgba(25,118,210,0.25), 0 8px 24px rgba(25,118,210,0.12); }
+        .option-orange:active { box-shadow: 0 0 0 3px rgba(230,81,0,0.25), 0 8px 24px rgba(230,81,0,0.12); }
+        .option-purple:active { box-shadow: 0 0 0 3px rgba(123,31,162,0.25), 0 8px 24px rgba(123,31,162,0.12); }
+        .option-teal:active { box-shadow: 0 0 0 3px rgba(0,105,92,0.25), 0 8px 24px rgba(0,105,92,0.12); }
 
-        .option-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+        .option-icon { width: 60px; height: 60px; border-radius: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .option-green .option-icon { background: linear-gradient(135deg, #C8E6C9, #A5D6A7); }
         .option-blue .option-icon { background: linear-gradient(135deg, #BBDEFB, #90CAF9); }
         .option-orange .option-icon { background: linear-gradient(135deg, #FFE0B2, #FFB74D); }
@@ -136,21 +89,11 @@
 
         .option-title { font-size: 19px; font-weight: 700; letter-spacing: -0.2px; }
         .option-desc { font-size: 14px; color: #8C7A6B; margin-top: 3px; }
-        .option-meta {
-            font-size: 11px;
-            color: #8C7A6B;
-            margin-top: 6px;
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .option-meta span {
-            background: #F5F5F5;
-            padding: 3px 10px;
-            border-radius: 8px;
-            font-weight: 500;
-            white-space: nowrap;
-        }
+        .option-meta { font-size: 11px; color: #8C7A6B; margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .option-meta span { background: #F5F5F5; padding: 3px 10px; border-radius: 8px; font-weight: 500; white-space: nowrap; }
+
+        .back { margin-top: 20px; text-align: center; font-size: 15px; padding: 16px; }
+        .back a { color: #FF6B4A; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -166,10 +109,9 @@
         </div>
 
         <div class="options-section">
-            <!-- Супер-блиц — часы -->
             <a class="option option-green" href="/goals/new/super_blitz">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Супер-блиц</div>
@@ -178,10 +120,9 @@
                 </div>
             </a>
 
-            <!-- Блиц — молния -->
             <a class="option option-blue" href="/goals/new/blitz">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Блиц</div>
@@ -190,10 +131,9 @@
                 </div>
             </a>
 
-            <!-- Срочный — огонь -->
             <a class="option option-orange" href="/goals/new/urgent" onclick="alert('Срочные сборы — скоро'); return false;">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E65100" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Срочный сбор</div>
@@ -202,10 +142,9 @@
                 </div>
             </a>
 
-            <!-- Жизненный — сердце -->
             <a class="option option-purple" href="/goals/new/serious" onclick="alert('Серьёзные сборы — скоро'); return false;">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6A1B9A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6A1B9A" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Жизненные цели</div>
@@ -214,15 +153,9 @@
                 </div>
             </a>
 
-            <!-- Общий — группа лиц -->
             <a class="option option-teal" href="/goals/new/group" onclick="alert('Общие сборы — скоро'); return false;">
                 <div class="option-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00695C" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00695C" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 </div>
                 <div>
                     <div class="option-title">Общий сбор</div>
@@ -231,6 +164,7 @@
                 </div>
             </a>
         </div>
+        <div class="back"><a href="/goals">← К ленте целей</a></div>
     </div>
 </body>
 </html>
