@@ -183,44 +183,6 @@
             box-shadow: 0 4px 16px rgba(255,108,74,0.3);
         }
         .fab:active { transform: scale(0.97); }
-    
-        .auth-section { display: flex; flex-direction: column; gap: 6px; margin: 8px 16px; }
-        .auth-btn {
-            flex: 1;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: transform 0.1s;
-        }
-        .auth-btn:active { transform: scale(0.97); }
-        .auth-outline { border: 1.5px solid #FF6B4A; background: white; color: #FF6B4A; }
-        .auth-filled {
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            color: white;
-            border: none;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
-            position: relative;
-            overflow: hidden;
-        }
-        .auth-filled::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .auth-filled:active::after { opacity: 1; }
-    
     </style>
 </head>
 <body>
@@ -289,8 +251,8 @@
             <p style="color:#8C7A6B; margin: 8px 16px;">У вас пока нет целей. Создать</p>
         {% endif %}
 
-        <a href="/goals/choose" class="auth-btn auth-outline">+ Создать цель</a>
-        <a href="/goals" class="auth-btn auth-filled">Помогать</a>
+        <a href="/goals/choose" class="fab" style="background:white; color:#FF6B4A; border:1px solid #FF6B4A; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">+ Создать цель</a>
+        <a href="/goals" class="fab" style="margin-top:12px;">Помогать</a>
         <a href="/logout" style="position:fixed; bottom:16px; left:16px; color:#E57373; font-size:13px; text-decoration:none;">Выйти</a>
     </div>
 </body>
