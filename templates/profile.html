@@ -204,11 +204,24 @@
         </div>
 
         <div class="card">
+            {% if confirmations_total > 0 %}
+            <p>Подтвердил {{ confirmations_approved }} из {{ confirmations_total }} переводов</p>
+            {% endif %}
             <p>Помог на сумму: {{ user.total_helped_amount or 0 }} ₽</p>
             <p>Серия: {{ user.streak_days or 0 }} дн.</p>
             <p>На платформе с: {% set m = user.created_at[5:7] %}{{ user.created_at[8:10]|int }} {% if m == '01' %}января{% elif m == '02' %}февраля{% elif m == '03' %}марта{% elif m == '04' %}апреля{% elif m == '05' %}мая{% elif m == '06' %}июня{% elif m == '07' %}июля{% elif m == '08' %}августа{% elif m == '09' %}сентября{% elif m == '10' %}октября{% elif m == '11' %}ноября{% elif m == '12' %}декабря{% endif %} {{ user.created_at[:4] }}</p>
         </div>
 
+        {% if ignored_donations %}
+        <div class="card">
+            <h3>Переводы без ответа</h3>
+            {% for ig in ignored_donations %}
+            <p style="font-size:13px;color:#8C7A6B;margin-bottom:4px;">
+                {{ ig.amount_reported }} ₽ от {{ ig.donor_phone or 'Аноним' }} — {{ ig.date_formatted }}
+            </p>
+            {% endfor %}
+        </div>
+        {% endif %}
         <h3 style="margin: 16px 16px 8px; font-size:18px; font-weight:700;">Мои цели</h3>
 
         {% if goals %}

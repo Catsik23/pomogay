@@ -219,8 +219,31 @@ def profile():
     user = get_current_user()
     db = get_db()
     goals = db.execute("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC", (user['id'],)).fetchall()
+    
+    # Статистика подтверждений
+    total = db.execute("SELECT COUNT(*) FROM donations WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND donor_id IS NOT NULL", (user['id'],)).fetchone()[0]
+    approved = user['confirmations_approved'] or 0
+    
+    # Список игноров: донаты в статусе donor_confirmed старше 24 часов для целей пользователя
+    ignored = db.execute(
+        "SELECT d.amount_reported, d.donor_confirmed_at, u.phone as donor_phone FROM donations d LEFT JOIN users u ON d.donor_id = u.id WHERE d.goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND d.status = 'donor_confirmed' AND datetime(d.donor_confirmed_at) <= datetime('now', '-24 hours') ORDER BY d.donor_confirmed_at DESC LIMIT 10",
+        (user['id'],)
+    ).fetchall()
+    
+    # Форматируем даты для игноров
+    months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
+    ignored_list = []
+    for ig in ignored:
+        ig = dict(ig)
+        try:
+            parts = ig['donor_confirmed_at'][:10].split('-')
+            ig['date_formatted'] = f"{int(parts[2])} {months[int(parts[1])-1]} {parts[0]}"
+        except:
+            ig['date_formatted'] = ig['donor_confirmed_at'][:10]
+        ignored_list.append(ig)
+    
     db.close()
-    return render_template('profile.html', user=user, goals=goals)
+    return render_template('profile.html', user=user, goals=goals, confirmations_total=total, confirmations_approved=approved, ignored_donations=ignored_list)
 
 @app.route('/goals/choose')
 @login_required
