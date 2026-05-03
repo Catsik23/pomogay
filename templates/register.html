@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Регистрация — Помогай</title>
+    <title>Регистрация — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,6 +38,19 @@
             margin-bottom: 6px;
             padding-left: 4px;
         }
+        .field input[type="text"] {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 17px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .field input[type="text"]:focus {
+            border-color: #FF6B4A;
+        }
         .phone-wrap {
             display: flex;
             align-items: center;
@@ -48,7 +61,7 @@
             transition: border-color 0.2s;
         }
         .phone-wrap:focus-within {
-            border-color: #FF8C69;
+            border-color: #FF6B4A;
         }
         .phone-prefix {
             font-size: 17px;
@@ -67,7 +80,7 @@
             flex: 1;
             background: transparent;
         }
-        .field input[type="text"], .field input[type="password"] {
+        .field input[type="password"] {
             width: 100%;
             padding: 16px;
             border: 1px solid #E0E0E0;
@@ -78,12 +91,12 @@
             transition: border-color 0.2s;
         }
         .field input[type="password"]:focus {
-            border-color: #FF8C69;
+            border-color: #FF6B4A;
         }
         .btn-register {
             width: 100%;
             padding: 16px;
-            background: #FF8C69;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
             color: white;
             border: none;
             border-radius: 14px;
@@ -92,12 +105,30 @@
             font-family: 'Inter', sans-serif;
             cursor: pointer;
             margin-top: 8px;
-            transition: background 0.2s, transform 0.1s;
+            transition: transform 0.15s, box-shadow 0.3s;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-register::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn-register:active::after {
+            opacity: 1;
         }
         .btn-register:active {
-            background: #E57A5A;
-            transform: scale(0.98);
+            transform: scale(0.96);
+            box-shadow: 0 1px 4px rgba(255,107,74,0.2);
         }
+
         .bottom-link {
             text-align: center;
             margin-top: 24px;
@@ -105,7 +136,7 @@
             color: #8C7A6B;
         }
         .bottom-link a {
-            color: #FF8C69;
+            color: #FF6B4A;
             text-decoration: none;
             font-weight: 500;
         }
@@ -134,7 +165,6 @@
 
         <form method="POST" id="regForm">
             <input type="text" name="honeypot" style="opacity:0;position:absolute;top:0;left:0;height:0;width:0;z-index:-1;" tabindex="-1" autocomplete="off">
-            <input type="text" name="honeypot" style="display:none;" tabindex="-1" autocomplete="off">
             <input type="hidden" name="form_time" id="formTime">
 
             <div class="field">
