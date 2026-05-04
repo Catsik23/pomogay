@@ -66,4 +66,3 @@ def init_db():
     migrate_db()
     conn.close()
     print("База данных готова. Все 11 таблиц созданы.")
-test
