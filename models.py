@@ -4,8 +4,11 @@ import sqlite3, os
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'pomogay.db')
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE, timeout=10)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
@@ -63,3 +66,4 @@ def init_db():
     migrate_db()
     conn.close()
     print("База данных готова. Все 11 таблиц созданы.")
+test
