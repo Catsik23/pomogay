@@ -5,40 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ goal.title }} — Помогай</title>
     <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; background: #F8F9FC; color: #1A202C; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { font-size: 24px; margin-bottom: 10px; }
-        .author { color: #4A5568; font-size: 14px; margin-bottom: 20px; }
-        .photo { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; }
-        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden; }
-        .progress-fill { background: #38A169; height: 100%; border-radius: 10px; }
-        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; color: #4A5568; }
-        .stats span { font-weight: bold; color: #1A202C; }
-        .description { line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
-        .deadline { font-size: 14px; color: #E53E3E; margin-bottom: 20px; }
-        .help-btn { width: 100%; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; }
-        .flash { padding: 10px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; }
-        .flash-success { background: #d4edda; color: #155724; }
-        .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
-        .back a { color: #FF8C69; text-decoration: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 100px; }
+        .container { max-width: 480px; margin: 0 auto; padding: 0; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; border-radius: 20px; padding: 24px; width: 90%; max-width: 360px; text-align: center; position: relative; }
-        .modal-close { position: absolute; top: 12px; right: 16px; font-size: 24px; cursor: pointer; color: #999; }
-        .amount-btn { display: block; width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #ddd; border-radius: 12px; font-size: 20px; font-weight: bold; background: white; cursor: pointer; color: #1A202C; }
-        .amount-btn:hover, .amount-btn:active { border-color: #FF8C69; }
-        .amount-btn.selected { border-color: #FF8C69; background: #fff5f2; }
-        .donate-submit { display: none; width: 100%; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; margin-top: 10px; }
-        .donate-submit.active { display: block; }
-        .manual-mode { display: none; margin-top: 16px; text-align: left; }
-        .manual-mode.active { display: block; }
-        .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .row .label { color: #4A5568; font-size: 14px; }
-        .row .value { font-weight: bold; font-size: 16px; }
-        .copy-btn { background: #F8F9FC; border: 1px solid #ddd; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .copy-btn:active { background: #eee; }
-        .explain { font-size: 11px; color: #999; margin-top: 8px; }
+        /* Шапка */
+        .header {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            padding: 16px 16px 20px;
+            color: white;
+            border-radius: 0;
+            border-bottom: 3px solid #FF8C69;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 4px 16px rgba(255,107,74,0.15);
+            position: relative;
+            z-index: 10;
+        }
+        .hamburger {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+        .hamburger:active { transform: scale(0.9); }
+        .hamburger span {
+            display: block;
+            height: 2.5px;
+            background: white;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+        .header-title {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            line-height: 32px;
+            vertical-align: bottom;
+        }
+
+        /* Боковое меню */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 90; }
+        .overlay.active { display: block; }
+        .sidebar {
+            position: fixed; top: 0; left: -280px; width: 270px; height: 100%;
+            background: white; z-index: 95; transition: left 0.25s ease;
+            display: flex; flex-direction: column; padding: 20px;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+        }
+        .sidebar.active { left: 0; }
+        .sidebar .logo { font-size: 22px; font-weight: 700; color: #FF6B4A; margin-bottom: 32px; }
+        .sidebar a {
+            display: block;
+            padding: 14px 12px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #2D2D2D;
+            text-decoration: none;
+            border-radius: 12px;
+            transition: background 0.15s;
+        }
+        .sidebar a:active { background: #F5F5F5; }
+        .sidebar .divider { height: 1px; background: #F0EDEA; margin: 12px 0; }
+
+        
+
+        /* Карточки */
+        .goals-list { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px; }
+        .goal-card {
+            display: block;
+            background: white;
+            border-radius: 18px;
+            padding: 18px 16px;
+            text-decoration: none;
+            color: #2D2D2D;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .goal-card:active { transform: scale(0.98); }
+        .goal-card .top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .goal-card .title { font-size: 18px; font-weight: 700; }
+        .type-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 10px; }
+        .badge-green { background: #E8F5E9; color: #388E3C; }
+        .badge-blue { background: #E3F2FD; color: #1976D2; }
+        .badge-orange { background: #FFF3E0; color: #E65100; }
+        .badge-purple { background: #F3E5F5; color: #7B1FA2; }
+        .badge-teal { background: #E0F2F1; color: #00695C; }
+        .amount-row { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 8px; }
+        .amount-row .collected { font-weight: 700; color: #2D2D2D; }
+        .progress-bar { background: #F0F0F0; border-radius: 6px; height: 8px; overflow: hidden; margin-bottom: 10px; }
+        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 6px; }
+        .meta { display: flex; justify-content: space-between; font-size: 13px; color: #8C7A6B; }
+
+        .fab {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+            width: calc(100% - 32px); max-width: 448px; padding: 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white; border: none; border-radius: 16px;
+            font-size: 18px; font-weight: 600; font-family: 'Inter', sans-serif;
+            text-decoration: none; text-align: center;
+            box-shadow: 0 2px 12px rgba(255,107,74,0.2);
+            z-index: 50;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .fab:active { transform: translateX(-50%) scale(0.97); }
+
+        .empty-state { text-align: center; padding: 48px 16px; color: #8C7A6B; }
     </style>
 </head>
 <body>
