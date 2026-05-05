@@ -3,104 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ goal.title }} — помогай.рф</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>{{ goal.title }} — Помогай</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; }
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #F8F9FC; color: #1A202C; }
         .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-
-        .back-link {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #FF6B4A;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            margin-bottom: 20px;
-        }
-
         h1 { font-size: 24px; margin-bottom: 10px; }
-        .author { color: #8C7A6B; font-size: 14px; margin-bottom: 20px; }
-        .photo { width: 100%; max-height: 300px; object-fit: cover; border-radius: 14px; margin-bottom: 20px; }
-
-        .progress-bar { background: #F0F0F0; border-radius: 8px; height: 12px; margin: 20px 0; overflow: hidden; }
-        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 8px; transition: width 0.4s; }
-
-        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; color: #8C7A6B; }
-        .stats span { font-weight: 700; color: #2D2D2D; }
+        .author { color: #4A5568; font-size: 14px; margin-bottom: 20px; }
+        .photo { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden; }
+        .progress-fill { background: #38A169; height: 100%; border-radius: 10px; }
+        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; color: #4A5568; }
+        .stats span { font-weight: bold; color: #1A202C; }
         .description { line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
-        .deadline { font-size: 14px; color: #E57373; margin-bottom: 20px; }
-
-        .help-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 20px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.1s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
-            margin-bottom: 24px;
-        }
-        .help-btn:active { transform: scale(0.97); }
-
-        .section { background: white; border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        .section h3 { margin: 0 0 8px; font-size: 16px; }
-        .row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #F0EDEA; }
-        .row:last-child { border-bottom: none; }
-        .row .label { color: #8C7A6B; font-size: 14px; }
-        .row .value { font-weight: 700; font-size: 16px; }
-        .copy-btn { background: #F8F9FC; border: 1px solid #E0E0E0; padding: 8px 14px; border-radius: 10px; cursor: pointer; font-size: 14px; transition: transform 0.1s; }
-        .copy-btn:active { transform: scale(0.95); background: #eee; }
-
-        .flash { padding: 10px; margin-bottom: 10px; border-radius: 10px; font-size: 14px; }
+        .deadline { font-size: 14px; color: #E53E3E; margin-bottom: 20px; }
+        .help-btn { width: 100%; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; }
+        .flash { padding: 10px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; }
         .flash-success { background: #d4edda; color: #155724; }
+        .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
+        .back a { color: #FF8C69; text-decoration: none; }
 
-        .back { display: block; margin-top: 15px; text-align: center; color: #8C7A6B; font-size: 14px; }
-        .back a { color: #FF6B4A; text-decoration: none; }
-
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: flex-end; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
         .modal.active { display: flex; }
-        .modal-content { background: white; border-radius: 20px 20px 0 0; padding: 24px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background: white; border-radius: 20px; padding: 24px; width: 90%; max-width: 360px; text-align: center; position: relative; }
         .modal-close { position: absolute; top: 12px; right: 16px; font-size: 24px; cursor: pointer; color: #999; }
-
-        .amount-btn {
-            display: block;
-            width: 100%;
-            padding: 16px;
-            margin: 10px 0;
-            border: 1.5px solid #E0E0E0;
-            border-radius: 14px;
-            font-size: 20px;
-            font-weight: 700;
-            background: white;
-            cursor: pointer;
-            color: #2D2D2D;
-            transition: transform 0.1s, border-color 0.2s;
-        }
-        .amount-btn:active, .amount-btn.selected { border-color: #FF6B4A; background: #FFF5F2; }
-
-        .donate-submit {
-            display: none;
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 20px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: transform 0.1s, box-shadow 0.2s;
-        }
+        .amount-btn { display: block; width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #ddd; border-radius: 12px; font-size: 20px; font-weight: bold; background: white; cursor: pointer; color: #1A202C; }
+        .amount-btn:hover, .amount-btn:active { border-color: #FF8C69; }
+        .amount-btn.selected { border-color: #FF8C69; background: #fff5f2; }
+        .donate-submit { display: none; width: 100%; padding: 16px; background: #FF8C69; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; margin-top: 10px; }
         .donate-submit.active { display: block; }
-        .donate-submit:active { transform: scale(0.97); }
+        .manual-mode { display: none; margin-top: 16px; text-align: left; }
+        .manual-mode.active { display: block; }
+        .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .row .label { color: #4A5568; font-size: 14px; }
+        .row .value { font-weight: bold; font-size: 16px; }
+        .copy-btn { background: #F8F9FC; border: 1px solid #ddd; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .copy-btn:active { background: #eee; }
+        .explain { font-size: 11px; color: #999; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -113,18 +51,19 @@
             {% endif %}
         {% endwith %}
 
-        <a href="/goals" class="back-link">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Назад
-        </a>
-
         <h1>{{ goal.title }}</h1>
-        <div class="author">Автор: {{ goal.author_name or 'Аноним' }}</div>
+        <div class="author">Автор: {{ author.phone }}</div>
 
         {% if goal.photo_url %}
         <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
         {% endif %}
 
+        {% if donor_count > 0 %}
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#4A5568;margin-bottom:8px;">
+            <span>🤝 Помогли {{ donor_count }} чел.</span>
+            {% if last_donation %}<span>🕐 Последний донат: {{ last_donation[:16] }}</span>{% endif %}
+        </div>
+        {% endif %}
         <div class="stats">
             <div>Собрано: <span>{{ "%.0f"|format(goal.amount_collected) }} ₽</span></div>
             <div>Цель: <span>{{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
@@ -141,55 +80,83 @@
 
         <div class="deadline">Осталось: {{ goal.ends_at[:10] }}</div>
 
+        
+        {% if donations %}
+        <h3 style="margin-top: 24px;">Переводы</h3>
+        {% for d in donations %}
+        <div style="background:white;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
+            <span>{{ "%.0f"|format(d.amount_reported) }} ₽ — {% if d.is_anonymous or d.donor_id is none %}Аноним{% else %}{{ d.donor_id }}{% endif %} ·  
+            {% if d.status == 'donor_confirmed' %}ожидает
+            {% elif d.status == 'recipient_confirmed' %}подтверждён
+            {% elif d.status == 'completed' %}засчитан
+            {% else %}{{ d.status }}
+            {% endif %}</span>
+            {% if d.warm_word %}<div style="font-size:13px;color:#4A5568;margin-top:4px;font-style:italic;">«{{ d.warm_word }}»</div>{% endif %}
+            {% if is_author and d.status == 'donor_confirmed' %}
+            <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
+                <button type="submit" style="background:#38A169;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;">✅ Подтверждаю</button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endif %}
+
         {% if not is_author %}
         <button class="help-btn" onclick="openModal()">Помочь</button>
         {% endif %}
 
-        {% if donations %}
-        <div class="section">
-            <h3>Переводы</h3>
-            {% for d in donations %}
-            <div class="row">
-                <span>{{ "%.0f"|format(d.amount_reported) }} ₽ — 
-                {% if d.status == 'donor_confirmed' %}ожидает
-                {% elif d.status == 'recipient_confirmed' %}подтверждён
-                {% elif d.status == 'completed' %}засчитан
-                {% else %}{{ d.status }}
-                {% endif %}</span>
-                {% if is_author and d.status == 'donor_confirmed' %}
-                <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
-                    <button type="submit" style="background:#5B9A6B;color:white;border:none;padding:8px 14px;border-radius:10px;cursor:pointer;font-size:13px;">Подтверждаю</button>
-                </form>
-                {% endif %}
-            </div>
-            {% endfor %}
+        {% if pending_donations %}
+        <h3 style="margin-top: 24px;">Последние переводы</h3>
+        {% for d in pending_donations %}
+        <div style="background:white;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:14px;">
+            {{ "%.0f"|format(d.amount_reported) }} ₽ — {% if d.is_anonymous or d.donor_id is none %}Аноним{% else %}{{ d.donor_id }}{% endif %} ·  
+            {% if d.status == 'donor_confirmed' %}ожидает подтверждения
+            {% elif d.status == 'recipient_confirmed' %}подтверждён
+            {% elif d.status == 'completed' %}засчитан
+            {% endif %}
         </div>
+        {% endfor %}
         {% endif %}
 
         <div class="back"><a href="/goals">← К ленте целей</a></div>
     </div>
 
+    <!-- Модальное окно помощи -->
     <div class="modal" id="donateModal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeModal()">×</span>
-            <h3 style="margin:0 0 16px;">Выберите сумму</h3>
+            <h3 style="margin: 0 0 16px;">Выберите сумму</h3>
+
+            <!-- Кнопки сумм -->
             <button class="amount-btn" onclick="selectAmount(100)">100 ₽</button>
             <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
             <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
+
             <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
-            <div style="margin-top:8px;">
-                <input type="text" id="warmWordInput" autofocus maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #E0E0E0;border-radius:10px;font-size:14px;box-sizing:border-box;">
-            </div>
-            <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#8C7A6B;">
-                <input type="checkbox" id="anonymousCheck" style="width:auto;margin-right:8px;">
-                <label for="anonymousCheck" style="cursor:pointer;">Помочь анонимно</label>
-            </div>
-            <div id="manualMode" style="display:none;margin-top:16px;">
-                <p style="color:#8C7A6B;font-size:14px;margin-bottom:12px;">Переведите деньги по реквизитам:</p>
+
+            <!-- Ручной режим — ВСЕ ПОЛЯ ВНЕ ФОРМЫ -->
+            <div class="manual-mode" id="manualMode">
+                <p style="color: #4A5568; font-size: 14px;">Переведите деньги по реквизитам:</p>
+                
                 <div class="row">
                     <span class="label">Номер</span>
                     <span class="value">{{ author.phone }}</span>
-                    <button class="copy-btn" onclick="copyText('{{ author.phone }}', this)">📋</button>
+                    <button class="copy-btn" id="copyPhoneBtn" onclick="
+    var phone = '{{ author.phone }}';
+    var btn = document.getElementById('copyPhoneBtn');
+    var ta = document.createElement('textarea');
+    ta.value = phone;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+    btn.textContent = '✅';
+    setTimeout(function(){ btn.textContent = '📋'; }, 1500);
+    document.getElementById('confirmForm').style.display = 'block';
+    document.getElementById('confirmHint').style.display = 'block';
+">📋</button>
                 </div>
                 <div class="row">
                     <span class="label">Сумма</span>
@@ -198,14 +165,26 @@
                 <div class="row">
                     <span class="label">Комментарий</span>
                     <span class="value">Благотворительный подарок</span>
-                    <button class="copy-btn" onclick="copyText('Благотворительный подарок', this)">📋</button>
                 </div>
-                <p style="font-size:11px;color:#999;margin-top:8px;">Это слово защищает получателя. Пожалуйста, не меняйте его.</p>
-                <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;margin-top:12px;">
+                <p class="explain">Это слово защищает получателя. Пожалуйста, не меняйте его.</p>
+
+                <!-- Тёплое слово — СНАРУЖИ -->
+                <div style="margin-top:12px;">
+                    <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
+                </div>
+
+                <!-- Галочка анонимности — СНАРУЖИ -->
+                <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#4A5568;">
+                    <input type="checkbox" id="anonymousCheck" style="width:auto;margin-right:8px;">
+                    <label for="anonymousCheck" style="cursor:pointer;">Помочь анонимно</label>
+                </div>
+
+                <!-- ФОРМА: только hidden + кнопка -->
+                <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
-                    <button type="submit" style="width:100%;padding:16px;background:#5B9A6B;color:white;border:none;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;transition:transform 0.1s;">Я перевёл(ла)</button>
+                    <button type="submit" style="width:100%;padding:16px;background:#38A169;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;">✅ Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
@@ -213,47 +192,89 @@
 
     <script>
         var selectedAmount = 0;
-        function openModal() { document.getElementById('donateModal').classList.add('active'); selectedAmount=0; document.getElementById('donateSubmit').classList.remove('active'); document.getElementById('manualMode').style.display='none'; document.querySelectorAll('.amount-btn').forEach(function(b){b.classList.remove('selected');}); }
-        function closeModal() { document.getElementById('donateModal').classList.remove('active'); }
-        function selectAmount(amount) { selectedAmount=amount; document.querySelectorAll('.amount-btn').forEach(function(b){b.classList.remove('selected');}); event.target.classList.add('selected'); document.getElementById('selectedAmount').textContent=amount; document.getElementById('donateSubmit').classList.add('active'); document.getElementById('manualAmount').textContent=amount+' ₽'; document.getElementById('confirmAmount').value=amount; }
-        function startDonate() {
-            if(!selectedAmount) return;
-            var phone='{{ author.phone }}';
-            var deeplink='sbp://pay?recipient='+phone+'&amount='+selectedAmount;
-            var start=Date.now();
-            window.location.href=deeplink;
-            setTimeout(function(){
-                if(Date.now()-start < 2500){
-                    // План Б: Deeplink не сработал — ручной режим
-                    document.getElementById('manualMode').style.display='block';
-                } else {
-                    // План А: Deeplink сработал — показываем "Я перевёл"
-                    document.getElementById('confirmForm').style.display='block';
-                    document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
-                    document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
-                }
-            },2000);
+
+        function openModal() {
+            document.getElementById('donateModal').classList.add('active');
+            selectedAmount = 0;
+            document.getElementById('donateSubmit').classList.remove('active');
+            document.getElementById('manualMode').classList.remove('active');
+            document.getElementById('confirmForm').style.display = 'none';
+            document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
+            document.getElementById('copyPhoneBtn').textContent = '📋';
+            document.getElementById('warmWordInput').value = '';
+            document.getElementById('anonymousCheck').checked = false;
         }
-        function copyText(text,btn){
-            if(navigator.clipboard){
-                navigator.clipboard.writeText(text).then(function(){
-                    btn.textContent='✅';
-                    setTimeout(function(){ btn.textContent='📋'; },1500);
-                    // Если скопирован номер телефона — показываем "Я перевёл"
-                    if(text==='{{ author.phone }}'){
-                        document.getElementById('confirmForm').style.display='block';
-                        document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
-                        document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
-                    }
+
+        function closeModal() {
+            document.getElementById('donateModal').classList.remove('active');
+        }
+
+        function selectAmount(amount) {
+            selectedAmount = amount;
+            document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
+            event.target.classList.add('selected');
+            document.getElementById('selectedAmount').textContent = amount;
+            document.getElementById('donateSubmit').classList.add('active');
+            document.getElementById('manualAmount').textContent = amount + ' ₽';
+            document.getElementById('confirmAmount').value = amount;
+        }
+
+        function startDonate() {
+            if (!selectedAmount) return;
+            var phone = '{{ author.phone }}';
+            var comment = encodeURIComponent('Благотворительный подарок');
+            var deeplink = 'sbp://pay?recipient=' + phone + '&amount=' + selectedAmount + '&message=' + comment;
+            
+            var start = Date.now();
+            window.location.href = deeplink;
+            
+            setTimeout(function() {
+                if (Date.now() - start < 2000) {
+                    document.getElementById('manualMode').classList.add('active');
+                }
+            }, 1500);
+        }
+
+        function copyPhoneAndShowConfirm() {
+            var phone = '{{ author.phone }}';
+            var btn = document.getElementById('copyPhoneBtn');
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(phone).then(function() {
+                    btn.textContent = '✅';
+                    showConfirm();
+                }).catch(function() {
+                    btn.textContent = '✅';
+                    showConfirm();
                 });
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = phone;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch(e) {}
+                document.body.removeChild(ta);
+                btn.textContent = '✅';
+                showConfirm();
             }
         }
-        // Обновляем скрытые поля перед отправкой
-        document.getElementById('confirmForm').addEventListener('submit',function(){
-            document.getElementById('confirmWarmWord').value=document.getElementById('warmWordInput').value;
-            document.getElementById('confirmAnonymous').value=document.getElementById('anonymousCheck').checked?'1':'0';
+
+        function showConfirm() {
+            document.getElementById('confirmForm').style.display = 'block';
+        }
+
+        // Перед отправкой копируем значения из внешних полей в форму
+        document.getElementById('confirmForm').addEventListener('submit', function() {
+            document.getElementById('confirmWarmWord').value = document.getElementById('warmWordInput').value;
+            document.getElementById('confirmAnonymous').value = document.getElementById('anonymousCheck').checked ? '1' : '0';
         });
-        document.getElementById('donateModal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
+
+        // Закрытие по клику вне окна
+        document.getElementById('donateModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
     </script>
 </body>
 </html>
