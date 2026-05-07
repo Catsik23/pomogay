@@ -5,40 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ goal.title }} — Помогай</title>
     <style>
-        body { font-family: -apple-system, sans-serif; margin: 0; background: #F8F9FC; color: #1A202C; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        h1 { font-size: 24px; margin-bottom: 10px; }
-        .author { color: #4A5568; font-size: 14px; margin-bottom: 20px; }
-        .photo { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 20px; }
-        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden; }
-        .progress-fill { background: #5B9A6B; height: 100%; border-radius: 10px; }
-        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; color: #4A5568; }
-        .stats span { font-weight: bold; color: #1A202C; }
-        .description { line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap; }
-        .deadline { font-size: 14px; color: #E53E3E; margin-bottom: 20px; }
-        .help-btn { width: 100%; padding: 16px; background: #FF5A3C; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; }
-        .flash { padding: 10px; margin-bottom: 10px; border-radius: 8px; font-size: 14px; }
-        .flash-success { background: #d4edda; color: #155724; }
-        .back { display: block; margin-top: 15px; text-align: center; color: #4A5568; font-size: 14px; }
-        .back a { color: #FF5A3C; text-decoration: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; padding-bottom: 40px; }
+        .container { max-width: 480px; margin: 0 auto; padding: 0; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+        /* Шапка */
+        .goal-header {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            padding: 20px 16px 18px;
+            color: white;
+            border-radius: 0;
+            border-bottom: 3px solid #FF8C69;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .goal-header::after {
+            content: '';
+            position: absolute;
+            top: -30px; right: -30px;
+            width: 80px; height: 80px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .goal-header::before {
+            content: '';
+            position: absolute;
+            bottom: -15px; left: 15px;
+            width: 40px; height: 40px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .goal-header h1 { font-size: 22px; font-weight: 700; }
+        .goal-header .author { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+
+        /* Контент */
+        .content { padding: 16px; }
+        .photo { width: 100%; max-height: 280px; object-fit: cover; border-radius: 14px; margin-bottom: 16px; }
+        .progress-bar { background: #F0F0F0; border-radius: 8px; height: 12px; overflow: hidden; margin: 16px 0; }
+        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
+        .stats { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 16px; }
+        .stats span { font-weight: 700; color: #2D2D2D; }
+        .description { line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; font-size: 15px; color: #2D2D2D; }
+        .deadline { font-size: 14px; color: #E57373; margin-bottom: 16px; }
+
+        /* Кнопка Помочь */
+        .help-btn {
+            display: block; width: calc(100% - 32px); margin: 0 auto 20px;
+            padding: 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white; border: none; border-radius: 14px;
+            font-size: 18px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
+            transition: transform 0.1s, box-shadow 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .help-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .help-btn:active::after { opacity: 1; }
+        .help-btn:active { transform: scale(0.97); }
+
+        /* Модальное окно */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: flex-end; }
         .modal.active { display: flex; }
-        .modal-content { background: white; border-radius: 20px; padding: 24px; width: 90%; max-width: 360px; text-align: center; position: relative; }
-        .modal-close { position: absolute; top: 12px; right: 16px; font-size: 24px; cursor: pointer; color: #999; }
-        .amount-btn { display: block; width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #ddd; border-radius: 12px; font-size: 20px; font-weight: bold; background: white; cursor: pointer; color: #1A202C; }
+        .modal-content { background: white; border-radius: 20px 20px 0 0; padding: 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-close { position: absolute; top: 14px; right: 16px; font-size: 22px; cursor: pointer; color: #999; }
+        .amount-btn { display: block; width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #E0E0E0; border-radius: 14px; font-size: 18px; font-weight: 700; background: white; cursor: pointer; color: #2D2D2D; transition: border-color 0.2s; }
         .amount-btn:hover, .amount-btn:active { border-color: #FF5A3C; }
-        .amount-btn.selected { border-color: #FF5A3C; background: #fff5f2; }
-        .donate-submit { display: none; width: 100%; padding: 16px; background: #FF5A3C; color: white; border: none; border-radius: 12px; font-size: 20px; cursor: pointer; margin-top: 10px; }
+        .amount-btn.selected { border-color: #FF5A3C; background: #FFF5F2; }
+        .donate-submit { display: none; width: 100%; padding: 16px; background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%); color: white; border: none; border-radius: 14px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 8px rgba(255,107,74,0.15); transition: transform 0.1s; }
         .donate-submit.active { display: block; }
+        .donate-submit:active { transform: scale(0.97); }
         .manual-mode { display: none; margin-top: 16px; text-align: left; }
         .manual-mode.active { display: block; }
-        .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .row .label { color: #4A5568; font-size: 14px; }
-        .row .value { font-weight: bold; font-size: 16px; }
-        .copy-btn { background: #F8F9FC; border: 1px solid #ddd; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
-        .copy-btn:active { background: #eee; }
-        .explain { font-size: 11px; color: #999; margin-top: 8px; }
+        .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #F0EDEA; }
+        .row .label { color: #8C7A6B; font-size: 14px; }
+        .row .value { font-weight: 700; font-size: 16px; color: #2D2D2D; }
+        .copy-btn { background: #F8F9FC; border: 1px solid #E0E0E0; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .copy-btn:active { background: #F0EDEA; }
+        .explain { font-size: 12px; color: #8C7A6B; margin-top: 8px; }
+
+        /* Flash */
+        .flash { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; }
+        .flash-success { background: #d4edda; color: #155724; }
+        .flash-danger { background: #f8d7da; color: #721c24; }
+
+        /* Назад */
+        .back { display: block; margin-top: 16px; text-align: center; color: #8C7A6B; font-size: 14px; }
+        .back a { color: #FF5A3C; text-decoration: none; }
+
+        /* Список донатов */
+        .donation-item { background: white; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
+        .donation-item .warm-word { font-size: 13px; color: #8C7A6B; margin-top: 4px; font-style: italic; }
+        .confirm-btn { background: #5B9A6B; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
     </style>
 </head>
 <body>
