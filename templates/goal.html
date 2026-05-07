@@ -7,7 +7,7 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; padding-bottom: 40px; }
-        .container { max-width: 480px; margin: 0 auto; padding: 0; }
+        .container { max-width: 500px; margin: 0 auto; padding: 0; }
 
         /* Шапка */
         .goal-header {
@@ -37,30 +37,75 @@
             border-radius: 50%;
         }
         .goal-header h1 { font-size: 22px; font-weight: 700; }
-        .goal-header .author { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+        .goal-header .author-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 14px; opacity: 0.85; }
+        .goal-header .avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px; flex-shrink: 0;
+        }
 
         /* Контент */
-        .content { padding: 16px; }
-        .photo { width: 100%; max-height: 280px; object-fit: cover; border-radius: 14px; margin-bottom: 16px; }
-        .progress-bar { background: #F0F0F0; border-radius: 8px; height: 12px; overflow: hidden; margin: 16px 0; }
-        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
-        .stats { display: flex; justify-content: space-between; font-size: 14px; color: #8C7A6B; margin-bottom: 16px; }
-        .stats span { font-weight: 700; color: #2D2D2D; }
-        .description { line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; font-size: 15px; color: #2D2D2D; }
-        .deadline { font-size: 14px; color: #E57373; margin-bottom: 16px; }
+        .content { padding: 20px 16px; }
+        .photo { width: 100%; max-height: 280px; object-fit: cover; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 
-        /* Кнопка Помочь */
-        .help-btn {
-            display: block; width: calc(100% - 32px); margin: 0 auto 20px;
+        /* Карточка со статистикой */
+        .stats-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            margin-bottom: 16px;
+        }
+        .stats-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .stats-row .collected { font-size: 28px; font-weight: 700; color: #2D2D2D; }
+        .stats-row .goal { font-size: 14px; color: #8C7A6B; }
+        .stats-row .goal span { font-weight: 600; color: #2D2D2D; }
+        .progress-bar { background: #F0F0F0; border-radius: 8px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+        .progress-fill { background: linear-gradient(90deg, #5B9A6B, #7BC67E); height: 100%; border-radius: 8px; transition: width 0.4s ease; }
+        .stats-meta { display: flex; justify-content: space-between; font-size: 13px; color: #8C7A6B; }
+        .stats-meta span { display: flex; align-items: center; gap: 4px; }
+        .deadline { font-size: 13px; color: #E57373; margin-top: 4px; }
+
+        /* Описание */
+        .description { font-size: 15px; line-height: 1.6; color: #2D2D2D; margin-bottom: 20px; white-space: pre-wrap; }
+
+        /* Список донатов */
+        .donations-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; color: #2D2D2D; }
+        .donation-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 0; border-bottom: 1px solid #F0EDEA;
+        }
+        .donation-item:last-child { border-bottom: none; }
+        .donation-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: #F0EDEA; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 600; color: #8C7A6B; flex-shrink: 0;
+        }
+        .donation-info { flex: 1; }
+        .donation-info .donor-name { font-size: 14px; font-weight: 600; color: #2D2D2D; }
+        .donation-info .donor-meta { font-size: 12px; color: #8C7A6B; }
+        .donation-amount { font-size: 16px; font-weight: 700; color: #2D2D2D; }
+        .warm-word { font-size: 13px; color: #8C7A6B; font-style: italic; margin-top: 2px; }
+        .confirm-btn {
+            background: #5B9A6B; color: white; border: none;
+            padding: 8px 14px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 600; white-space: nowrap;
+        }
+        .confirm-btn:active { transform: scale(0.97); }
+
+        /* Кнопки */
+        .btn-help {
+            display: block; width: 100%;
             padding: 16px;
             background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
             color: white; border: none; border-radius: 14px;
             font-size: 18px; font-weight: 600; cursor: pointer;
             box-shadow: 0 2px 8px rgba(255,107,74,0.15);
-            transition: transform 0.1s, box-shadow 0.2s;
+            transition: transform 0.1s; margin-top: 12px;
             position: relative; overflow: hidden;
         }
-        .help-btn::after {
+        .btn-help::after {
             content: '';
             position: absolute;
             top: -50%; left: -50%;
@@ -68,18 +113,29 @@
             background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
             opacity: 0; transition: opacity 0.3s;
         }
-        .help-btn:active::after { opacity: 1; }
-        .help-btn:active { transform: scale(0.97); }
+        .btn-help:active::after { opacity: 1; }
+        .btn-help:active { transform: scale(0.97); }
+
+        .btn-back {
+            display: block; width: 100%;
+            padding: 14px; text-align: center;
+            border: 1px solid #FF5A3C; color: #FF5A3C;
+            background: white; border-radius: 14px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            text-decoration: none; margin-top: 8px;
+            transition: transform 0.1s;
+        }
+        .btn-back:active { transform: scale(0.97); }
 
         /* Модальное окно */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: flex-end; }
         .modal.active { display: flex; }
-        .modal-content { background: white; border-radius: 20px 20px 0 0; padding: 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; position: relative; }
+        .modal-content { background: white; border-radius: 20px 20px 0 0; padding: 24px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative; }
         .modal-close { position: absolute; top: 14px; right: 16px; font-size: 22px; cursor: pointer; color: #999; }
         .amount-btn { display: block; width: 100%; padding: 16px; margin: 10px 0; border: 2px solid #E0E0E0; border-radius: 14px; font-size: 18px; font-weight: 700; background: white; cursor: pointer; color: #2D2D2D; transition: border-color 0.2s; }
         .amount-btn:hover, .amount-btn:active { border-color: #FF5A3C; }
         .amount-btn.selected { border-color: #FF5A3C; background: #FFF5F2; }
-        .donate-submit { display: none; width: 100%; padding: 16px; background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%); color: white; border: none; border-radius: 14px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 8px rgba(255,107,74,0.15); transition: transform 0.1s; }
+        .donate-submit { display: none; width: 100%; padding: 16px; background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%); color: white; border: none; border-radius: 14px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 8px rgba(255,107,74,0.15); }
         .donate-submit.active { display: block; }
         .donate-submit:active { transform: scale(0.97); }
         .manual-mode { display: none; margin-top: 16px; text-align: left; }
@@ -95,15 +151,6 @@
         .flash { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; }
         .flash-success { background: #d4edda; color: #155724; }
         .flash-danger { background: #f8d7da; color: #721c24; }
-
-        /* Назад */
-        .back { display: block; margin-top: 16px; text-align: center; color: #8C7A6B; font-size: 14px; }
-        .back a { color: #FF5A3C; text-decoration: none; }
-
-        /* Список донатов */
-        .donation-item { background: white; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; font-size: 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.03); }
-        .donation-item .warm-word { font-size: 13px; color: #8C7A6B; margin-top: 4px; font-style: italic; }
-        .confirm-btn { background: #5B9A6B; color: white; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
     </style>
 </head>
 <body>
