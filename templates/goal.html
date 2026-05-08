@@ -200,7 +200,7 @@
                     <span>🕐 {{ last_donation[:16] }}</span>
                     {% endif %}
                 </div>
-                <div class="deadline">Активен до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</div>
+                <div class="deadline">Активен до {{ goal.ends_at[8:10]|int }} {% set m = goal.ends_at[5:7] %}{% if m == '01' %}января{% elif m == '02' %}февраля{% elif m == '03' %}марта{% elif m == '04' %}апреля{% elif m == '05' %}мая{% elif m == '06' %}июня{% elif m == '07' %}июля{% elif m == '08' %}августа{% elif m == '09' %}сентября{% elif m == '10' %}октября{% elif m == '11' %}ноября{% elif m == '12' %}декабря{% endif %} {{ goal.ends_at[:4] }}</div>
             </div>
 
             {% if goal.description %}
@@ -254,6 +254,9 @@
             <button class="amount-btn" onclick="selectAmount(100)">100 ₽</button>
             <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
             <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
+            <div id="warmWordBlock" style="display:none;margin-top:8px;">
+                <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:14px;box-sizing:border-box;">
+            </div>
 
             <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
 
@@ -285,9 +288,10 @@
                 </div>
                 <div class="row">
                     <span class="label">Комментарий</span>
+                <div style="font-size:10px;color:#8C7A6B;">юридическая чистота</div>
                     <span class="value">Благотворительный подарок</span>
                 </div>
-                <p class="explain">Это защищает получателя.</p>
+                
 
                 <div style="margin-top:12px;">
                     <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:14px;box-sizing:border-box;">
@@ -331,7 +335,7 @@
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
             event.target.classList.add('selected');
             document.getElementById('selectedAmount').textContent = amount;
-            document.getElementById('donateSubmit').classList.add('active');
+            document.getElementById('donateSubmit').classList.add('active');document.getElementById('warmWordBlock').style.display='block';
             document.getElementById('manualAmount').textContent = amount + ' ₽';
             document.getElementById('confirmAmount').value = amount;
         }
