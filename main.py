@@ -334,9 +334,16 @@ def goal_page(goal_id):
     last_donation = db.execute("SELECT MAX(donor_confirmed_at) FROM donations WHERE goal_id = ?", (goal_id,)).fetchone()[0]
     db.close()
     pct = int((goal['amount_collected'] / goal['amount_goal']) * 100) if goal['amount_goal'] > 0 else 0
+    # Форматируем дату
+    months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
+    try:
+        parts = goal['ends_at'][:10].split('-')
+        ends_at_formatted = f"{int(parts[2])} {months[int(parts[1])-1]} {parts[0]}"
+    except:
+        ends_at_formatted = goal['ends_at'][:10]
     user = get_current_user()
     is_author = (user and user['id'] == goal['user_id'])
-    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation)
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted)
 
 @app.route('/goals')
 def goals_list():

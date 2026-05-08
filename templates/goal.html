@@ -200,7 +200,7 @@
                     <span>🕐 {{ last_donation[:16] }}</span>
                     {% endif %}
                 </div>
-                <div class="deadline">Активен до {{ goal.ends_at[:10] }}</div>
+                <div class="deadline">Активен до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</div>
             </div>
 
             {% if goal.description %}
@@ -241,7 +241,7 @@
             {% endif %}
 
             <!-- Кнопка назад -->
-            <a href="/goals" class="btn-back">← К ленте целей</a>
+            <a href="/goals" class="btn-help" style="margin-top:12px;">К ленте целей</a>
         </div>
     </div>
 
