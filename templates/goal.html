@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ goal.title }} — Помогай</title>
+    <link rel="stylesheet" href="/static/style.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; padding-bottom: 40px; }
@@ -163,97 +164,126 @@
             {% endif %}
         {% endwith %}
 
-        <h1>{{ goal.title }}</h1>
-        <div class="author">Автор: {{ author.phone }}</div>
-
-        {% if goal.photo_url %}
-        <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
-        {% endif %}
-
-        {% if donor_count > 0 %}
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:#4A5568;margin-bottom:8px;">
-            <span>🤝 Помогли {{ donor_count }} чел.</span>
-            {% if last_donation %}<span>🕐 Последний донат: {{ last_donation[:16] }}</span>{% endif %}
-        </div>
-        {% endif %}
-        <div class="stats">
-            <div>Собрано: <span>{{ "%.0f"|format(goal.amount_collected) }} ₽</span></div>
-            <div>Цель: <span>{{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
-            <div>Прогресс: <span>{{ progress }}%</span></div>
+        <!-- Шапка -->
+        <div class="goal-header">
+            <h1>{{ goal.title }}</h1>
+            <div class="author-row">
+                <div class="avatar">🐱</div>
+                <span>{{ author.name or 'Аноним' }}</span>
+            </div>
         </div>
 
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: {{ progress }}%"></div>
-        </div>
-
-        {% if goal.description %}
-        <div class="description">{{ goal.description }}</div>
-        {% endif %}
-
-        <div class="deadline">Осталось: {{ goal.ends_at[:10] }}</div>
-
-        
-        {% if donations %}
-        <h3 style="margin-top: 24px;">Переводы</h3>
-        {% for d in donations %}
-        <div style="background:white;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:14px;display:flex;justify-content:space-between;align-items:center;">
-            <span>{{ "%.0f"|format(d.amount_reported) }} ₽ — {% if d.is_anonymous or d.donor_id is none %}Аноним{% else %}{{ d.donor_id }}{% endif %} ·  
-            {% if d.status == 'donor_confirmed' %}ожидает
-            {% elif d.status == 'recipient_confirmed' %}подтверждён
-            {% elif d.status == 'completed' %}засчитан
-            {% else %}{{ d.status }}
-            {% endif %}</span>
-            {% if d.warm_word %}<div style="font-size:13px;color:#4A5568;margin-top:4px;font-style:italic;">«{{ d.warm_word }}»</div>{% endif %}
-            {% if is_author and d.status == 'donor_confirmed' %}
-            <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
-                <button type="submit" style="background:#5B9A6B;color:white;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;">✅ Подтверждаю</button>
-            </form>
+        <div class="content">
+            {% if goal.photo_url %}
+            <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
             {% endif %}
-        </div>
-        {% endfor %}
-        {% endif %}
 
-        {% if not is_author %}
-        <button class="help-btn" onclick="openModal()">Помочь</button>
-        {% endif %}
+            <!-- Карточка статистики -->
+            <div class="stats-card">
+                <div class="stats-row">
+                    <div>
+                        <div class="collected">{{ "%.0f"|format(goal.amount_collected) }} ₽</div>
+                        <div class="goal">из <span>{{ "%.0f"|format(goal.amount_goal) }} ₽</span></div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:24px;font-weight:700;color:#2D2D2D;">{{ progress }}%</div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ progress }}%;"></div>
+                </div>
+                <div class="stats-meta">
+                    {% if donor_count > 0 %}
+                    <span>🤝 {{ donor_count }} чел.</span>
+                    {% endif %}
+                    {% if last_donation %}
+                    
+                    {% endif %}
+                </div>
+                <div class="deadline">Активен до {{ goal.ends_at[8:10]|int }} {% set m = goal.ends_at[5:7] %}{% if m == '01' %}января{% elif m == '02' %}февраля{% elif m == '03' %}марта{% elif m == '04' %}апреля{% elif m == '05' %}мая{% elif m == '06' %}июня{% elif m == '07' %}июля{% elif m == '08' %}августа{% elif m == '09' %}сентября{% elif m == '10' %}октября{% elif m == '11' %}ноября{% elif m == '12' %}декабря{% endif %} {{ goal.ends_at[:4] }}</div>
+            </div>
 
-        {% if pending_donations %}
-        <h3 style="margin-top: 24px;">Последние переводы</h3>
-        {% for d in pending_donations %}
-        <div style="background:white;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:14px;">
-            {{ "%.0f"|format(d.amount_reported) }} ₽ — {% if d.is_anonymous or d.donor_id is none %}Аноним{% else %}{{ d.donor_id }}{% endif %} ·  
-            {% if d.status == 'donor_confirmed' %}ожидает подтверждения
-            {% elif d.status == 'recipient_confirmed' %}подтверждён
-            {% elif d.status == 'completed' %}засчитан
+            {% if goal.description %}
+            <div class="description">{{ goal.description }}</div>
             {% endif %}
-        </div>
-        {% endfor %}
-        {% endif %}
 
-        <div class="back"><a href="/goals">← К ленте целей</a></div>
+            <!-- Кнопка Помочь -->
+            {% if not is_author %}
+            <button class="btn-help" onclick="openModal()">Помочь</button>
+            {% endif %}
+
+            <!-- Список донатов -->
+            {% if donations %}
+            <h3 class="donations-title">Переводы</h3>
+            {% for d in donations %}
+            <div class="donation-item">
+                <div class="donation-avatar">🐱</div>
+                <div class="donation-info">
+                    <div class="donor-name">{{ d.donor_name or 'Аноним' }}</div>
+                    <div class="donor-meta">
+                        {% if d.status == 'donor_confirmed' %}ожидает
+                        {% elif d.status == 'recipient_confirmed' %}подтверждён
+                        {% elif d.status == 'completed' %}засчитан
+                        {% else %}{{ d.status }}{% endif %}
+                    </div>
+                    {% if d.warm_word %}
+                    <div class="warm-word">«{{ d.warm_word }}»</div>
+                    {% endif %}
+                </div>
+                <div class="donation-amount">{{ "%.0f"|format(d.amount_reported) }} ₽</div>
+                {% if is_author and d.status == 'donor_confirmed' %}
+                <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
+                    <button type="submit" class="confirm-btn">✅ Подтверждаю</button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            <!-- Кнопка назад -->
+            <a href="/goals" class="btn-back" style="text-align:center;">Лента целей</a>
+        </div>
     </div>
 
     <!-- Модальное окно помощи -->
     <div class="modal" id="donateModal">
         <div class="modal-content">
             <span class="modal-close" onclick="closeModal()">×</span>
-            <h3 style="margin: 0 0 16px;">Выберите сумму</h3>
+            <h3 style="margin:0 0 16px;">Выберите сумму</h3>
 
-            <!-- Кнопки сумм -->
             <button class="amount-btn" onclick="selectAmount(100)">100 ₽</button>
             <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
             <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
+            <div id="warmWordBlock" style="display:none;margin-top:8px;">
+                <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div id="warmWordBlock" style="display:none;margin-top:8px;">
+                <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:14px;box-sizing:border-box;">
+            </div>
 
             <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
 
-            <!-- Ручной режим — ВСЕ ПОЛЯ ВНЕ ФОРМЫ -->
             <div class="manual-mode" id="manualMode">
-                <p style="color: #4A5568; font-size: 14px;">Переведите деньги по реквизитам:</p>
-                
+                <p style="color:#8C7A6B;font-size:14px;">Переведите деньги по реквизитам:</p>
                 <div class="row">
                     <span class="label">Номер</span>
                     <span class="value">{{ author.phone }}</span>
-                    <button class="copy-btn" id="copyPhoneBtn" onclick="copyPhoneAndShowConfirm()">📋</button>
+                    <button class="copy-btn" id="copyPhoneBtn" style="background:#F5F5F5;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:500;" onclick="
+                        var phone = '{{ author.phone }}';
+                        var btn = document.getElementById('copyPhoneBtn');
+                        var ta = document.createElement('textarea');
+                        ta.value = phone;
+                        ta.style.position = 'fixed';
+                        ta.style.left = '-9999px';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        try { document.execCommand('copy'); } catch(e) {}
+                        document.body.removeChild(ta);
+                        btn.textContent = '✅';
+                        setTimeout(function(){ btn.textContent = '📋'; }, 1500);
+                        document.getElementById('confirmForm').style.display = 'block';
+                        document.getElementById('confirmHint').style.display = 'block';
+                    ">📋</button>
                 </div>
                 <div class="row">
                     <span class="label">Сумма</span>
@@ -261,27 +291,24 @@
                 </div>
                 <div class="row">
                     <span class="label">Комментарий</span>
+                <div style="font-size:10px;color:#8C7A6B;">юридическая чистота</div>
                     <span class="value">Благотворительный подарок</span>
                 </div>
-                <p class="explain">Это слово защищает получателя. Пожалуйста, не меняйте его.</p>
+                
 
-                <!-- Тёплое слово — СНАРУЖИ -->
                 <div style="margin-top:12px;">
-                    <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;font-size:14px;box-sizing:border-box;">
+                    <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:14px;box-sizing:border-box;">
                 </div>
-
-                <!-- Галочка анонимности — СНАРУЖИ -->
-                <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#4A5568;">
+                <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#8C7A6B;">
                     <input type="checkbox" id="anonymousCheck" style="width:auto;margin-right:8px;">
                     <label for="anonymousCheck" style="cursor:pointer;">Помочь анонимно</label>
                 </div>
 
-                <!-- ФОРМА: только hidden + кнопка -->
                 <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
-                    <button type="submit" style="width:100%;padding:16px;background:#5B9A6B;color:white;border:none;border-radius:12px;font-size:18px;cursor:pointer;margin-top:12px;">✅ Я перевёл(ла)</button>
+                    <button type="submit" class="donate-submit active" style="margin-top:12px;background:#5B9A6B;">✅ Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
@@ -311,7 +338,7 @@
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
             event.target.classList.add('selected');
             document.getElementById('selectedAmount').textContent = amount;
-            document.getElementById('donateSubmit').classList.add('active');
+            document.getElementById('donateSubmit').classList.add('active');document.getElementById('warmWordBlock').style.display='block';document.getElementById('warmWordBlock').style.display='block';
             document.getElementById('manualAmount').textContent = amount + ' ₽';
             document.getElementById('confirmAmount').value = amount;
         }
@@ -319,56 +346,14 @@
         function startDonate() {
             if (!selectedAmount) return;
             var phone = '{{ author.phone }}';
-            var comment = encodeURIComponent('Благотворительный подарок');
-            var deeplink = 'sbp://pay?recipient=' + phone + '&amount=' + selectedAmount + '&message=' + comment;
-            
-            var start = Date.now();
-            window.location.href = deeplink;
-            
-            setTimeout(function() {
-                if (Date.now() - start < 2000) {
-                    document.getElementById('manualMode').classList.add('active');
-                }
-            }, 1500);
+            document.getElementById('manualMode').classList.add('active');
         }
 
-        function copyPhoneAndShowConfirm() {
-            var phone = '{{ author.phone }}';
-            var btn = document.getElementById('copyPhoneBtn');
-            
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(phone).then(function() {
-                    btn.textContent = '✅';
-                    showConfirm();
-                }).catch(function() {
-                    btn.textContent = '✅';
-                    showConfirm();
-                });
-            } else {
-                var ta = document.createElement('textarea');
-                ta.value = phone;
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                try { document.execCommand('copy'); } catch(e) {}
-                document.body.removeChild(ta);
-                btn.textContent = '✅';
-                showConfirm();
-            }
-        }
-
-        function showConfirm() {
-            document.getElementById('confirmForm').style.display = 'block';
-        }
-
-        // Перед отправкой копируем значения из внешних полей в форму
         document.getElementById('confirmForm').addEventListener('submit', function() {
             document.getElementById('confirmWarmWord').value = document.getElementById('warmWordInput').value;
             document.getElementById('confirmAnonymous').value = document.getElementById('anonymousCheck').checked ? '1' : '0';
         });
 
-        // Закрытие по клику вне окна
         document.getElementById('donateModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
