@@ -143,10 +143,12 @@ def register():
             return render_template('register.html')
         db.execute("INSERT INTO users (phone, password_hash) VALUES (?,?)", (clean, generate_password_hash(pw)))
         db.commit()
-        db.close()
-        flash('Регистрация успешна!', 'success')
+        flash('Регистрация успешна', 'success')
         # Автоматически входим
-        session['user_id'] = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()['id']
+        user = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()
+        if user:
+            session['user_id'] = user['id']
+        db.close()
         return redirect(url_for('goals_list'))
     return render_template('register.html')
 
@@ -313,7 +315,7 @@ def create_goal(goal_type):
         db.commit()
         gid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         db.close()
-        flash('Цель создана!', 'success')
+        flash('Цель создана', 'success')
     
 
 
@@ -547,10 +549,10 @@ def donate(goal_id):
                 db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
                 db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (amount, goal_id))
                 db.commit()
-                flash('Спасибо! Seed3 автоподтвердил перевод.', 'success')
+                flash('Подтверждено', 'success')
                 return redirect(url_for('goal_page', goal_id=goal_id))
 
-        flash('Спасибо! Перевод ожидает подтверждения получателя.', 'success')
+        flash('Перевод ожидает подтверждения', 'success')
     finally:
         db.close()
 
@@ -575,7 +577,7 @@ def confirm_donation(donation_id):
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     if donation['status'] != 'donor_confirmed':
         db.close()
-        flash('Этот перевод уже обработан.', 'info')
+        flash('Уже обработан', 'info')
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
     # Удаляем напоминания — получатель уже подтвердил
@@ -595,12 +597,12 @@ def confirm_donation(donation_id):
     if donation['donor_id']:
         db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
     db.commit()
-    db.close()
     add_xp(user['id'], 'confirm')
     # Обновляем сумму помощи у получателя
     db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (donation['amount_reported'], user['id']))
     db.commit()
-    flash('Перевод подтверждён! Шкала обновлена.', 'success')
+    db.close()
+    flash('Подтверждено', 'success')
     
     return redirect(url_for('goal_page', goal_id=donation['goal_id']))
 

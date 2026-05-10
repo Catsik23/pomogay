@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход — помогай.рф</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -80,13 +80,14 @@
         .field input[type="password"]:focus {
             border-color: #FF6B4A;
         }
-        .btn-login {
+        .btn-login { transition: transform 0.1s, box-shadow 0.2s; position: relative; overflow: hidden;
             width: 100%;
             padding: 16px;
             background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
             color: white;
             border: none;
             border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
             font-size: 18px;
             font-weight: 600;
             font-family: 'Inter', sans-serif;
@@ -111,7 +112,7 @@
         .btn-login:active::after {
             opacity: 1;
         }
-        .btn-login:active {
+        .btn-login:active { transform: scale(0.97);
             transform: scale(0.96);
             box-shadow: 0 1px 4px rgba(255,107,74,0.2);
         }
@@ -168,5 +169,6 @@
             Нет аккаунта? <a href="/register">Зарегистрироваться</a>
         </div>
     </div>
+<script src="/static/toast.js"></script>
 </body>
 </html>
