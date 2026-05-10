@@ -152,7 +152,12 @@
         .flash { padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; font-size: 14px; }
         .flash-success { background: #d4edda; color: #155724; }
         .flash-danger { background: #f8d7da; color: #721c24; }
+    @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
+<script src="https://unpkg.com/feather-icons"></script>
 </head>
 <body>
     <div class="container">
@@ -233,7 +238,7 @@
                 <div class="donation-amount">{{ "%.0f"|format(d.amount_reported) }} ₽</div>
                 {% if is_author and d.status == 'donor_confirmed' %}
                 <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
-                    <button type="submit" class="confirm-btn">✅ Подтверждаю</button>
+                    <button type="submit" class="confirm-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Подтверждаю</button>
                 </form>
                 {% endif %}
             </div>
@@ -254,7 +259,13 @@
             <button class="amount-btn" onclick="selectAmount(100)">100 ₽</button>
             <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
             <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
-            <div id="warmWordBlock" style="display:none;margin-top:8px;"><input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:14px;box-sizing:border-box;"></div>
+            <div id="warmWordBlock" style="display:none;margin-top:8px;">
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="flex:1;padding:12px 14px;border:1px solid #E0E0E0;border-radius:12px;font-size:14px;box-sizing:border-box;">
+                        <button type="button" id="anonymousBtn" onclick="toggleAnonymous()" style="padding:12px 16px;border:1px solid #E0E0E0;border-radius:12px;background:white;color:#8C7A6B;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">Анонимно</button>
+                        <input type="checkbox" id="anonymousCheck" style="display:none;">
+                    </div>
+                </div>
             <div id="warmWordBlock" style="display:none;margin-top:8px;">
             </div>
             
@@ -266,22 +277,8 @@
                 <div class="row">
                     <span class="label">Номер</span>
                     <span class="value">{{ author.phone }}</span>
-                    <button class="copy-btn" id="copyPhoneBtn" style="background:#F5F5F5;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:500;" onclick="
-                        var phone = '{{ author.phone }}';
-                        var btn = document.getElementById('copyPhoneBtn');
-                        var ta = document.createElement('textarea');
-                        ta.value = phone;
-                        ta.style.position = 'fixed';
-                        ta.style.left = '-9999px';
-                        document.body.appendChild(ta);
-                        ta.select();
-                        try { document.execCommand('copy'); } catch(e) {}
-                        document.body.removeChild(ta);
-                        btn.textContent = '✅';
-                        setTimeout(function(){ btn.textContent = '📋'; }, 1500);
-                        document.getElementById('confirmForm').style.display = 'block';
-                        document.getElementById('confirmHint').style.display = 'block';
-                    ">📋</button>
+                    <button class="copy-btn" id="copyPhoneBtn" style="background:none;border:none;padding:8px;cursor:pointer;" onclick="var p=this.previousElementSibling.textContent;var b=this;var t=document.createElement('textarea');t.value=p;t.style.position='fixed';t.style.left='-9999px';document.body.appendChild(t);t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);b.style.transition='all 0.2s';b.style.transform='scale(0.8)';setTimeout(function(){b.innerHTML='<i data-feather=&quot;check&quot; style=&quot;color:#5B9A6B;&quot;></i>';feather.replace();b.style.transform='scale(1)';},150);setTimeout(function(){b.style.transform='scale(0.8)';setTimeout(function(){b.innerHTML='<i data-feather=&quot;copy&quot; style=&quot;color:#8C7A6B;&quot;></i>';feather.replace();b.style.transform='scale(1)';},150);},1500);document.getElementById('confirmForm').style.display='block';document.getElementById('confirmForm').querySelector('button').focus();"><i data-feather="copy" style="color:#8C7A6B;"></i></button>
+                    
                 </div>
                 <div class="row">
                     <span class="label">Сумма</span>
@@ -305,7 +302,7 @@
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
-                    <button type="submit" class="donate-submit active" style="margin-top:12px;background:#5B9A6B;">✅ Я перевёл(ла)</button>
+                    <button type="submit" class="donate-submit active" style="margin-top:12px;background:#5B9A6B;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
@@ -316,13 +313,13 @@
 
         function openModal() {
             document.getElementById('donateModal').classList.add('active');
-            document.getElementById('warmWordBlock').style.display='none';
+            document.getElementById('warmWordBlock').style.display='none';document.getElementById('anonymousBtn').style.background='white';document.getElementById('anonymousBtn').style.color='#8C7A6B';document.getElementById('anonymousBtn').style.borderColor='#E0E0E0';document.getElementById('anonymousBtn').textContent='Анонимно';document.getElementById('anonymousCheck').checked=false;
             selectedAmount = 0;
             document.getElementById('donateSubmit').classList.remove('active');
             document.getElementById('manualMode').classList.remove('active');
             document.getElementById('confirmForm').style.display = 'none';
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
-            document.getElementById('copyPhoneBtn').textContent = '📋';
+            
             document.getElementById('warmWordInput').value = '';
             document.getElementById('anonymousCheck').checked = false;
         }
@@ -336,9 +333,28 @@
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
             event.target.classList.add('selected');
             document.getElementById('selectedAmount').textContent = amount;
-            document.getElementById('donateSubmit').classList.add('active');document.getElementById('warmWordBlock').style.display='block';
+            document.getElementById('donateSubmit').classList.add('active');document.getElementById('warmWordBlock').style.display='block';document.getElementById('donateSubmit').focus();document.getElementById('warmWordBlock').style.animation='fadeInUp 0.3s ease forwards';
             document.getElementById('manualAmount').textContent = amount + ' ₽';
             document.getElementById('confirmAmount').value = amount;
+        }
+
+        function toggleAnonymous() {
+            var btn = document.getElementById('anonymousBtn');
+            var check = document.getElementById('anonymousCheck');
+            if (check.checked) {
+                check.checked = false;
+                btn.style.background = 'white';
+                btn.style.color = '#8C7A6B';
+                btn.style.borderColor = '#E0E0E0';
+                btn.textContent = 'Анонимно';
+            } else {
+                check.checked = true;
+                btn.style.background = 'linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%)';
+                btn.style.color = 'white';
+                btn.style.borderColor = 'transparent';
+                btn.style.boxShadow = '0 2px 8px rgba(255,107,74,0.15)';
+                btn.textContent = 'Анонимно'; btn.style.transform = 'scale(0.95)'; setTimeout(function(){ btn.style.transform = 'scale(1)'; }, 150);
+            }
         }
 
         function startDonate() {
@@ -355,6 +371,8 @@
         document.getElementById('donateModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
-    </script>
+    feather.replace();
+</script>
+<script>feather.replace();</script>
 </body>
 </html>
