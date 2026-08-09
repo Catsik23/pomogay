@@ -201,13 +201,7 @@
             <div style="position:relative; display:inline-block;">
             <div class="avatar">🐱</div>
             <span style="position:absolute; bottom:-2px; right:-2px; font-size:18px;">
-                {% if user.xp_level == 'novice' %}🌱
-                {% elif user.xp_level == 'member' %}🌿
-                {% elif user.xp_level == 'reliable' %}🌳
-                {% elif user.xp_level == 'pillar' %}💎
-                {% elif user.xp_level == 'hero' %}⭐
-                {% elif user.xp_level == 'legend' %}👑
-                {% else %}🌱{% endif %}
+                {{ user.xp_level|level_emoji }}
             </span>
         </div>
             <h1>{{ user.name or 'Аноним' }}</h1>
@@ -215,7 +209,7 @@
         </div>
 
         <div class="card">
-            <span class="level-badge">{% if user.xp_level == 'novice' %}Новичок{% elif user.xp_level == 'member' %}Участник{% elif user.xp_level == 'reliable' %}Надёжный{% elif user.xp_level == 'pillar' %}Опора{% elif user.xp_level == 'hero' %}Герой{% elif user.xp_level == 'legend' %}Легенда{% else %}Новичок{% endif %}</span>
+            <span class="level-badge">{{ user.xp_level|level_name }}</span>
             {% set pct = get_level_progress(user) %}
             <div class="progress-bar">
                 <div class="progress-fill" style="width: {{ pct }}%;"></div>
@@ -229,7 +223,7 @@
             {% endif %}
             <p>Помог на сумму: {{ user.total_helped_amount or 0 }} ₽</p>
             <p>Серия: {{ user.streak_days or 0 }} дн.</p>
-            <p>На платформе с: {% set m = user.created_at[5:7] %}{{ user.created_at[8:10]|int }} {% if m == '01' %}января{% elif m == '02' %}февраля{% elif m == '03' %}марта{% elif m == '04' %}апреля{% elif m == '05' %}мая{% elif m == '06' %}июня{% elif m == '07' %}июля{% elif m == '08' %}августа{% elif m == '09' %}сентября{% elif m == '10' %}октября{% elif m == '11' %}ноября{% elif m == '12' %}декабря{% endif %} {{ user.created_at[:4] }}</p>
+            <p>На платформе с: {{ user.created_at|format_date }}</p>
         </div>
 
         {% if ignored_donations %}

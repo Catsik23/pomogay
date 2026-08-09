@@ -654,6 +654,44 @@ def uploaded_file(filename):
 app.jinja_env.globals['get_level_progress'] = get_level_progress
 app.jinja_env.globals['get_level_name'] = get_level_name
 
+# Фильтры для шаблонов
+LEVEL_EMOJI = {
+    'novice': '🌱',
+    'member': '🌿',
+    'reliable': '🌳',
+    'pillar': '💎',
+    'hero': '⭐',
+    'legend': '👑'
+}
+LEVEL_NAMES = {
+    'novice': 'Новичок',
+    'member': 'Участник',
+    'reliable': 'Надёжный',
+    'pillar': 'Опора',
+    'hero': 'Герой',
+    'legend': 'Легенда'
+}
+MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
+
+def level_emoji(level_key):
+    return LEVEL_EMOJI.get(level_key, '🌱')
+
+def level_name(level_key):
+    return LEVEL_NAMES.get(level_key, 'Новичок')
+
+def format_date(date_str):
+    if not date_str:
+        return ''
+    try:
+        parts = date_str[:10].split('-')
+        return f"{int(parts[2])} {MONTHS[int(parts[1])-1]} {parts[0]}"
+    except:
+        return date_str[:10]
+
+app.jinja_env.filters['level_emoji'] = level_emoji
+app.jinja_env.filters['level_name'] = level_name
+app.jinja_env.filters['format_date'] = format_date
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
