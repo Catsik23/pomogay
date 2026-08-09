@@ -1,3 +1,4 @@
+// Toast-уведомления помогай.рф
 document.addEventListener('DOMContentLoaded', function() {
     var dataEl = document.getElementById('toast-data');
     if (!dataEl) return;
@@ -10,32 +11,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (!messages || messages.length === 0) return;
 
-    var container = document.createElement('div');
-    container.className = 'toast-container';
-    document.body.appendChild(container);
-
-    var timings = {
-        'success': 3000,
-        'info': 3000,
-        'warning': 5000,
-        'danger': 6000
-    };
-
     messages.forEach(function(msg) {
-        var toast = document.createElement('div');
-        toast.className = 'toast toast-' + msg.category;
-        toast.textContent = msg.text;
-        container.appendChild(toast);
-
-        // Удаляем после окончания CSS-анимации
-        toast.addEventListener('animationend', function(e) {
-            if (e.animationName === 'toastOut') {
-                toast.remove();
-                // Убираем контейнер, если он пуст
-                if (container.children.length === 0) {
-                    container.remove();
-                }
-            }
-        });
+        showToast(msg.text, msg.category);
     });
 });
+
+// Глобальная функция для вызова тостов из onclick
+function showToast(text, category) {
+    var container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + (category || 'info');
+    toast.textContent = text;
+    container.appendChild(toast);
+    toast.addEventListener('animationend', function(e) {
+        if (e.animationName === 'toastOut') {
+            toast.remove();
+            if (container.children.length === 0) {
+                container.remove();
+            }
+        }
+    });
+}
