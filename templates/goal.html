@@ -211,89 +211,57 @@
             <button class="btn-help" onclick="openModal()">Помочь</button>
             {% endif %}
 
-            <!-- Кнопка Пожаловаться -->
-            {% if user and not is_author and not already_reported %}
-            <button class="btn-back" onclick="openReportModal()" style="margin-top:8px;font-size:14px;color:#E57373;border-color:#E57373;">Пожаловаться</button>
-            {% endif %}
-
+            
             <!-- Модальное окно жалобы -->
             <div class="modal" id="reportModal">
                 <div class="modal-content" style="padding:24px 16px 20px;">
                     <span class="modal-close" onclick="closeReportModal()" style="font-size:24px;top:10px;right:14px;">&times;</span>
-                    <h3 style="margin:0 0 2px;font-size:18px;font-weight:700;color:#2D2D2D;">Что не так?</h3>
-                    <p style="font-size:13px;color:#8C7A6B;margin-bottom:16px;">Анонимно. Помогает сделать платформу безопаснее.</p>
+                    <h3 class="modal-title">Что не так?</h3>
+                    <p class="modal-subtitle">Анонимно. Помогает сделать платформу безопаснее.</p>
                     <form method="POST" action="/report/{{ goal.id }}" id="reportForm">
                         <input type="hidden" name="reason" id="reportReason">
-                        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-                            <button type="button" class="reason-tile" data-reason="Мошенничество" onclick="selectReason(this)">
-                                <span style="font-size:18px;">⚠️</span><span style="font-weight:600;font-size:15px;color:#2D2D2D;">Мошенничество</span><span style="font-size:12px;color:#8C7A6B;margin-left:auto;">Обман, фейк</span>
+                        <div class="tile-group">
+                            <button type="button" class="tile" data-reason="Мошенничество" onclick="selectReason(this)">
+                                <span class="tile-icon">⚠️</span><span class="tile-label">Мошенничество</span><span class="tile-hint">Обман, фейк</span>
                             </button>
-                            <button type="button" class="reason-tile" data-reason="Спам" onclick="selectReason(this)">
-                                <span style="font-size:18px;">📢</span><span style="font-weight:600;font-size:15px;color:#2D2D2D;">Спам или реклама</span><span style="font-size:12px;color:#8C7A6B;margin-left:auto;">Ссылки, каналы</span>
+                            <button type="button" class="tile" data-reason="Спам" onclick="selectReason(this)">
+                                <span class="tile-icon">📢</span><span class="tile-label">Спам или реклама</span><span class="tile-hint">Ссылки, каналы</span>
                             </button>
-                            <button type="button" class="reason-tile" data-reason="Оскорбления" onclick="selectReason(this)">
-                                <span style="font-size:18px;">💬</span><span style="font-weight:600;font-size:15px;color:#2D2D2D;">Оскорбления</span><span style="font-size:12px;color:#8C7A6B;margin-left:auto;">Лексика, унижения</span>
+                            <button type="button" class="tile" data-reason="Оскорбления" onclick="selectReason(this)">
+                                <span class="tile-icon">💬</span><span class="tile-label">Оскорбления</span><span class="tile-hint">Лексика, унижения</span>
                             </button>
-                            <button type="button" class="reason-tile" data-reason="Запрещённый контент" onclick="selectReason(this)">
-                                <span style="font-size:18px;">🚫</span><span style="font-weight:600;font-size:15px;color:#2D2D2D;">Запрещённый контент</span><span style="font-size:12px;color:#8C7A6B;margin-left:auto;">Наркотики, оружие</span>
+                            <button type="button" class="tile" data-reason="Запрещённый контент" onclick="selectReason(this)">
+                                <span class="tile-icon">🚫</span><span class="tile-label">Запрещённый контент</span><span class="tile-hint">Наркотики, оружие</span>
                             </button>
-                            <button type="button" class="reason-tile" data-reason="Другое" onclick="selectReason(this)">
-                                <span style="font-size:18px;">📝</span><span style="font-weight:600;font-size:15px;color:#2D2D2D;">Другое</span><span style="font-size:12px;color:#8C7A6B;margin-left:auto;">Что-то ещё</span>
+                            <button type="button" class="tile" data-reason="Другое" onclick="selectReason(this)">
+                                <span class="tile-icon">📝</span><span class="tile-label">Другое</span><span class="tile-hint">Что-то ещё</span>
                             </button>
                         </div>
-                        <button type="submit" id="reportSubmit" disabled style="width:100%;padding:14px;background:#F0EDEA;color:#B0A8A0;border:none;border-radius:14px;font-size:16px;font-weight:600;transition:background 0.15s,box-shadow 0.15s,transform 0.1s;">Отправить</button>
+                        <button type="submit" id="reportSubmit" disabled class="btn-cta btn-disabled" style="width:100%;">Отправить</button>
                     </form>
                 </div>
             </div>
 
-            <style>
-                .reason-tile {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    width: 100%;
-                    padding: 12px 14px;
-                    background: #FDF8F5;
-                    border: 1.5px solid transparent;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    text-align: left;
-                    font-family: Inter, sans-serif;
-                    transition: border-color 0.15s, background 0.15s;
-                }
-                .reason-tile:active { transform: scale(0.98); }
-                .reason-tile.selected {
-                    border-color: #FF5A3C;
-                    background: #FFF5F2;
-                    box-shadow: 0 0 0 2px rgba(255,90,60,0.12);
-                }
-                #reportSubmit:not(:disabled) { background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%); box-shadow: 0 2px 8px rgba(255,107,74,0.15); cursor: pointer; }
-                #reportSubmit:not(:disabled):active { transform: scale(0.97); box-shadow: 0 1px 4px rgba(255,107,74,0.2); }
-            </style>
 
             <script>
                 function openReportModal() {
                     document.getElementById('reportModal').classList.add('active');
-                    document.querySelectorAll('.reason-tile').forEach(t => t.classList.remove('selected'));
+                    document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
                     document.getElementById('reportReason').value = '';
                     var btn = document.getElementById('reportSubmit');
                     btn.disabled = true;
-                    btn.style.background = '#E8E5E2';
-                    btn.style.color = '#9B948E';
-                    btn.style.cursor = 'default';
+                    btn.classList.add('btn-disabled');
                 }
                 function closeReportModal() {
                     document.getElementById('reportModal').classList.remove('active');
                 }
                 function selectReason(el) {
-                    document.querySelectorAll('.reason-tile').forEach(t => t.classList.remove('selected'));
+                    document.querySelectorAll('.tile').forEach(t => t.classList.remove('selected'));
                     el.classList.add('selected');
                     document.getElementById('reportReason').value = el.dataset.reason;
                     var btn = document.getElementById('reportSubmit');
                     btn.disabled = false;
-                    btn.style.background = 'linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%)';
-                    btn.style.color = 'white';
-                    btn.style.cursor = 'pointer';
+                    btn.classList.remove('btn-disabled');
                 }
                 document.getElementById('reportModal').addEventListener('click', function(e) {
                     if (e.target === this) closeReportModal();
@@ -329,7 +297,10 @@
             {% endif %}
 
             <!-- Кнопка назад -->
-            <a href="/goals" class="btn-back" style="text-align:center;">Лента целей</a>
+            <a class="btn-back" href="/goals" class="btn-back" style="text-align:center;">Лента целей</a>
+            {% if user and not is_author and not already_reported %}
+            <a class="btn-back" onclick="openReportModal()" style="text-align:center;cursor:pointer;">Пожаловаться</a>
+            {% endif %}
         </div>
     </div>
 

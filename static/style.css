@@ -338,3 +338,21 @@ a { color: var(--cta); text-decoration: none; }
 .tile-icon { font-size: 18px; flex-shrink: 0; }
 .tile-label { flex: 1; }
 .tile-hint { font-size: 12px; color: var(--text-soft); margin-left: auto; }
+/* Кнопка с обводкой (эталон: .btn-back из goal.html) */
+.btn-outline {
+    display: inline-block;
+    padding: 14px;
+    border: 1px solid #FF5A3C;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    color: #FF5A3C;
+    background: white;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: transform 0.1s;
+    width: 100%;
+}
+.btn-outline:active { transform: scale(0.97); }

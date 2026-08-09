@@ -81,35 +81,6 @@
         .feature:last-child { border-bottom: none; }
         .feature svg { width: 20px; height: 20px; stroke: #8C7A6B; flex-shrink: 0; }
 
-        .btn-goals {
-            display: block;
-            padding: 16px;
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            color: white;
-            border-radius: 14px;
-            font-size: 17px;
-            font-weight: 600;
-            text-decoration: none;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
-            transition: transform 0.1s;
-            margin-bottom: 32px;
-            position: relative;
-            overflow: hidden;
-        }
-        .btn-goals::after {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .btn-goals:active::after { opacity: 1; }
-        .btn-goals:active { transform: scale(0.97); }
-
         .auth-section { display: flex; flex-direction: column; gap: 6px; }
         .auth-row { display: flex; gap: 10px; }
         .auth-btn {
@@ -179,7 +150,7 @@
             </div>
         </div>
 
-        <a href="/goals" class="btn-goals">Смотреть цели</a>
+        <a href="/goals" class="btn-cta" style="margin-bottom:32px;">Смотреть цели</a>
 
         <div class="auth-section">
             <div class="auth-row">
