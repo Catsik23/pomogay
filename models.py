@@ -24,7 +24,9 @@ def migrate_db():
         'xp_level': "TEXT DEFAULT 'novice'",
         'streak_days': 'INTEGER DEFAULT 0',
         'last_action_date': 'TEXT',
-        'ip_registered': 'TEXT'
+        'ip_registered': 'TEXT',
+        'trust_score': 'INTEGER DEFAULT 50',
+        'trust_level': "TEXT DEFAULT 'guest'"
     }
     for col_name, col_def in new_columns.items():
         if col_name not in columns:
@@ -32,6 +34,9 @@ def migrate_db():
                 cur.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_def}")
             except sqlite3.OperationalError:
                 pass
+    # Устанавливаем trust_score существующим пользователям, у которых он NULL
+    cur.execute('UPDATE users SET trust_score = 30 WHERE trust_score IS NULL')
+    cur.execute("UPDATE users SET trust_level = 'newcomer' WHERE trust_level IS NULL")
     # ip_address в donations
     cur.execute("PRAGMA table_info(donations)")
     donation_cols = [row[1] for row in cur.fetchall()]
