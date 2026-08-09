@@ -211,6 +211,42 @@
             <button class="btn-help" onclick="openModal()">Помочь</button>
             {% endif %}
 
+            <!-- Кнопка Пожаловаться -->
+            {% if user and not is_author and not already_reported %}
+            <button class="btn-back" onclick="openReportModal()" style="margin-top:8px;font-size:14px;color:#E57373;border-color:#E57373;">Пожаловаться</button>
+            {% endif %}
+
+            <!-- Модальное окно жалобы -->
+            <div class="modal" id="reportModal">
+                <div class="modal-content">
+                    <span class="modal-close" onclick="closeReportModal()">&times;</span>
+                    <h3 style="margin:0 0 16px;">Пожаловаться на цель</h3>
+                    <form method="POST" action="/report/{{ goal.id }}">
+                        <select name="reason" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:16px;font-family:Inter,sans-serif;margin-bottom:16px;" required>
+                            <option value="">Выберите причину</option>
+                            <option value="Мошенничество">Мошенничество</option>
+                            <option value="Спам">Спам</option>
+                            <option value="Оскорбления">Оскорбления</option>
+                            <option value="Запрещённый контент">Запрещённый контент</option>
+                            <option value="Другое">Другое</option>
+                        </select>
+                        <button type="submit" style="width:100%;padding:14px;background:#E57373;color:white;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;">Отправить жалобу</button>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+                function openReportModal() {
+                    document.getElementById('reportModal').classList.add('active');
+                }
+                function closeReportModal() {
+                    document.getElementById('reportModal').classList.remove('active');
+                }
+                document.getElementById('reportModal').addEventListener('click', function(e) {
+                    if (e.target === this) closeReportModal();
+                });
+            </script>
+
             <!-- Список донатов -->
             {% if donations %}
             <h3 class="donations-title">Переводы</h3>

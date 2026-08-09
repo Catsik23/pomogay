@@ -395,7 +395,77 @@ def goal_page(goal_id):
         ends_at_formatted = goal['ends_at'][:10]
     user = get_current_user()
     is_author = (user and user['id'] == goal['user_id'])
-    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted)
+    
+    # Проверяем, жаловался ли уже пользователь
+    already_reported = False
+    if user:
+        rdb = get_db()
+        already_reported = rdb.execute(
+            'SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ?',
+            (goal_id, user['id'])
+        ).fetchone() is not None
+        rdb.close()
+    
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported)
+
+@app.route('/report/<int:goal_id>', methods=['POST'])
+@login_required
+def report_goal(goal_id):
+    user = get_current_user()
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash('Укажите причину жалобы.', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    db = get_db()
+    goal = db.execute('SELECT * FROM goals WHERE id = ?', (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        flash('Цель не найдена.', 'danger')
+        return redirect(url_for('goals_list'))
+    if goal['user_id'] == user['id']:
+        db.close()
+        flash('Нельзя жаловаться на свою цель.', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    existing = db.execute(
+        'SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ?',
+        (goal_id, user['id'])
+    ).fetchone()
+    if existing:
+        db.close()
+        flash('Вы уже жаловались на эту цель.', 'info')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    db.execute(
+        'INSERT INTO reports (goal_id, reporter_id, reason) VALUES (?, ?, ?)',
+        (goal_id, user['id'], reason)
+    )
+    db.commit()
+    
+    # Считаем жалобы
+    report_count = db.execute(
+        'SELECT COUNT(*) FROM reports WHERE goal_id = ?',
+        (goal_id,)
+    ).fetchone()[0]
+    
+    if report_count >= 3:
+        db.execute(
+            "UPDATE goals SET status = 'hidden', moderation_status = 'reported' WHERE id = ?",
+            (goal_id,)
+        )
+        db.execute(
+            "INSERT INTO notifications_log (user_id, type, goal_id, channel) VALUES (?, 'goal_reported_hidden', ?, 'admin')",
+            (goal['user_id'], goal_id)
+        )
+        db.commit()
+        db.close()
+        flash('Цель скрыта после нескольких жалоб. Администратор проверит её.', 'info')
+        return redirect(url_for('goals_list'))
+    
+    db.close()
+    flash('Жалоба отправлена. Спасибо за бдительность.', 'success')
+    return redirect(url_for('goal_page', goal_id=goal_id))
 
 @app.route('/goals')
 def goals_list():
