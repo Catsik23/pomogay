@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import init_db, get_db
+from trust_engine import add_trust_score, get_trust_perks, can_create_goal
 from functools import wraps
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -189,6 +190,7 @@ def register():
         user = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()
         if user:
             session['user_id'] = user['id']
+            add_trust_score(user['id'], 'registration', db)
         db.close()
         return redirect(url_for('goals_list'))
     return render_template('register.html')
@@ -344,6 +346,12 @@ def create_goal(goal_type):
             except Exception as e:
                 flash(f'Ошибка фото: {e}', 'warning')
         db = get_db()
+        # Проверка лимита целей по Trust Score
+        if not can_create_goal(user, db):
+            perks = get_trust_perks(user['trust_score'] or 0)
+            db.close()
+            flash(f"Ваш уровень доверия позволяет создать не более {perks['max_goals']} целей. Завершите текущие или повысьте Trust Score.", 'warning')
+            return redirect(url_for('goals_list'))
         ends = (datetime.now() + timedelta(days=days)).isoformat()
         if not user:
             flash('Ошибка: пользователь не найден. Войдите заново.', 'danger')
@@ -459,6 +467,11 @@ def report_goal(goal_id):
             (goal['user_id'], goal_id)
         )
         db.commit()
+        # Trust Score: -20 автору цели, +3 каждому жалобщику
+        add_trust_score(goal['user_id'], 'goal_hidden_reports', db)
+        reporters = db.execute('SELECT DISTINCT reporter_id FROM reports WHERE goal_id = ?', (goal_id,)).fetchall()
+        for r in reporters:
+            add_trust_score(r['reporter_id'], 'report_valid', db)
         db.close()
         flash('Цель скрыта после нескольких жалоб. Администратор проверит её.', 'info')
         return redirect(url_for('goals_list'))
@@ -722,6 +735,10 @@ def confirm_donation(donation_id):
     # Обновляем сумму помощи у получателя
     db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (donation['amount_reported'], user['id']))
     db.commit()
+    # Trust Score: получатель +3 за подтверждение, донатор +3 за подтверждённый донат
+    add_trust_score(user['id'], 'donation_recipient_confirmed', db)
+    if donation['donor_id']:
+        add_trust_score(donation['donor_id'], 'donation_recipient_confirmed', db)
     db.close()
     flash('Подтверждено', 'success')
     
