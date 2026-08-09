@@ -66,10 +66,35 @@ a { color: var(--cta); text-decoration: none; }
     transform: scale(0.97);
 }
 .btn-cta {
+    display: inline-block;
+    padding: 16px;
     background: var(--gradient-cta);
     color: white;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(255,107,74,0.15);
+    transition: transform 0.1s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
     width: 100%;
 }
+.btn-cta::after {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.btn-cta:active::after { opacity: 1; }
+.btn-cta:active { transform: scale(0.97); box-shadow: 0 1px 4px rgba(255,107,74,0.2); }
 .btn-success {
     background: var(--success);
     color: white;
@@ -216,3 +241,100 @@ a { color: var(--cta); text-decoration: none; }
     from { opacity: 1; transform: translateY(0); }
     to { opacity: 0; transform: translateY(-20px); }
 }
+
+
+/* ============================================
+   БИБЛИОТЕКА КОМПОНЕНТОВ (эталон: goal.html)
+   ============================================ */
+
+/* Кнопка-призрак (жалоба, иконки) */
+.btn-ghost {
+    display: inline-block;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-soft);
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s;
+}
+.btn-ghost:active { transform: scale(0.97); }
+
+/* Кнопка ошибки */
+.btn-danger {
+    display: inline-block;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    background: var(--error);
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.1s;
+}
+.btn-danger:active { transform: scale(0.97); }
+
+/* Disabled-состояние */
+.btn-disabled {
+    background: #E8E5E2 !important;
+    color: #9B948E !important;
+    cursor: default !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+/* Модальное окно */
+.modal-title {
+    font-family: var(--font);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 2px;
+}
+.modal-subtitle {
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text-soft);
+    margin-bottom: 16px;
+}
+
+/* Плитки выбора */
+.tile-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.tile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1.5px solid transparent;
+    border-radius: 14px;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.tile:active { transform: scale(0.98); }
+.tile.selected {
+    border-color: #FF5A3C;
+    background: #FFF5F2;
+    box-shadow: 0 0 0 2px rgba(255,90,60,0.12);
+}
+.tile-icon { font-size: 18px; flex-shrink: 0; }
+.tile-label { flex: 1; }
+.tile-hint { font-size: 12px; color: var(--text-soft); margin-left: auto; }
