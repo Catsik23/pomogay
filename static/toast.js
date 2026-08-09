@@ -1,25 +1,33 @@
-
 document.addEventListener('DOMContentLoaded', function() {
-    var flashes = document.querySelectorAll('.flash');
-    if (flashes.length === 0) return;
+    var dataEl = document.getElementById('toast-data');
+    if (!dataEl) return;
+    
+    var messages;
+    try {
+        messages = JSON.parse(dataEl.textContent);
+    } catch(e) {
+        return;
+    }
+    if (!messages || messages.length === 0) return;
 
     var container = document.createElement('div');
     container.className = 'toast-container';
     document.body.appendChild(container);
 
-    flashes.forEach(function(flash) {
-        var type = 'success';
-        if (flash.classList.contains('flash-danger')) type = 'danger';
-        else if (flash.classList.contains('flash-info')) type = 'info';
-        else if (flash.classList.contains('flash-warning')) type = 'warning';
+    var timings = {
+        'success': 3000,
+        'info': 3000,
+        'warning': 5000,
+        'danger': 6000
+    };
 
+    messages.forEach(function(msg) {
         var toast = document.createElement('div');
-        toast.className = 'toast toast-' + type;
-        toast.textContent = flash.textContent.trim();
+        toast.className = 'toast toast-' + msg.category;
+        toast.textContent = msg.text;
         container.appendChild(toast);
 
-        flash.remove();
-
-        setTimeout(function() { toast.remove(); }, 3000);
+        var delay = timings[msg.category] || 3000;
+        setTimeout(function() { toast.remove(); }, delay);
     });
 });

@@ -2,6 +2,7 @@
     "name": "Помогай",
     "short_name": "Помогай",
     "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#FDF8F5",
     "theme_color": "#FF8C69",

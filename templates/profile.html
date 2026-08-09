@@ -176,19 +176,7 @@
             margin: 16px;
             text-decoration: none;
         }
-        .back-link {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: white;
-            text-decoration: none;
-            font-size: 14px;
-            margin-bottom: 12px;
-            position: absolute;
-            left: 16px;
-            top: 24px;
-        }
-    
+
         .fab {
             display: block;
             padding: 16px;
@@ -261,7 +249,7 @@
             <a class="goal-item" href="/goal/{{ goal.id }}">
                 <div class="top">
                     <span class="title">{{ goal.title }}</span>
-                    <span class="status status-{% if goal.status == 'active' %}активна{% elif goal.status == 'completed' %}завершена{% elif goal.status == 'frozen' %}заморожена{% else %}{{ goal.status }}{% endif %}">{% if goal.status == 'active' %}активна{% elif goal.status == 'completed' %}завершена{% elif goal.status == 'frozen' %}заморожена{% else %}{{ goal.status }}{% endif %}</span>
+                    <span class="status status-{{ goal.status }}">{% if goal.status == 'active' %}активна{% elif goal.status == 'completed' %}завершена{% elif goal.status == 'frozen' %}заморожена{% else %}{{ goal.status }}{% endif %}</span>
                 </div>
                 <div style="font-size:13px;color:#8C7A6B;">
                     {{ "%.0f"|format(goal.amount_collected) }} ₽ из {{ "%.0f"|format(goal.amount_goal) }} ₽
@@ -274,7 +262,7 @@
 
         <a href="/goals/choose" class="fab" style="background:white; color:#FF6B4A; border:1px solid #FF6B4A; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">+ Создать цель</a>
         <a href="/goals" class="fab" style="margin-top:12px;">Помогать</a>
-        <a href="/logout" style="position:fixed; bottom:16px; left:16px; color:#E57373; font-size:13px; text-decoration:none;">Выйти</a>
+        <form method="POST" action="/logout" style="position:fixed; bottom:16px; left:16px;"><button type="submit" style="background:none;border:none;color:#E57373;font-size:13px;cursor:pointer;font-family:Inter,sans-serif;padding:0;">Выйти</button></form>
     </div>
 <script src="/static/toast.js"></script>
 </body>

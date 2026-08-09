@@ -161,13 +161,7 @@
 </head>
 <body>
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":"{{ category }}","text":"{{ message|replace('"', '\"') }}"}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <!-- Шапка -->
         <div class="goal-header">
@@ -205,7 +199,7 @@
                     
                     {% endif %}
                 </div>
-                {% if goal.status == "active" %}<div class="deadline" style="color:#5B9A6B;">Активен до {{ goal.ends_at[8:10]|int }} {% set m = goal.ends_at[5:7] %}{% if m == "01" %}января{% elif m == "02" %}февраля{% elif m == "03" %}марта{% elif m == "04" %}апреля{% elif m == "05" %}мая{% elif m == "06" %}июня{% elif m == "07" %}июля{% elif m == "08" %}августа{% elif m == "09" %}сентября{% elif m == "10" %}октября{% elif m == "11" %}ноября{% elif m == "12" %}декабря{% endif %} {{ goal.ends_at[:4] }}</div>{% else %}<div class="deadline" style="color:#E57373;">Не активен</div>{% endif %}
+                {% if goal.status == "active" %}<div class="deadline" style="color:#5B9A6B;">Активен до {{ ends_at_formatted }}</div>{% else %}<div class="deadline" style="color:#E57373;">Не активен</div>{% endif %}
             </div>
 
             {% if goal.description %}
@@ -238,7 +232,7 @@
                 <div class="donation-amount">{{ "%.0f"|format(d.amount_reported) }} ₽</div>
                 {% if is_author and d.status == 'donor_confirmed' %}
                 <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
-                    <button type="submit" class="confirm-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Подтверждаю</button>
+                    <button type="submit" class="confirm-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" stroke="white"></polyline></svg> Подтверждаю</button>
                 </form>
                 {% endif %}
             </div>
@@ -256,9 +250,9 @@
             <span class="modal-close" onclick="closeModal()">×</span>
             <h3 style="margin:0 0 16px;">Выберите сумму</h3>
 
-            <button class="amount-btn" onclick="selectAmount(100)">100 ₽</button>
-            <button class="amount-btn" onclick="selectAmount(500)">500 ₽</button>
-            <button class="amount-btn" onclick="selectAmount(1000)">1 000 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(100, event)">100 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(500, event)">500 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(1000, event)">1 000 ₽</button>
             <div id="warmWordBlock" style="display:none;margin-top:8px;">
                     <div style="display:flex;gap:8px;align-items:center;">
                         <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="flex:1;padding:12px 14px;border:1px solid #E0E0E0;border-radius:12px;font-size:14px;box-sizing:border-box;">
@@ -266,9 +260,7 @@
                         <input type="checkbox" id="anonymousCheck" style="display:none;">
                     </div>
                 </div>
-            <div id="warmWordBlock" style="display:none;margin-top:8px;">
-            </div>
-            
+
 
             <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
 
@@ -294,15 +286,15 @@
                 <div style="margin-top:12px;">
                 </div>
                 <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#8C7A6B;">
-                    <input type="checkbox" id="anonymousCheck" style="width:auto;margin-right:8px;">
-                    <label for="anonymousCheck" style="cursor:pointer;">Помочь анонимно</label>
+                    <input type="checkbox" id="anonymousCheckManual" style="width:auto;margin-right:8px;" onchange="document.getElementById('anonymousCheck').checked = this.checked; document.getElementById('confirmAnonymous').value = this.checked ? '1' : '0';">
+                    <label for="anonymousCheckManual" style="cursor:pointer;">Помочь анонимно</label>
                 </div>
 
                 <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
-                    <button type="submit" class="donate-submit active" style="margin-top:12px;background:#5B9A6B;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Я перевёл(ла)</button>
+                    <button type="submit" class="donate-submit active" style="margin-top:12px;background:#5B9A6B;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" stroke="white"></polyline></svg> Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
@@ -328,7 +320,7 @@
             document.getElementById('donateModal').classList.remove('active');
         }
 
-        function selectAmount(amount) {
+        function selectAmount(amount, event) {
             selectedAmount = amount;
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
             event.target.classList.add('selected');
@@ -365,7 +357,7 @@
 
         document.getElementById('confirmForm').addEventListener('submit', function() {
             document.getElementById('confirmWarmWord').value = document.getElementById('warmWordInput').value;
-            document.getElementById('confirmAnonymous').value = document.getElementById('anonymousCheck').checked ? '1' : '0';
+            var anon = document.getElementById('anonymousCheck').checked || document.getElementById('anonymousCheckManual').checked; document.getElementById('confirmAnonymous').value = anon ? '1' : '0';
         });
 
         document.getElementById('donateModal').addEventListener('click', function(e) {
@@ -373,7 +365,6 @@
         });
     feather.replace();
 </script>
-<script>feather.replace();</script>
 <script src="/static/toast.js"></script>
 </body>
 </html>

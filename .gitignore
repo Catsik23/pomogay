@@ -1,5 +1,7 @@
 uploads/*.jpg
 uploads/*.png
+data/
+*.db
 *.log
 logs/
 config_local.py

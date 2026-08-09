@@ -18,6 +18,7 @@
     --success: #5B9A6B;
     --error: #E57373;
     --gold: #D4A853;
+    --gradient-cta: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
     --radius: 12px;
     --radius-lg: 16px;
     --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -29,13 +30,13 @@
 
 body {
     font-family: var(--font);
-    font-display: swap;
     font-size: 16px;
     line-height: 1.5;
     background: var(--bg);
     color: var(--text);
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
+    animation: pageIn 0.3s ease;
 }
 
 /* --- Типографика --- */
@@ -54,7 +55,6 @@ a { color: var(--cta); text-decoration: none; }
     border: none;
     border-radius: var(--radius);
     font-family: var(--font);
-    font-display: swap;
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
@@ -162,10 +162,6 @@ a { color: var(--cta); text-decoration: none; }
 
 
 
-/* Плавный переход между страницами */
-body {
-    animation: pageIn 0.3s ease;
-}
 
 @keyframes pageIn {
     from {

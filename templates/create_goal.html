@@ -56,13 +56,7 @@
             {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
         </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":"{{ category }}","text":"{{ message|replace('"', '\"') }}"}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <form method="POST" enctype="multipart/form-data">
             <label>Название цели *</label>

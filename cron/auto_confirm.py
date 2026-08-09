@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Cron-скрипт автоподтверждения. Запускать раз в 10 минут."""
+"""Cron-скрипт автоподтверждения. Временно отключён — требуется переработка."""
+# TODO: переписать на прямую работу с БД или добавить маршрут в main.py
+import sys
+sys.exit(0)
+
 import requests
 try:
     r = requests.get('https://pomogay.onrender.com/auto_confirm')

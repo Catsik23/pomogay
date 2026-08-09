@@ -1,4 +1,4 @@
-const CACHE = "pomogay-v2";
+const CACHE = "pomogay-v3";
 const ASSETS = [
     "/",
     "/static/style.css",
@@ -14,7 +14,13 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("fetch", event => {
-    event.respondWith(
-        caches.match(event.request).then(response => response || fetch(event.request))
-    );
+    if (event.request.url.includes('/static/style.css')) {
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match(event.request))
+        );
+    } else {
+        event.respondWith(
+            caches.match(event.request).then(response => response || fetch(event.request))
+        );
+    }
 });

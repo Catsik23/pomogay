@@ -55,9 +55,13 @@ db.close()
 def get_current_user():
     if 'user_id' in session:
         db = get_db()
-        user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
-        db.close()
-        return user
+        try:
+            user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+            return user
+        except:
+            return None
+        finally:
+            db.close()
     return None
 
 def login_required(f):
@@ -66,6 +70,16 @@ def login_required(f):
         if 'user_id' not in session:
             flash('Сначала войдите в аккаунт.', 'warning')
             return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return wrap
+
+def admin_required(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        user = get_current_user()
+        if not user or user['phone'] != '79885260358':
+            flash('Доступ запрещён.', 'danger')
+            return redirect(url_for('index'))
         return f(*args, **kwargs)
     return wrap
 
@@ -92,6 +106,22 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def compress_photo(data):
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(io.BytesIO(data))
+        img = img.convert('RGB')
+        max_size = (800, 800)
+        img.thumbnail(max_size, Image.LANCZOS)
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=75, optimize=True)
+        compressed = output.getvalue()
+        if len(compressed) < len(data):
+            return compressed
+    except ImportError:
+        pass
+    except Exception:
+        pass
     return data
 
 @app.route('/')
@@ -114,14 +144,25 @@ def index():
         except:
             g['ends_at_formatted'] = g['ends_at'][:10]
         goals_list.append(g)
-    today_closed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed' AND date(created_at) = date('now')").fetchone()[0]
-    week_helped = db.execute("SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE status IN ('recipient_confirmed','completed') AND date(donor_confirmed_at) >= date('now', '-7 days')").fetchone()[0]
     db.close()
-    return render_template('index.html', goals=goals_list, today_closed=today_closed, week_helped=week_helped)
+    return render_template('index.html', goals=goals_list)
 
 @app.route('/register', methods=['GET','POST'])
 def register():
     if request.method == 'POST':
+        # Honeypot-проверка
+        if request.form.get('honeypot', '').strip():
+            flash('Регистрация отклонена.', 'danger')
+            return render_template('register.html')
+        # Тайминг-проверка (форма должна быть открыта >3 сек)
+        try:
+            form_time = float(request.form.get('form_time', '0'))
+            if time.time() - form_time < 3:
+                flash('Пожалуйста, не спешите.', 'danger')
+                return render_template('register.html')
+        except (ValueError, TypeError):
+            pass
+        
         name = request.form.get('name','').strip()[:50]
         phone = request.form.get('phone','').strip()
         pw = request.form.get('password','').strip()
@@ -141,7 +182,7 @@ def register():
             flash('Этот номер уже зарегистрирован.', 'danger')
             db.close()
             return render_template('register.html')
-        db.execute("INSERT INTO users (phone, password_hash) VALUES (?,?)", (clean, generate_password_hash(pw)))
+        db.execute("INSERT INTO users (phone, password_hash, name) VALUES (?,?,?)", (clean, generate_password_hash(pw), name if name else None))
         db.commit()
         flash('Регистрация успешна', 'success')
         # Автоматически входим
@@ -173,26 +214,10 @@ def login():
             session['user_id'] = user['id']
             flash('Вы вошли!', 'success')
             return redirect(url_for('goals_list'))
-        # Если пользователь не найден — пробуем создать seed
-        if clean == '79885260358':
-            from werkzeug.security import generate_password_hash
-            db = get_db()
-            db.execute("INSERT OR IGNORE INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456'),))
-            db.commit()
-            db.close()
-            # Пробуем войти снова
-            db2 = get_db()
-            user2 = db2.execute("SELECT * FROM users WHERE phone = '79885260358'").fetchone()
-            if user2 and check_password_hash(user2['password_hash'], pw):
-                session['user_id'] = user2['id']
-                db2.close()
-                flash('Вы вошли!', 'success')
-                return redirect(url_for('index'))
-            db2.close()
         flash('Неверный номер или пароль.', 'danger')
     return render_template('login.html')
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET', 'POST'])
 def logout():
     session.clear()
     flash('Вы вышли.', 'info')
@@ -366,11 +391,9 @@ def goals_list():
             g['ends_at_formatted'] = g['ends_at'][:10]
         goals.append(g)
 
-    today_closed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed' AND date(created_at) = date('now')").fetchone()[0]
-    week_helped = db.execute("SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE status IN ('recipient_confirmed','completed') AND date(donor_confirmed_at) >= date('now', '-7 days')").fetchone()[0]
     db.close()
     user = get_current_user()
-    return render_template('goals.html', goals=goals, today_closed=today_closed, week_helped=week_helped, user=user)
+    return render_template('goals.html', goals=goals, user=user)
 
 
 @app.route('/manifest.json')
@@ -384,11 +407,13 @@ def service_worker():
     return send_from_directory(os.path.join(BASE_DIR, 'static'), 'sw.js')
 
 @app.route('/admin')
+@admin_required
 def admin_panel():
     return '<h2>Админка — скоро</h2>'
 
 
 @app.route('/clear')
+@admin_required
 def clear_all():
     db = get_db()
     db.execute("DELETE FROM donations")
@@ -533,16 +558,17 @@ def donate(goal_id):
             )
             db.commit()
 
-        # XP и сумма помощи (только если не самодонат)
-        goal_owner = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
-        if goal_owner and donor_id != goal_owner['user_id']:
+        # XP и сумма помощи + авто-подтверждение seed3
+        goal_data = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        
+        # XP (только если не самодонат)
+        if goal_data and donor_id != goal_data['user_id']:
             add_xp(donor_id, 'donate')
             add_xp(donor_id, 'donate_new')
             db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (amount, donor_id))
             db.commit()
 
         # Автоподтверждение для seed3
-        goal_data = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
         if goal_data:
             recipient = db.execute("SELECT phone FROM users WHERE id = ?", (goal_data['user_id'],)).fetchone()
             if recipient and recipient['phone'] == '7888888888':

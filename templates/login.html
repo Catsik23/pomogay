@@ -80,7 +80,7 @@
         .field input[type="password"]:focus {
             border-color: #FF6B4A;
         }
-        .btn-login { transition: transform 0.1s, box-shadow 0.2s; position: relative; overflow: hidden;
+        .btn-login {
             width: 100%;
             padding: 16px;
             background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
@@ -94,7 +94,6 @@
             cursor: pointer;
             margin-top: 8px;
             transition: transform 0.1s, box-shadow 0.2s;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.12);
             position: relative;
             overflow: hidden;
         }
@@ -112,9 +111,7 @@
         .btn-login:active::after {
             opacity: 1;
         }
-        .btn-login:active { transform: scale(0.97);
-            transform: scale(0.96);
-            box-shadow: 0 1px 4px rgba(255,107,74,0.2);
+        .btn-login:active { transform: scale(0.97); box-shadow: 0 1px 4px rgba(255,107,74,0.2);
         }
 
         .bottom-link {
@@ -142,25 +139,19 @@
     <div class="login-box">
         <h1>Вход</h1>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":"{{ category }}","text":"{{ message|replace('"', '\"') }}"}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <form method="POST" id="loginForm">
             <div class="field">
                 <label>Номер телефона</label>
                 <div class="phone-wrap">
                     <span class="phone-prefix">+7</span>
-                    <input type="tel" name="phone" placeholder="" autofocus required>
+                    <input type="tel" name="phone" placeholder="" autofocus required autocomplete="tel">
                 </div>
             </div>
             <div class="field">
                 <label>Пароль</label>
-                <input type="password" name="password" placeholder="" required>
+                <input type="password" name="password" placeholder="" required autocomplete="current-password">
             </div>
             <button type="submit" class="btn-login">Войти</button>
         </form>

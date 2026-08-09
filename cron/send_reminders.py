@@ -8,7 +8,8 @@ def send_reminder(user_id, msg):
     """Заглушка — в будущем PWA Push / Email."""
     print(f"  -> Пользователь {user_id}: {msg}")
 
-conn = sqlite3.connect(DB)
+conn = sqlite3.connect(DB, timeout=10)
+conn.execute("PRAGMA busy_timeout=5000")
 cur = conn.cursor()
 
 # +2 минуты
