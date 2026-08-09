@@ -406,7 +406,7 @@ def goal_page(goal_id):
         ).fetchone() is not None
         rdb.close()
     
-    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported)
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user)
 
 @app.route('/report/<int:goal_id>', methods=['POST'])
 @login_required

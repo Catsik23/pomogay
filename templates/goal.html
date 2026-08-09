@@ -218,29 +218,94 @@
 
             <!-- Модальное окно жалобы -->
             <div class="modal" id="reportModal">
-                <div class="modal-content">
-                    <span class="modal-close" onclick="closeReportModal()">&times;</span>
-                    <h3 style="margin:0 0 16px;">Пожаловаться на цель</h3>
-                    <form method="POST" action="/report/{{ goal.id }}">
-                        <select name="reason" style="width:100%;padding:14px;border:1px solid #E0E0E0;border-radius:14px;font-size:16px;font-family:Inter,sans-serif;margin-bottom:16px;" required>
-                            <option value="">Выберите причину</option>
-                            <option value="Мошенничество">Мошенничество</option>
-                            <option value="Спам">Спам</option>
-                            <option value="Оскорбления">Оскорбления</option>
-                            <option value="Запрещённый контент">Запрещённый контент</option>
-                            <option value="Другое">Другое</option>
-                        </select>
-                        <button type="submit" style="width:100%;padding:14px;background:#E57373;color:white;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;">Отправить жалобу</button>
+                <div class="modal-content" style="padding:28px 20px 24px;">
+                    <span class="modal-close" onclick="closeReportModal()" style="font-size:28px;top:12px;right:16px;">&times;</span>
+                    <h3 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#2D2D2D;">Что не так с этой целью?</h3>
+                    <p style="font-size:14px;color:#8C7A6B;margin-bottom:20px;">Ваша жалоба анонимна и поможет сделать платформу безопаснее</p>
+                    <form method="POST" action="/report/{{ goal.id }}" id="reportForm">
+                        <input type="hidden" name="reason" id="reportReason">
+                        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+                            <button type="button" class="reason-tile" data-reason="Мошенничество" onclick="selectReason(this)">
+                                <span style="font-size:22px;">⚠️</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:15px;color:#2D2D2D;">Мошенничество</div>
+                                    <div style="font-size:13px;color:#8C7A6B;">Обман, фейковый сбор</div>
+                                </div>
+                            </button>
+                            <button type="button" class="reason-tile" data-reason="Спам" onclick="selectReason(this)">
+                                <span style="font-size:22px;">📢</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:15px;color:#2D2D2D;">Спам или реклама</div>
+                                    <div style="font-size:13px;color:#8C7A6B;">Ссылки, каналы, розыгрыши</div>
+                                </div>
+                            </button>
+                            <button type="button" class="reason-tile" data-reason="Оскорбления" onclick="selectReason(this)">
+                                <span style="font-size:22px;">💬</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:15px;color:#2D2D2D;">Оскорбления</div>
+                                    <div style="font-size:13px;color:#8C7A6B;">Ненормативная лексика, унижения</div>
+                                </div>
+                            </button>
+                            <button type="button" class="reason-tile" data-reason="Запрещённый контент" onclick="selectReason(this)">
+                                <span style="font-size:22px;">🚫</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:15px;color:#2D2D2D;">Запрещённый контент</div>
+                                    <div style="font-size:13px;color:#8C7A6B;">Наркотики, оружие, порнография</div>
+                                </div>
+                            </button>
+                            <button type="button" class="reason-tile" data-reason="Другое" onclick="selectReason(this)">
+                                <span style="font-size:22px;">📝</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:15px;color:#2D2D2D;">Другое</div>
+                                    <div style="font-size:13px;color:#8C7A6B;">Что-то ещё вызывает сомнения</div>
+                                </div>
+                            </button>
+                        </div>
+                        <button type="submit" id="reportSubmit" disabled style="width:100%;padding:16px;background:linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);color:white;border:none;border-radius:14px;font-size:17px;font-weight:600;cursor:pointer;transition:opacity 0.2s;opacity:0.5;">Отправить жалобу</button>
                     </form>
                 </div>
             </div>
 
+            <style>
+                .reason-tile {
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
+                    width: 100%;
+                    padding: 14px 16px;
+                    background: #FDF8F5;
+                    border: 2px solid transparent;
+                    border-radius: 14px;
+                    cursor: pointer;
+                    text-align: left;
+                    font-family: Inter, sans-serif;
+                    transition: border-color 0.2s, background 0.2s;
+                }
+                .reason-tile:active { transform: scale(0.98); }
+                .reason-tile.selected {
+                    border-color: #FF5A3C;
+                    background: #FFF5F2;
+                    box-shadow: 0 0 0 3px rgba(255,90,60,0.1);
+                }
+                #reportSubmit:not(:disabled) { opacity: 1; }
+                #reportSubmit:not(:disabled):active { transform: scale(0.97); }
+            </style>
+
             <script>
                 function openReportModal() {
                     document.getElementById('reportModal').classList.add('active');
+                    document.querySelectorAll('.reason-tile').forEach(t => t.classList.remove('selected'));
+                    document.getElementById('reportReason').value = '';
+                    document.getElementById('reportSubmit').disabled = true;
                 }
                 function closeReportModal() {
                     document.getElementById('reportModal').classList.remove('active');
+                }
+                function selectReason(el) {
+                    document.querySelectorAll('.reason-tile').forEach(t => t.classList.remove('selected'));
+                    el.classList.add('selected');
+                    document.getElementById('reportReason').value = el.dataset.reason;
+                    document.getElementById('reportSubmit').disabled = false;
                 }
                 document.getElementById('reportModal').addEventListener('click', function(e) {
                     if (e.target === this) closeReportModal();
