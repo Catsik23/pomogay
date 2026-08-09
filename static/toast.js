@@ -27,7 +27,15 @@ document.addEventListener('DOMContentLoaded', function() {
         toast.textContent = msg.text;
         container.appendChild(toast);
 
-        var delay = timings[msg.category] || 3000;
-        setTimeout(function() { toast.remove(); }, delay);
+        // Удаляем после окончания CSS-анимации
+        toast.addEventListener('animationend', function(e) {
+            if (e.animationName === 'toastOut') {
+                toast.remove();
+                // Убираем контейнер, если он пуст
+                if (container.children.length === 0) {
+                    container.remove();
+                }
+            }
+        });
     });
 });
