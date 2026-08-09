@@ -137,8 +137,8 @@
                 <a class="goal-card" href="/goal/{{ goal.id }}">
                     <div class="top">
                         <div class="title">{{ goal.title }}</div>
-                        <span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' else 'purple' if goal.type == 'serious' else 'teal' }}">
-                            {{ 'Супер-блиц' if goal.type == 'super_blitz' else 'Блиц' if goal.type == 'blitz' else 'Жизненный' if goal.type == 'serious' else goal.type }}
+                        <span class="type-badge badge-{{ 'green' if goal.type == 'super_blitz' else 'blue' if goal.type == 'blitz' else 'purple' if goal.type == 'serious' else 'orange' if goal.type == 'urgent' else 'teal' }}">
+                            {{ 'Супер-блиц' if goal.type == 'super_blitz' else 'Блиц' if goal.type == 'blitz' else 'Жизненный' if goal.type == 'serious' else 'Срочный' if goal.type == 'urgent' else 'Общий' if goal.type == 'group' else goal.type }}
                         </span>
                     </div>
                     <div class="amount-row">
