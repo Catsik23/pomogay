@@ -290,6 +290,21 @@ def create_goal(goal_type):
         user = get_current_user()
         title = request.form.get('title','').strip()
         desc = request.form.get('description','').strip()
+        
+        # Content Filter
+        from security import check_content, is_filter_enabled
+        db_check = get_db()
+        if is_filter_enabled(db_check):
+            result, reason = check_content(title, desc)
+            db_check.close()
+            if result == 'blocked':
+                flash(f'Цель не прошла проверку: {reason}', 'danger')
+                return render_template('create_goal.html', goal_type=goal_type)
+            elif result == 'flagged':
+                flash('Цель отправлена на модерацию. Мы проверим её вручную.', 'warning')
+        else:
+            db_check.close()
+        
         amt_str = request.form.get('amount','').strip()
         days_str = request.form.get('days','').strip()
         photo = request.files.get('photo')
