@@ -133,88 +133,27 @@
         }
         .field-error.active { display: block; }
 
-        /* Overlay-подсветка внутри input и textarea */
-        .field-wrap {
-            position: relative;
-            background: white;
+        /* Подсветка проблемного слова */
+        .highlight-box {
+            display: none;
+            background: #FDF8F5;
             border: 1px solid #E0E0E0;
-            border-radius: 14px;
-            transition: border-color 0.2s;
-        }
-        .field-wrap:focus-within {
-            border-color: #FF6B4A;
-        }
-        .field-wrap input,
-        .field-wrap textarea {
-            position: relative;
-            z-index: 2;
-            background: transparent;
-            color: #2D2D2D;
-            caret-color: #2D2D2D;
-            border: none;
-            outline: none;
-            width: 100%;
-            padding: 14px;
-            font-family: 'Inter', sans-serif;
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        .field-wrap input { height: 52px; }
-        .field-wrap textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
-        .field-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 1;
-            pointer-events: none;
-            padding: 14px;
-            font-family: 'Inter', sans-serif;
-            font-size: 16px;
-            line-height: 1.5;
-            color: transparent;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow: hidden;
-            box-sizing: border-box;
-            border-radius: 14px;
-        }
-        .field-overlay mark {
-            background: #FFE0B2;
-            color: transparent;
-            border-radius: 3px;
-        }
-
-        /* Отступы для плашки ошибки */
-        .field-error {
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
             margin-top: 8px;
-            margin-bottom: 8px;
+            color: #2D2D2D;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
-        .field-error.active + .field-wrap,
-        .field-error.active + .hint + .field-wrap {
-            margin-top: 0;
-        }
-
-        /* Кнопка "Выбрать другой тип" — свечение при нажатии */
-        .btn-back-glow {
-            display: block;
-            width: 100%;
-            padding: 16px;
-            border: 1px solid #FF5A3C;
-            border-radius: 14px;
-            font-family: 'Inter', sans-serif;
-            font-size: 18px;
+        .highlight-box.active { display: block; }
+        .highlight-box mark {
+            background: #FFE0B2;
+            color: #E65100;
+            padding: 1px 3px;
+            border-radius: 4px;
             font-weight: 600;
-            color: #FF5A3C;
-            background: white;
-            cursor: pointer;
-            text-align: center;
-            text-decoration: none;
-            margin-top: 12px;
-            transition: box-shadow 0.15s, transform 0.1s;
-            box-sizing: border-box;
-        }
-        .btn-back-glow:active {
-            transform: scale(0.97);
-            box-shadow: 0 0 0 3px rgba(255,90,60,0.25), 0 8px 24px rgba(255,90,60,0.15);
         }
     </style>
 </head>
@@ -230,18 +169,13 @@
         <form method="POST" enctype="multipart/form-data">
             <label>Название цели *</label>
             <div class="field-error" id="titleError"></div>
-            <div class="field-wrap">
-                <div class="field-overlay" id="titleOverlay"></div>
-                <input type="text" name="title" id="titleField" maxlength="140" placeholder="" value="{{ title or '' }}" required autofocus>
-            </div>
+            <input type="text" name="title" id="titleField" maxlength="140" placeholder="" value="{{ title or '' }}" required autofocus>
             <div class="hint">До 140 символов</div>
 
             <label>Описание <button type="button" class="rules-btn" onclick="openRules()">Правила</button></label>
             <div class="field-error" id="descError"></div>
-            <div class="field-wrap">
-                <div class="field-overlay" id="descOverlay"></div>
-                <textarea name="description" id="descField" maxlength="1000" placeholder="">{{ description or '' }}</textarea>
-            </div>
+            <div class="highlight-box" id="descHighlight"></div>
+            <textarea name="description" id="descField" maxlength="1000" placeholder="">{{ description or '' }}</textarea>
             <div class="hint">Опишите ситуацию — это повышает доверие</div>
 
             <label>Сумма (₽) *</label>
@@ -266,7 +200,7 @@
 
             <button type="submit" class="btn-cta">Создать цель</button>
         </form>
-        <a class="btn-outline-glow" href="/goals/choose" style="margin-top:12px;">Выбрать другой тип</a>
+        <div class="back"><a class="btn-back" href="/goals/choose">← Выбрать другой тип</a></div>
     </div>
 
     <!-- Модалка правил -->
@@ -295,39 +229,14 @@
             if (e.target === this) closeRules();
         });
 
-        // Overlay-подсветка для input и textarea
-        function updateOverlay(overlayId, text, pos) {
-            var overlay = document.getElementById(overlayId);
-            if (!overlay) return;
-            if (!pos || !text) {
-                overlay.innerHTML = '';
-                return;
-            }
-            var before = text.substring(0, pos[0]);
-            var marked = text.substring(pos[0], pos[1]);
-            var after = text.substring(pos[1]);
-            overlay.innerHTML = escapeHtml(before) + '<mark>' + escapeHtml(marked) + '</mark>' + escapeHtml(after);
-        }
-
-        function escapeHtml(s) {
-            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        // Синхронизация скролла textarea и overlay
-        var descField = document.getElementById('descField');
-        var descOverlay = document.getElementById('descOverlay');
-        descField.addEventListener('scroll', function() {
-            descOverlay.scrollTop = descField.scrollTop;
-        });
-
         // Живая валидация при уходе из поля
-        async function liveCheck(fieldId, context, errorBoxId, overlayId) {
+        async function liveCheck(fieldId, context, errorBoxId, highlightBoxId) {
             var field = document.getElementById(fieldId);
             var errBox = document.getElementById(errorBoxId);
-            var text = field.value;
-            if (!text.trim()) {
+            var text = field.value.trim();
+            if (!text) {
                 errBox.classList.remove('active');
-                if (overlayId) updateOverlay('descOverlay', '', null);
+                if (highlightBoxId) document.getElementById(highlightBoxId).classList.remove('active');
                 return;
             }
             try {
@@ -340,35 +249,26 @@
                 if (data.status === 'blocked') {
                     errBox.textContent = data.message;
                     errBox.classList.add('active');
-                    if (overlayId && data.position) {
-                        updateOverlay(fieldId === 'titleField' ? 'titleOverlay' : 'descOverlay', text, data.position);
+                    if (data.position) {
+                        field.focus();
+                        field.setSelectionRange(data.position[0], data.position[1]);
                     }
                 } else if (data.status === 'flagged') {
                     errBox.textContent = 'Текст отправится на проверку';
                     errBox.classList.add('active');
-                    if (overlayId) updateOverlay('descOverlay', '', null);
                 } else {
                     errBox.classList.remove('active');
-                    if (overlayId) updateOverlay('descOverlay', '', null);
                 }
             } catch(e) {
-                // Молча игнорируем
+                // Молча игнорируем сетевые ошибки
             }
         }
 
         document.getElementById('titleField').addEventListener('blur', function() {
-            liveCheck('titleField', 'goal_title', 'titleError', 'titleOverlay');
+            liveCheck('titleField', 'goal_title', 'titleError', null);
         });
         document.getElementById('descField').addEventListener('blur', function() {
-            liveCheck('descField', 'goal_description', 'descError', 'descOverlay');
-        });
-
-        // Обновление overlay при вводе
-        document.getElementById('titleField').addEventListener('input', function() {
-            document.getElementById('titleOverlay').innerHTML = '';
-        });
-        document.getElementById('descField').addEventListener('input', function() {
-            document.getElementById('descOverlay').innerHTML = '';
+            liveCheck('descField', 'goal_description', 'descError', 'descHighlight');
         });
 
         {% if error_field == 'title' %}

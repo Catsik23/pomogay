@@ -356,3 +356,26 @@ a { color: var(--cta); text-decoration: none; }
     width: 100%;
 }
 .btn-outline:active { transform: scale(0.97); }
+
+/* Белая кнопка с обводкой и закатным свечением при нажатии */
+.btn-outline-glow {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid #FF5A3C;
+    border-radius: 14px;
+    font-family: var(--font);
+    font-size: 18px;
+    font-weight: 600;
+    color: #FF5A3C;
+    background: white;
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    transition: box-shadow 0.15s, transform 0.1s;
+    box-sizing: border-box;
+}
+.btn-outline-glow:active {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 3px rgba(255,90,60,0.25), 0 8px 24px rgba(255,90,60,0.15);
+}

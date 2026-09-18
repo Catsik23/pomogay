@@ -293,23 +293,36 @@ def create_goal(goal_type):
         title = request.form.get('title','').strip()
         desc = request.form.get('description','').strip()
         
-        # Content Filter
-        from security import check_content, is_filter_enabled
-        db_check = get_db()
-        if is_filter_enabled(db_check):
-            result, reason = check_content(title, desc)
-            db_check.close()
-            if result == 'blocked':
-                flash(f'Цель не прошла проверку: {reason}', 'danger')
-                return render_template('create_goal.html', goal_type=goal_type)
-            elif result == 'flagged':
-                flash('Цель отправлена на модерацию. Мы проверим её вручную.', 'warning')
-        else:
-            db_check.close()
-        
         amt_str = request.form.get('amount','').strip()
         days_str = request.form.get('days','').strip()
         photo = request.files.get('photo')
+        
+        # Content Guard
+        from content_guard import check as cg_check, is_filter_enabled
+        db_check = get_db()
+        if is_filter_enabled(db_check):
+            db_check.close()
+            r_title = cg_check(title, 'goal_title')
+            if r_title['status'] == 'blocked':
+                return render_template('create_goal.html', goal_type=goal_type,
+                    error_message=r_title['message'],
+                    error_position=r_title['position'],
+                    error_field='title',
+                    title=title, description=desc,
+                    amount=amt_str, days=days_str)
+            r_desc = cg_check(desc, 'goal_description')
+            if r_desc['status'] == 'blocked':
+                return render_template('create_goal.html', goal_type=goal_type,
+                    error_message=r_desc['message'],
+                    error_position=r_desc['position'],
+                    error_field='description',
+                    error_text=desc,
+                    title=title, description=desc,
+                    amount=amt_str, days=days_str)
+            if r_title['status'] == 'flagged' or r_desc['status'] == 'flagged':
+                flash('Цель отправлена на модерацию. Мы проверим её вручную.', 'warning')
+        else:
+            db_check.close()
         if not title or len(title) > 140:
             flash('Название обязательно (до 140 символов).', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
@@ -743,6 +756,26 @@ def confirm_donation(donation_id):
     flash('Подтверждено', 'success')
     
     return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+
+
+@app.route('/api/guard-check', methods=['POST'])
+def api_guard_check():
+    """AJAX-проверка текста через Content Guard."""
+    from flask import jsonify
+    from content_guard import check as cg_check
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    context = data.get('context', 'goal_description')
+    if not text:
+        return jsonify({'status': 'passed'})
+    result = cg_check(text, context)
+    return jsonify({
+        'status': result.get('status', 'passed'),
+        'category': result.get('category'),
+        'found': result.get('found'),
+        'position': result.get('position'),
+        'message': result.get('message'),
+    })
 
 
 @app.route('/health')
