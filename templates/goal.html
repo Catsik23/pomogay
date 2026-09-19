@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ goal.title }} — Помогай</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=4">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; padding-bottom: 40px; }
@@ -60,11 +60,12 @@
             background: #F5F5F5;
             position: relative;
         }
-        .gallery-hero img {
+        .gallery-hero-img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            display: block;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
         .gallery-counter {
             position: absolute;
@@ -77,6 +78,9 @@
             padding: 4px 10px;
             border-radius: 8px;
             backdrop-filter: blur(4px);
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         .gallery-thumbs {
             display: flex;
@@ -101,11 +105,20 @@
         }
         .gallery-thumb:active { transform: scale(0.95); }
         .gallery-thumb.active { border-color: #FF5A3C; }
-        .gallery-thumb img {
+        .gallery-thumb-img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            display: block;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* Защита фото */
+        .gallery-hero,
+        .gallery-thumb {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
 
         /* Лайтбокс */
@@ -121,11 +134,28 @@
             padding: 20px;
         }
         .lightbox.active { display: flex; }
-        .lightbox img {
+        .lightbox-img-wrap {
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain;
-            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .lightbox-img-view {
+            max-width: 100%;
+            max-height: 100%;
+            width: 90vw;
+            height: 85vh;
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         .lightbox-close {
             position: absolute;
@@ -171,6 +201,9 @@
             left: 50%;
             transform: translateX(-50%);
             color: white;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
             font-size: 14px;
             font-weight: 600;
             background: rgba(0,0,0,0.5);
@@ -267,6 +300,42 @@
         .donate-submit { display: none; width: 100%; padding: 16px; background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%); color: white; border: none; border-radius: 14px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; box-shadow: 0 2px 8px rgba(255,107,74,0.15); }
         .donate-submit.active { display: block; }
         .donate-submit:active { transform: scale(0.97); }
+        .confirm-submit {
+            width: 100%;
+            padding: 16px;
+            background: #5B9A6B;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 2px 8px rgba(91,154,107,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .confirm-submit:active { transform: scale(0.97); }
+        .confirm-submit {
+            width: 100%;
+            padding: 16px;
+            background: #5B9A6B;
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 2px 8px rgba(91,154,107,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .confirm-submit:active { transform: scale(0.97); }
         .manual-mode { display: none; margin-top: 16px; text-align: left; }
         .manual-mode.active { display: block; }
         .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #F0EDEA; }
@@ -289,7 +358,7 @@
 </head>
 <body>
     <div class="container">
-        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":"{{ category }}","text":"{{ message|replace('"', '\"') }}"}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
+        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":{{ category|tojson }},"text":{{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <!-- Шапка -->
         <div class="goal-header">
@@ -304,7 +373,7 @@
             {% if photos_list %}
             <div class="gallery" id="gallery" data-photos='{{ photos_list | tojson }}'>
                 <div class="gallery-hero" onclick="openLightbox(0)">
-                    <img id="galleryHero" src="{{ photos_list[0] }}" alt="Фото цели">
+                    <div id="galleryHero" class="gallery-hero-img" style="background-image: url('{{ photos_list[0] }}');" oncontextmenu="return false;"></div>
                     {% if photos_list | length > 1 %}
                     <div class="gallery-counter" id="galleryCounter">1 / {{ photos_list | length }}</div>
                     {% endif %}
@@ -313,7 +382,7 @@
                 <div class="gallery-thumbs">
                     {% for photo in photos_list %}
                     <div class="gallery-thumb {% if loop.index0 == 0 %}active{% endif %}" onclick="selectPhoto({{ loop.index0 }})">
-                        <img src="{{ photo }}" alt="Фото {{ loop.index }}">
+                        <div class="gallery-thumb-img" style="background-image: url('{{ photo }}');"></div>
                     </div>
                     {% endfor %}
                 </div>
@@ -441,7 +510,7 @@
             {% endif %}
 
             <!-- Кнопка назад -->
-            <a class="btn-back" href="/goals" class="btn-back" style="text-align:center;">Лента целей</a>
+            <a class="btn-back" href="/goals" style="text-align:center;">Лента целей</a>
             {% if user and not is_author and not already_reported %}
             <a class="btn-back" onclick="openReportModal()" style="text-align:center;cursor:pointer;">Пожаловаться</a>
             {% endif %}
@@ -473,7 +542,7 @@
                 <div class="row">
                     <span class="label">Номер</span>
                     <span class="value">{{ author.phone }}</span>
-                    <button class="copy-btn" id="copyPhoneBtn" style="background:none;border:none;padding:8px;cursor:pointer;" onclick="var p=this.previousElementSibling.textContent;var b=this;var t=document.createElement('textarea');t.value=p;t.style.position='fixed';t.style.left='-9999px';document.body.appendChild(t);t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);b.style.transition='all 0.2s';b.style.transform='scale(0.8)';setTimeout(function(){b.innerHTML='<i data-feather=&quot;check&quot; style=&quot;color:#5B9A6B;&quot;></i>';feather.replace();b.style.transform='scale(1)';},150);setTimeout(function(){b.style.transform='scale(0.8)';setTimeout(function(){b.innerHTML='<i data-feather=&quot;copy&quot; style=&quot;color:#8C7A6B;&quot;></i>';feather.replace();b.style.transform='scale(1)';},150);},1500);document.getElementById('confirmForm').style.display='block';document.getElementById('confirmForm').querySelector('button').focus();"><i data-feather="copy" style="color:#8C7A6B;"></i></button>
+                    <button class="copy-btn" id="copyPhoneBtn" style="background:none;border:none;padding:8px;cursor:pointer;" onclick="copyPhone(this)"><i data-feather="copy" style="color:#8C7A6B;"></i></button>
                     
                 </div>
                 <div class="row">
@@ -498,7 +567,7 @@
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
-                    <button type="submit" class="donate-submit active" style="margin-top:12px;background:#5B9A6B;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" stroke="white"></polyline></svg> Я перевёл(ла)</button>
+                    <button type="submit" class="donate-submit" style="margin-top:12px;background:#5B9A6B;display:block;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" stroke="white"></polyline></svg> Я перевёл(ла)</button>
                 </form>
             </div>
         </div>
@@ -553,9 +622,43 @@
             }
         }
 
+        function copyPhone(btn) {
+            var phone = btn.previousElementSibling.textContent;
+            var t = document.createElement('textarea');
+            t.value = phone;
+            t.style.position = 'fixed';
+            t.style.left = '-9999px';
+            document.body.appendChild(t);
+            t.select();
+            try { document.execCommand('copy'); } catch(e) {}
+            document.body.removeChild(t);
+
+            // Анимация: copy → check → copy
+            btn.style.transition = 'all 0.2s';
+            btn.style.transform = 'scale(0.8)';
+            setTimeout(function() {
+                btn.innerHTML = '<i data-feather="check" style="color:#5B9A6B;"></i>';
+                feather.replace();
+                btn.style.transform = 'scale(1)';
+            }, 150);
+            setTimeout(function() {
+                btn.style.transform = 'scale(0.8)';
+                setTimeout(function() {
+                    btn.innerHTML = '<i data-feather="copy" style="color:#8C7A6B;"></i>';
+                    feather.replace();
+                    btn.style.transform = 'scale(1)';
+                }, 150);
+            }, 1500);
+
+            // Показываем форму подтверждения
+            var form = document.getElementById('confirmForm');
+            form.style.display = 'block';
+            form.querySelector('button').focus();
+        }
+
         function startDonate() {
             if (!selectedAmount) return;
-            var phone = '{{ author.phone }}';
+            var phone = {{ author.phone | tojson }};
             document.getElementById('manualMode').classList.add('active');
         }
 
@@ -571,13 +674,95 @@
     (function() {
         var gallery = document.getElementById('gallery');
         if (!gallery) return;
+
+        // === Защита фото от долгого тапа и копирования ===
+        (function() {
+            var protectedTargets = document.querySelectorAll('.gallery-hero, .gallery-thumb, .lightbox');
+
+            protectedTargets.forEach(function(el) {
+                // Запрет контекстного меню (правый клик, долгий тап на Android)
+                el.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
+                // Долгий тап — блокируем меню
+                var longPressTimer = null;
+                el.addEventListener('touchstart', function(e) {
+                    longPressTimer = setTimeout(function() {
+                        if (e.cancelable) e.preventDefault();
+                    }, 500);
+                }, { passive: false });
+                el.addEventListener('touchend', function() {
+                    clearTimeout(longPressTimer);
+                });
+                el.addEventListener('touchmove', function() {
+                    clearTimeout(longPressTimer);
+                });
+                el.addEventListener('touchcancel', function() {
+                    clearTimeout(longPressTimer);
+                });
+
+                // Блокировка drag
+                el.addEventListener('dragstart', function(e) { e.preventDefault(); });
+            });
+
+            // Блокировка горячих клавиш: PrintScreen, Ctrl+S, Ctrl+Shift+S, Cmd+Shift+3/4
+            document.addEventListener('keydown', function(e) {
+                // PrintScreen
+                if (e.key === 'PrintScreen') {
+                    e.preventDefault();
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(''); // чистим буфер
+                    }
+                    return false;
+                }
+                // Ctrl+S / Cmd+S — сохранить страницу
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Ctrl+Shift+S — сохранить как
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    return false;
+                }
+                // Cmd+Shift+3/4 (macOS скриншот)
+                if (e.metaKey && e.shiftKey && (e.key === '3' || e.key === '4')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // Размытие при потере фокуса (ловит Snipping Tool, Lightshot и др.)
+            var blurTimer = null;
+            window.addEventListener('blur', function() {
+                blurTimer = setTimeout(function() {
+                    if (document.hasFocus && !document.hasFocus()) {
+                        gallery.style.filter = 'blur(20px)';
+                        gallery.style.transition = 'filter 0.2s';
+                    }
+                }, 100);
+            });
+            window.addEventListener('focus', function() {
+                clearTimeout(blurTimer);
+                gallery.style.filter = '';
+            });
+
+            // Размытие при visibilitychange (переключение вкладок)
+            document.addEventListener('visibilitychange', function() {
+                if (document.hidden) {
+                    gallery.style.filter = 'blur(20px)';
+                } else {
+                    gallery.style.filter = '';
+                }
+            });
+        })();
+        // === Конец защиты ===
         var photos = JSON.parse(gallery.dataset.photos);
         var currentIndex = 0;
 
         window.selectPhoto = function(index) {
             currentIndex = index;
             var hero = document.getElementById('galleryHero');
-            hero.src = photos[index];
+            hero.style.backgroundImage = 'url(' + photos[index] + ')';
             var counter = document.getElementById('galleryCounter');
             if (counter) counter.textContent = (index + 1) + ' / ' + photos.length;
             document.querySelectorAll('.gallery-thumb').forEach(function(t, i) {
@@ -594,14 +779,27 @@
                 lb.id = 'lightbox';
                 lb.innerHTML = '<button class="lightbox-close" onclick="closeLightbox()">×</button>' +
                     (photos.length > 1 ? '<button class="lightbox-nav lightbox-prev" onclick="lbNav(-1)">‹</button><button class="lightbox-nav lightbox-next" onclick="lbNav(1)">›</button>' : '') +
-                    '<img id="lightboxImg" src="">' +
+                    '<div class="lightbox-img-wrap"><div id="lightboxImg" class="lightbox-img-view"></div></div>' +
                     (photos.length > 1 ? '<div class="lightbox-counter" id="lightboxCounter"></div>' : '');
                 document.body.appendChild(lb);
                 lb.addEventListener('click', function(e) {
                     if (e.target === lb) closeLightbox();
                 });
+                // Защита от контекстного меню внутри лайтбокса
+                lb.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+                lb.addEventListener('dragstart', function(e) { e.preventDefault(); });
+                // Долгий тап в лайтбоксе
+                var lbLongPress = null;
+                lb.addEventListener('touchstart', function(e) {
+                    lbLongPress = setTimeout(function() {
+                        if (e.cancelable) e.preventDefault();
+                    }, 500);
+                }, { passive: false });
+                lb.addEventListener('touchend', function() { clearTimeout(lbLongPress); });
+                lb.addEventListener('touchmove', function() { clearTimeout(lbLongPress); });
+                lb.addEventListener('touchcancel', function() { clearTimeout(lbLongPress); });
             }
-            document.getElementById('lightboxImg').src = photos[currentIndex];
+            document.getElementById('lightboxImg').style.backgroundImage = 'url(' + photos[currentIndex] + ')';
             var lc = document.getElementById('lightboxCounter');
             if (lc) lc.textContent = (currentIndex + 1) + ' / ' + photos.length;
             lb.classList.add('active');
@@ -614,7 +812,7 @@
 
         window.lbNav = function(delta) {
             currentIndex = (currentIndex + delta + photos.length) % photos.length;
-            document.getElementById('lightboxImg').src = photos[currentIndex];
+            document.getElementById('lightboxImg').style.backgroundImage = 'url(' + photos[currentIndex] + ')';
             var lc = document.getElementById('lightboxCounter');
             if (lc) lc.textContent = (currentIndex + 1) + ' / ' + photos.length;
             selectPhoto(currentIndex);

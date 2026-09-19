@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Регистрация — помогай.рф</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=4">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -155,7 +155,7 @@
     <div class="register-box">
         <h1>Регистрация</h1>
 
-        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":"{{ category }}","text":"{{ message|replace('"', '\"') }}"}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
+        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":{{ category|tojson }},"text":{{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <form method="POST" id="regForm">
             <input type="text" name="honeypot" style="opacity:0;position:absolute;top:0;left:0;height:0;width:0;z-index:-1;" tabindex="-1" autocomplete="off">

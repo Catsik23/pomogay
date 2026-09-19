@@ -379,3 +379,9 @@ a { color: var(--cta); text-decoration: none; }
     transform: scale(0.97);
     box-shadow: 0 0 0 3px rgba(255,90,60,0.25), 0 8px 24px rgba(255,90,60,0.15);
 }
+
+/* Блокировка pull-to-refresh и bounce-scroll */
+html, body {
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
+}

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Создать цель — помогай.рф</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=4">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; }
@@ -308,7 +308,7 @@
             {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
         </div>
 
-        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":"{{ category }}","text":"{{ message|replace('"', '\"') }}"}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
+        <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":{{ category|tojson }},"text":{{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <form method="POST" enctype="multipart/form-data">
             <label>Название цели *</label>
