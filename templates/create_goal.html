@@ -193,6 +193,89 @@
             margin-top: 0;
         }
 
+        /* Segmented control для срока */
+        .segmented {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .seg-btn {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            background: white;
+            color: #2D2D2D;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
+        }
+        .seg-btn:active { transform: scale(0.97); }
+        .seg-btn.selected {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.2);
+        }
+
+        /* Сетка фото */
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .photo-cell {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #F5F5F5;
+            border: 2px dashed #E0E0E0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color 0.15s, transform 0.1s;
+        }
+        .photo-cell:hover { border-color: #FF5A3C; }
+        .photo-cell:active { transform: scale(0.97); }
+        .photo-cell.add-btn { background: #FDF8F5; }
+        .photo-cell .plus {
+            font-size: 32px;
+            color: #FF5A3C;
+            font-weight: 300;
+            line-height: 1;
+        }
+        .photo-cell img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .photo-cell .remove-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            font-size: 14px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+        }
+        .photo-cell .remove-btn:active { background: rgba(0,0,0,0.8); }
+        #photosInput { display: none; }
+
         /* Кнопка "Выбрать другой тип" — свечение при нажатии */
         .btn-back-glow {
             display: block;
@@ -249,20 +332,19 @@
             <div class="hint">{% if goal_type == 'super_blitz' %}От 100 до 5 000 ₽{% else %}От 500 до 50 000 ₽{% endif %}</div>
 
             <label>Срок (дней) *</label>
-            <select name="days" required>
-                <option value="">Выберите срок</option>
-                {% if goal_type == 'super_blitz' %}
-                <option value="1" {% if days == '1' %}selected{% endif %}>1 день</option>
-                {% else %}
-                <option value="1" {% if days == '1' %}selected{% endif %}>1 день</option>
-                <option value="3" {% if days == '3' %}selected{% endif %}>3 дня</option>
-                <option value="7" {% if days == '7' %}selected{% endif %}>7 дней</option>
+            <input type="hidden" name="days" id="daysInput" value="{{ days or '' }}" required>
+            <div class="segmented" id="daysSegmented">
+                <button type="button" class="seg-btn" data-value="1">1 день</button>
+                {% if goal_type != 'super_blitz' %}
+                <button type="button" class="seg-btn" data-value="3">3 дня</button>
+                <button type="button" class="seg-btn" data-value="7">7 дней</button>
                 {% endif %}
-            </select>
+            </div>
 
-            <label>Фото (опционально)</label>
-            <input type="file" name="photo" accept="image/*">
-            <div class="hint">Фото, скрин или документ — повышает доверие</div>
+            <label>Фото и документы (до 20)</label>
+            <div class="photos-grid" id="photosGrid"></div>
+            <input type="file" name="photos" id="photosInput" accept="image/*" multiple>
+            <div class="hint">Фото, чеки, справки, скрины — всё повышает доверие</div>
 
             <button type="submit" class="btn-cta">Создать цель</button>
         </form>
@@ -355,6 +437,93 @@
                 // Молча игнорируем
             }
         }
+
+        // Segmented control для срока
+        (function() {
+            var segBtns = document.querySelectorAll('.seg-btn');
+            var daysInput = document.getElementById('daysInput');
+            var savedDays = daysInput.value;
+
+            segBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    segBtns.forEach(function(b) { b.classList.remove('selected'); });
+                    btn.classList.add('selected');
+                    daysInput.value = btn.dataset.value;
+                });
+            });
+
+            // Восстанавливаем выбор
+            if (savedDays) {
+                segBtns.forEach(function(btn) {
+                    if (btn.dataset.value === savedDays) btn.classList.add('selected');
+                });
+            } else if (segBtns.length > 0) {
+                // По умолчанию — первый
+                segBtns[0].classList.add('selected');
+                daysInput.value = segBtns[0].dataset.value;
+            }
+        })();
+
+        // Кастомный file input — показываем имя выбранного файла
+        // Сетка фото — до 20 штук
+        (function() {
+            var MAX_PHOTOS = 20;
+            var grid = document.getElementById('photosGrid');
+            var input = document.getElementById('photosInput');
+            var selectedFiles = [];  // массив File
+
+            function render() {
+                grid.innerHTML = '';
+                // Отрисовываем выбранные фото
+                selectedFiles.forEach(function(file, index) {
+                    var cell = document.createElement('div');
+                    cell.className = 'photo-cell';
+                    var img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    cell.appendChild(img);
+                    var rm = document.createElement('button');
+                    rm.type = 'button';
+                    rm.className = 'remove-btn';
+                    rm.textContent = '×';
+                    rm.onclick = function(e) {
+                        e.stopPropagation();
+                        selectedFiles.splice(index, 1);
+                        syncInput();
+                        render();
+                    };
+                    cell.appendChild(rm);
+                    grid.appendChild(cell);
+                });
+                // Клетка "плюс" — пока < MAX
+                if (selectedFiles.length < MAX_PHOTOS) {
+                    var addCell = document.createElement('div');
+                    addCell.className = 'photo-cell add-btn';
+                    addCell.innerHTML = '<span class="plus">+</span>';
+                    addCell.onclick = function() { input.click(); };
+                    grid.appendChild(addCell);
+                }
+            }
+
+            function syncInput() {
+                // Пересобираем DataTransfer с актуальным списком файлов
+                var dt = new DataTransfer();
+                selectedFiles.forEach(function(f) { dt.items.add(f); });
+                input.files = dt.files;
+            }
+
+            input.addEventListener('change', function(e) {
+                var files = Array.from(e.target.files);
+                files.forEach(function(f) {
+                    if (selectedFiles.length < MAX_PHOTOS) {
+                        selectedFiles.push(f);
+                    }
+                });
+                syncInput();
+                render();
+            });
+
+            render();
+        })();
 
         document.getElementById('titleField').addEventListener('blur', function() {
             liveCheck('titleField', 'goal_title', 'titleError', 'titleOverlay');

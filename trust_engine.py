@@ -65,6 +65,12 @@ def get_trust_perks(score):
 
 def can_create_goal(user, db):
     """Проверяет, может ли пользователь создать ещё одну цель."""
+    # Админ — без ограничений
+    try:
+        if user['is_admin'] == 1:
+            return True
+    except (KeyError, IndexError):
+        pass
     perks = get_trust_perks(user['trust_score'] or 0)
     active_count = db.execute(
         "SELECT COUNT(*) FROM goals WHERE user_id = ? AND status = 'active'",

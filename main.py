@@ -11,7 +11,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, 'data', 'pomogay.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'goals')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
-MAX_FILE_SIZE = 20 * 1024 * 1024
+MAX_FILE_SIZE = 50 * 1024 * 1024
 TARGET_PHOTO_SIZE = 500 * 1024
 
 app = Flask(__name__)
@@ -295,7 +295,7 @@ def create_goal(goal_type):
         
         amt_str = request.form.get('amount','').strip()
         days_str = request.form.get('days','').strip()
-        photo = request.files.get('photo')
+        photos_files = request.files.getlist('photos')
         
         # Content Guard
         from content_guard import check as cg_check, is_filter_enabled
@@ -346,18 +346,23 @@ def create_goal(goal_type):
         except ValueError:
             flash('Некорректный срок.', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
-        photo_url = None
-        if photo and photo.filename and allowed_file(photo.filename):
-            try:
-                data = photo.read()
-                compressed = compress_photo(data)
-                fname = f"{uuid.uuid4().hex}.jpg"
-                fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
-                with open(fpath, 'wb') as f:
-                    f.write(compressed)
-                photo_url = f"/uploads/goals/{fname}"
-            except Exception as e:
-                flash(f'Ошибка фото: {e}', 'warning')
+        import json as _json
+        photos_urls = []
+        MAX_PHOTOS = 20
+        for pf in photos_files[:MAX_PHOTOS]:
+            if pf and pf.filename and allowed_file(pf.filename):
+                try:
+                    data = pf.read()
+                    compressed = compress_photo(data)
+                    fname = f"{uuid.uuid4().hex}.jpg"
+                    fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                    with open(fpath, 'wb') as f:
+                        f.write(compressed)
+                    photos_urls.append(f"/uploads/goals/{fname}")
+                except Exception as e:
+                    flash(f'Ошибка фото: {e}', 'warning')
+        photo_url = photos_urls[0] if photos_urls else None
+        photos_json = _json.dumps(photos_urls) if photos_urls else None
         db = get_db()
         # Проверка лимита целей по Trust Score
         if not can_create_goal(user, db):
@@ -370,8 +375,8 @@ def create_goal(goal_type):
             flash('Ошибка: пользователь не найден. Войдите заново.', 'danger')
             return redirect(url_for('login'))
         db.execute(
-            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, moderation_status) VALUES (?,?,?,?,?,0,?,'active',?,'approved')",
-            (user['id'], goal_type, title, desc, amt, ends, photo_url)
+            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, photos, moderation_status) VALUES (?,?,?,?,?,0,?,'active',?,?,'approved')",
+            (user['id'], goal_type, title, desc, amt, ends, photo_url, photos_json)
         )
         db.commit()
         gid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -391,6 +396,16 @@ def goal_page(goal_id):
         db.close()
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
+    # Парсим photos — JSON-массив путей
+    import json as _json
+    photos_list = []
+    if goal['photos']:
+        try:
+            photos_list = _json.loads(goal['photos'])
+        except Exception:
+            photos_list = []
+    if not photos_list and goal['photo_url']:
+        photos_list = [goal['photo_url']]
     author = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
     donations = db.execute(
         """SELECT d.*, 
@@ -427,7 +442,7 @@ def goal_page(goal_id):
         ).fetchone() is not None
         rdb.close()
     
-    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user)
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list)
 
 @app.route('/report/<int:goal_id>', methods=['POST'])
 @login_required

@@ -48,7 +48,135 @@
 
         /* Контент */
         .content { padding: 20px 16px; }
-        .photo { width: 100%; max-height: 280px; object-fit: cover; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        /* Галерея фото */
+        .gallery { margin-bottom: 20px; }
+        .gallery-hero {
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            background: #F5F5F5;
+            position: relative;
+        }
+        .gallery-hero img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .gallery-counter {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+        .gallery-thumbs {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 4px;
+        }
+        .gallery-thumbs::-webkit-scrollbar { display: none; }
+        .gallery-thumb {
+            flex: 0 0 72px;
+            width: 72px;
+            height: 72px;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.15s, transform 0.1s;
+            background: #F5F5F5;
+        }
+        .gallery-thumb:active { transform: scale(0.95); }
+        .gallery-thumb.active { border-color: #FF5A3C; }
+        .gallery-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Лайтбокс */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+        }
+        .lightbox-close:active { background: rgba(255,255,255,0.3); }
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+        }
+        .lightbox-nav:active { background: rgba(255,255,255,0.3); }
+        .lightbox-prev { left: 16px; }
+        .lightbox-next { right: 16px; }
+        .lightbox-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 14px;
+            border-radius: 10px;
+        }
 
         /* Карточка со статистикой */
         .stats-card {
@@ -173,8 +301,24 @@
         </div>
 
         <div class="content">
-            {% if goal.photo_url %}
-            <img class="photo" src="{{ goal.photo_url }}" alt="Фото цели">
+            {% if photos_list %}
+            <div class="gallery" id="gallery" data-photos='{{ photos_list | tojson }}'>
+                <div class="gallery-hero" onclick="openLightbox(0)">
+                    <img id="galleryHero" src="{{ photos_list[0] }}" alt="Фото цели">
+                    {% if photos_list | length > 1 %}
+                    <div class="gallery-counter" id="galleryCounter">1 / {{ photos_list | length }}</div>
+                    {% endif %}
+                </div>
+                {% if photos_list | length > 1 %}
+                <div class="gallery-thumbs">
+                    {% for photo in photos_list %}
+                    <div class="gallery-thumb {% if loop.index0 == 0 %}active{% endif %}" onclick="selectPhoto({{ loop.index0 }})">
+                        <img src="{{ photo }}" alt="Фото {{ loop.index }}">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
             {% endif %}
 
             <!-- Карточка статистики -->
@@ -423,6 +567,80 @@
         document.getElementById('donateModal').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });
+    // Галерея фото
+    (function() {
+        var gallery = document.getElementById('gallery');
+        if (!gallery) return;
+        var photos = JSON.parse(gallery.dataset.photos);
+        var currentIndex = 0;
+
+        window.selectPhoto = function(index) {
+            currentIndex = index;
+            var hero = document.getElementById('galleryHero');
+            hero.src = photos[index];
+            var counter = document.getElementById('galleryCounter');
+            if (counter) counter.textContent = (index + 1) + ' / ' + photos.length;
+            document.querySelectorAll('.gallery-thumb').forEach(function(t, i) {
+                t.classList.toggle('active', i === index);
+            });
+        };
+
+        window.openLightbox = function(index) {
+            currentIndex = index;
+            var lb = document.getElementById('lightbox');
+            if (!lb) {
+                lb = document.createElement('div');
+                lb.className = 'lightbox';
+                lb.id = 'lightbox';
+                lb.innerHTML = '<button class="lightbox-close" onclick="closeLightbox()">×</button>' +
+                    (photos.length > 1 ? '<button class="lightbox-nav lightbox-prev" onclick="lbNav(-1)">‹</button><button class="lightbox-nav lightbox-next" onclick="lbNav(1)">›</button>' : '') +
+                    '<img id="lightboxImg" src="">' +
+                    (photos.length > 1 ? '<div class="lightbox-counter" id="lightboxCounter"></div>' : '');
+                document.body.appendChild(lb);
+                lb.addEventListener('click', function(e) {
+                    if (e.target === lb) closeLightbox();
+                });
+            }
+            document.getElementById('lightboxImg').src = photos[currentIndex];
+            var lc = document.getElementById('lightboxCounter');
+            if (lc) lc.textContent = (currentIndex + 1) + ' / ' + photos.length;
+            lb.classList.add('active');
+        };
+
+        window.closeLightbox = function() {
+            var lb = document.getElementById('lightbox');
+            if (lb) lb.classList.remove('active');
+        };
+
+        window.lbNav = function(delta) {
+            currentIndex = (currentIndex + delta + photos.length) % photos.length;
+            document.getElementById('lightboxImg').src = photos[currentIndex];
+            var lc = document.getElementById('lightboxCounter');
+            if (lc) lc.textContent = (currentIndex + 1) + ' / ' + photos.length;
+            selectPhoto(currentIndex);
+        };
+
+        // Свайп на мобильных
+        var touchStartX = 0;
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.closest('.lightbox')) touchStartX = e.touches[0].clientX;
+        });
+        document.addEventListener('touchend', function(e) {
+            if (!e.target.closest('.lightbox')) return;
+            var delta = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(delta) > 50) lbNav(delta > 0 ? -1 : 1);
+        });
+
+        // Стрелки клавиатуры
+        document.addEventListener('keydown', function(e) {
+            var lb = document.getElementById('lightbox');
+            if (!lb || !lb.classList.contains('active')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') lbNav(-1);
+            if (e.key === 'ArrowRight') lbNav(1);
+        });
+    })();
+
     feather.replace();
 </script>
 <script src="/static/toast.js"></script>

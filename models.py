@@ -26,7 +26,8 @@ def migrate_db():
         'last_action_date': 'TEXT',
         'ip_registered': 'TEXT',
         'trust_score': 'INTEGER DEFAULT 50',
-        'trust_level': "TEXT DEFAULT 'guest'"
+        'trust_level': "TEXT DEFAULT 'guest'",
+        'is_admin': 'INTEGER DEFAULT 0'
     }
     for col_name, col_def in new_columns.items():
         if col_name not in columns:
@@ -43,6 +44,14 @@ def migrate_db():
     if 'ip_address' not in donation_cols:
         try:
             cur.execute("ALTER TABLE donations ADD COLUMN ip_address TEXT")
+        except sqlite3.OperationalError:
+            pass
+    # photos в goals — JSON-массив путей к фото
+    cur.execute("PRAGMA table_info(goals)")
+    goal_cols = [row[1] for row in cur.fetchall()]
+    if 'photos' not in goal_cols:
+        try:
+            cur.execute("ALTER TABLE goals ADD COLUMN photos TEXT")
         except sqlite3.OperationalError:
             pass
     conn.commit()
