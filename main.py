@@ -793,6 +793,179 @@ def api_guard_check():
     })
 
 
+@app.route('/api/goal/<int:goal_id>/photos/update', methods=['POST'])
+@login_required
+def api_photos_update(goal_id):
+    """Сохранение изменений в галерее: порядок, повороты, удаления."""
+    from flask import jsonify
+    import json as _json
+    from PIL import Image
+    import io
+
+    user = get_current_user()
+    db = get_db()
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'error': 'Цель не найдена'}), 404
+    if goal['user_id'] != user['id']:
+        db.close()
+        return jsonify({'error': 'Только автор может редактировать'}), 403
+
+    data = request.get_json(silent=True) or {}
+    new_order = data.get('order', [])       # [path1, path2, ...]
+    angles = data.get('angles', {})         # { path: angle }
+    deleted = data.get('deleted', [])       # [path1, path2]
+
+    # Валидация: все пути должны быть из текущей цели
+    current_photos = _json.loads(goal['photos']) if goal['photos'] else []
+    if not current_photos and goal['photo_url']:
+        current_photos = [goal['photo_url']]
+
+    def is_own(path):
+        return path in current_photos
+
+    new_order = [p for p in new_order if is_own(p)]
+    deleted = [p for p in deleted if is_own(p)]
+    angles = {k: v for k, v in angles.items() if is_own(k)}
+
+    # Удаляем файлы
+    upload_folder = app.config['UPLOAD_FOLDER']
+    for path in deleted:
+        filename = path.split('/')[-1]
+        fpath = os.path.join(upload_folder, filename)
+        if os.path.exists(fpath):
+            try:
+                os.remove(fpath)
+            except Exception:
+                pass
+
+    # Поворачиваем файлы
+    for path, angle in angles.items():
+        if angle % 360 == 0:
+            continue
+        filename = path.split('/')[-1]
+        fpath = os.path.join(upload_folder, filename)
+        if not os.path.exists(fpath):
+            continue
+        try:
+            with open(fpath, 'rb') as f:
+                img = Image.open(io.BytesIO(f.read()))
+            img = img.convert('RGB')
+            rotated = img.rotate(-angle, expand=True)  # минус, т.к. Pillow поворачивает против часовой
+            output = io.BytesIO()
+            rotated.save(output, format='JPEG', quality=75, optimize=True)
+            with open(fpath, 'wb') as f:
+                f.write(output.getvalue())
+        except Exception as e:
+            print(f'Rotate error: {e}')
+
+    # Финальный список — исключаем удалённые, сохраняем порядок
+    final = [p for p in new_order if p not in deleted]
+
+    photo_url = final[0] if final else None
+    photos_json = _json.dumps(final) if final else None
+
+    db.execute(
+        "UPDATE goals SET photos = ?, photo_url = ? WHERE id = ?",
+        (photos_json, photo_url, goal_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'ok': True, 'photos': final})
+
+
+@app.route('/api/goal/<int:goal_id>/photos/upload', methods=['POST'])
+@login_required
+def api_photos_upload(goal_id):
+    """Добавление новых фото в цель."""
+    from flask import jsonify
+    import json as _json
+
+    user = get_current_user()
+    db = get_db()
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'error': 'Цель не найдена'}), 404
+    if goal['user_id'] != user['id']:
+        db.close()
+        return jsonify({'error': 'Только автор может редактировать'}), 403
+
+    current_photos = _json.loads(goal['photos']) if goal['photos'] else []
+    if not current_photos and goal['photo_url']:
+        current_photos = [goal['photo_url']]
+
+    MAX_PHOTOS = 20
+    files = request.files.getlist('photos')
+    added = []
+    for pf in files:
+        if len(current_photos) + len(added) >= MAX_PHOTOS:
+            break
+        if pf and pf.filename and allowed_file(pf.filename):
+            try:
+                data = pf.read()
+                compressed = compress_photo(data)
+                fname = f"{uuid.uuid4().hex}.jpg"
+                fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
+                with open(fpath, 'wb') as f:
+                    f.write(compressed)
+                added.append(f"/uploads/goals/{fname}")
+            except Exception as e:
+                print(f'Upload error: {e}')
+
+    final = current_photos + added
+    photo_url = final[0] if final else None
+    photos_json = _json.dumps(final) if final else None
+
+    db.execute(
+        "UPDATE goals SET photos = ?, photo_url = ? WHERE id = ?",
+        (photos_json, photo_url, goal_id)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'ok': True, 'added': added, 'photos': final})
+
+
+@app.route('/api/goal/<int:goal_id>/update-description', methods=['POST'])
+@login_required
+def api_update_description(goal_id):
+    """Инлайн-редактирование описания цели."""
+    from flask import jsonify
+    from content_guard import check as cg_check
+
+    user = get_current_user()
+    db = get_db()
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'error': 'Цель не найдена'}), 404
+    if goal['user_id'] != user['id']:
+        db.close()
+        return jsonify({'error': 'Только автор может редактировать'}), 403
+
+    data = request.get_json(silent=True) or {}
+    new_desc = (data.get('description') or '').strip()
+
+    if len(new_desc) > 1000:
+        db.close()
+        return jsonify({'error': 'Максимум 1000 символов'}), 400
+
+    # Content Guard
+    r = cg_check(new_desc, 'goal_description')
+    if r['status'] == 'blocked':
+        db.close()
+        return jsonify({
+            'error': r.get('message', 'Текст не прошёл проверку'),
+            'position': r.get('position'),
+        }), 400
+
+    db.execute("UPDATE goals SET description = ? WHERE id = ?", (new_desc if new_desc else None, goal_id))
+    db.commit()
+    db.close()
+    return jsonify({'ok': True, 'description': new_desc})
+
+
 @app.route('/health')
 def health():
     return 'OK'

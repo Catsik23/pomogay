@@ -10,7 +10,35 @@
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; }
         .container { max-width: 500px; margin: 0 auto; padding: 20px; }
         h1 { color: #FF6B4A; font-size: 28px; margin-bottom: 10px; }
-        .goal-type { color: #8C7A6B; font-size: 14px; margin-bottom: 24px; }
+        .goal-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .goal-header-text {
+            flex: 1;
+            min-width: 0;
+        }
+        .goal-header-text h1 {
+            color: #FF6B4A;
+            font-size: 28px;
+            margin: 0 0 6px;
+            line-height: 1.15;
+        }
+        .goal-type { color: #8C7A6B; font-size: 14px; margin: 0; }
+        .goal-type-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .goal-type-icon.icon-green { background: linear-gradient(135deg, #C8E6C9, #A5D6A7); }
+        .goal-type-icon.icon-blue { background: linear-gradient(135deg, #BBDEFB, #90CAF9); }
         label { display: block; margin: 16px 0 6px; color: #8C7A6B; font-size: 14px; }
         input, textarea, select {
             width: 100%;
@@ -49,76 +77,90 @@
         input[type="file"] { padding: 10px; }
 
         /* Кнопка Правила */
-        .rules-btn {
-            background: none;
-            border: 1px solid #E0E0E0;
-            color: #8C7A6B;
-            font-size: 12px;
-            padding: 4px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-family: 'Inter', sans-serif;
-            margin-left: 8px;
-            vertical-align: middle;
-        }
-        .rules-btn:active { background: #F5F5F5; }
-
-        /* Модалка правил */
-        .rules-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            z-index: 100;
-            justify-content: center;
+        /* Правила описания — без рамки, на фоне */
+        .rules-trigger {
+            display: flex;
             align-items: center;
-            padding: 20px;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            padding: 4px 0;
+            margin-bottom: -4px;
+            transition: opacity 0.15s;
         }
-        .rules-modal.active { display: flex; }
-        .rules-content {
-            background: white;
-            border-radius: 20px;
-            padding: 24px;
-            max-width: 420px;
-            width: 100%;
-            max-height: 85vh;
-            overflow-y: auto;
+        .rules-trigger:active { opacity: 0.6; }
+        .rules-trigger-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FF5A3C;
+            transition: transform 0.3s ease;
         }
-        .rules-content h2 {
-            font-size: 20px;
-            margin-bottom: 16px;
+        .rules-trigger:active .rules-trigger-icon {
+            transform: scale(0.9);
+        }
+        .rules-trigger.open .rules-trigger-icon {
+            color: #E85D75;
+        }
+        .rules-trigger-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #8C7A6B;
+            transition: color 0.2s;
+        }
+        .rules-trigger.open .rules-trigger-title {
             color: #2D2D2D;
         }
-        .rules-content ol {
-            padding-left: 20px;
-            margin-bottom: 20px;
+        .rules-trigger-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FF5A3C;
+            transition: transform 0.3s ease;
         }
-        .rules-content li {
-            font-size: 15px;
+        .rules-trigger.open .rules-trigger-arrow {
+            transform: rotate(180deg);
+        }
+        .rules-body {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.3s ease;
+        }
+        .rules-body.open {
+            max-height: 900px;
+            opacity: 1;
+            margin-bottom: 8px;
+        }
+        .rules-list {
+            padding: 4px 0 8px;
+            margin: 0;
+            list-style: none;
+        }
+        .rules-list li {
+            font-size: 14px;
             line-height: 1.5;
             color: #2D2D2D;
-            margin-bottom: 12px;
+            padding: 10px 0;
         }
-        .rules-content li span {
+        .rules-list li:last-child { padding-bottom: 4px; }
+        .rules-list li span {
             color: #8C7A6B;
             font-size: 13px;
             display: block;
-            margin-top: 2px;
+            margin-top: 4px;
+            line-height: 1.5;
         }
-        .rules-close {
-            width: 100%;
-            padding: 14px;
-            background: #5B9A6B;
-            color: white;
-            border: none;
-            border-radius: 14px;
-            font-size: 16px;
-            font-weight: 600;
+        .rules-close-bottom {
+            display: flex;
+            justify-content: center;
+            padding: 4px 0 8px;
             cursor: pointer;
-            font-family: 'Inter', sans-serif;
+            transition: transform 0.2s, opacity 0.15s;
         }
-        .rules-close:active { transform: scale(0.97); }
+        .rules-close-bottom:active { transform: scale(0.85); opacity: 0.6; }
+        .rules-close-bottom svg { color: #FF5A3C; }
 
         /* Плашка ошибки */
         .field-error {
@@ -303,9 +345,20 @@
 </head>
 <body>
     <div class="container">
-        <h1>Создать цель</h1>
-        <div class="goal-type">
-            {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
+        <div class="goal-header-row">
+            <div class="goal-header-text">
+                <h1>Создать цель</h1>
+                <div class="goal-type">
+                    {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
+                </div>
+            </div>
+            <div class="goal-type-icon {% if goal_type == 'super_blitz' %}icon-green{% else %}icon-blue{% endif %}">
+                {% if goal_type == 'super_blitz' %}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {% else %}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1565C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                {% endif %}
+            </div>
         </div>
 
         <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":{{ category|tojson }},"text":{{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
@@ -319,7 +372,29 @@
             </div>
             <div class="hint">До 140 символов</div>
 
-            <label>Описание <button type="button" class="rules-btn" onclick="openRules()">Правила</button></label>
+            <div class="rules-trigger" id="rulesTrigger" onclick="toggleRules()">
+                <span class="rules-trigger-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                </span>
+                <span class="rules-trigger-title">Правила описания</span>
+                <span class="rules-trigger-arrow">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
+            </div>
+            <div class="rules-body" id="rulesBody">
+                <ol class="rules-list">
+                    <li>Без ссылок. Совсем.<span>Даже на «свой VK». Даже на «подробности тут». Мы не пропускаем ссылки, чтобы защитить тех, кто тебе помогает.</span></li>
+                    <li>Без телефонов и ников из мессенджеров.<span>В описании цели для контактов места нет.</span></li>
+                    <li>Без упоминания запрещённых в РФ организаций.<span>Даже в шутку. Даже «просто спросить». Мы работаем по закону РФ. Это не обсуждается.</span></li>
+                    <li>Без хамства и мата.<span>Здесь собрались люди — говори по-человечески.</span></li>
+                    <li>Будь честен.<span>Успех сбора зависит только от твоей искренности. Не сдерживайся, но старайся быть ближе к сути.</span></li>
+                </ol>
+                <div class="rules-close-bottom" onclick="toggleRules()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </div>
+            </div>
+
+            <label>Описание</label>
             <div class="field-error" id="descError"></div>
             <div class="field-wrap">
                 <div class="field-overlay" id="descOverlay"></div>
@@ -351,31 +426,11 @@
         <a class="btn-outline-glow" href="/goals/choose" style="margin-top:12px;">Выбрать другой тип</a>
     </div>
 
-    <!-- Модалка правил -->
-    <div class="rules-modal" id="rulesModal">
-        <div class="rules-content">
-            <h2>Правила описания</h2>
-            <ol>
-                <li>Без ссылок. Совсем.<span>Даже на «свой VK». Даже на «подробности тут».<br>Мы не пропускаем ссылки, чтобы защитить тех, кто тебе помогает.</span></li>
-                <li>Без телефонов и ников из мессенджеров.<span>В описании цели для контактов места нет.</span></li>
-                <li>Без упоминания запрещённых в РФ организаций.<span>Даже в шутку. Даже «просто спросить».<br>Мы работаем по закону РФ. Это не обсуждается.</span></li>
-                <li>Без хамства и мата.<span>Здесь собрались люди — говори по-человечески.</span></li>
-                <li>Будь честен.<span>Успех сбора зависит только от твоей искренности.<br>Не сдерживайся, но старайся быть ближе к сути.</span></li>
-            </ol>
-            <button type="button" class="rules-close" onclick="closeRules()">Закрыть</button>
-        </div>
-    </div>
-
     <script>
-        function openRules() {
-            document.getElementById('rulesModal').classList.add('active');
+        function toggleRules() {
+            document.getElementById('rulesTrigger').classList.toggle('open');
+            document.getElementById('rulesBody').classList.toggle('open');
         }
-        function closeRules() {
-            document.getElementById('rulesModal').classList.remove('active');
-        }
-        document.getElementById('rulesModal').addEventListener('click', function(e) {
-            if (e.target === this) closeRules();
-        });
 
         // Overlay-подсветка для input и textarea
         function updateOverlay(overlayId, text, pos) {

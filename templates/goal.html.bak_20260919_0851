@@ -113,292 +113,6 @@
             background-repeat: no-repeat;
         }
 
-        /* Кастомный чекбокс "Помочь анонимно" */
-        .anon-check-wrap {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            padding: 4px 0;
-        }
-        .anon-check-wrap input[type="checkbox"] {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-        }
-        .anon-check-box {
-            width: 24px;
-            height: 24px;
-            border: 2px solid #D0D0D0;
-            border-radius: 8px;
-            background: white;
-            margin-right: 12px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            position: relative;
-        }
-        .anon-check-box::after {
-            content: '';
-            width: 6px;
-            height: 12px;
-            border: solid white;
-            border-width: 0 2.5px 2.5px 0;
-            transform: rotate(45deg) scale(0);
-            transition: transform 0.15s;
-            margin-top: -2px;
-        }
-        .anon-check-wrap input[type="checkbox"]:checked ~ .anon-check-box {
-            background: #5B9A6B;
-            border-color: #5B9A6B;
-            box-shadow: 0 2px 8px rgba(91,154,107,0.25);
-        }
-        .anon-check-wrap input[type="checkbox"]:checked ~ .anon-check-box::after {
-            transform: rotate(45deg) scale(1);
-        }
-        .anon-check-wrap input[type="checkbox"]:active ~ .anon-check-box {
-            transform: scale(0.95);
-        }
-        .anon-check-label {
-            font-size: 15px;
-            color: #2D2D2D;
-            font-weight: 500;
-        }
-
-        /* ==== Кнопка-карандаш на галерее ==== */
-        .gallery-edit-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.95);
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            z-index: 5;
-            transition: transform 0.15s;
-        }
-        .gallery-edit-btn:active { transform: scale(0.9); }
-        .gallery-edit-btn svg { color: #FF5A3C; }
-
-        .gallery-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
-            background: white;
-            border: 2px dashed #F0EDEA;
-            border-radius: 14px;
-            margin-bottom: 8px;
-        }
-        .gallery-empty-icon {
-            font-size: 40px;
-            opacity: 0.4;
-            margin-bottom: 8px;
-        }
-        .gallery-empty-text {
-            font-size: 14px;
-            color: #8C7A6B;
-            margin-bottom: 16px;
-        }
-        .gallery-edit-btn-empty {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            border-radius: 12px;
-            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
-            color: white;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(255,107,74,0.2);
-            transition: transform 0.1s;
-        }
-        .gallery-edit-btn-empty:active { transform: scale(0.97); }
-        .gallery-edit-btn-empty svg { color: white; }
-
-        /* Кнопка пожаловаться на фото (для гостя) */
-        .photo-report {
-            position: absolute;
-            bottom: 6px;
-            right: 6px;
-            padding: 4px 10px;
-            border-radius: 8px;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border: none;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            z-index: 3;
-            font-family: 'Inter', sans-serif;
-            backdrop-filter: blur(4px);
-        }
-        .photo-report:active { background: rgba(0,0,0,0.8); }
-
-        /* ==== ЭКРАН РЕДАКТОРА ==== */
-        .editor-screen {
-            animation: fadeInUp 0.25s ease;
-        }
-        .editor-header {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding: 0 2px;
-        }
-        .editor-title {
-            font-size: 17px;
-            font-weight: 700;
-            color: #2D2D2D;
-        }
-        .editor-hint {
-            font-size: 12px;
-            color: #8C7A6B;
-        }
-        .editor-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .editor-cell {
-            position: relative;
-            aspect-ratio: 1 / 1;
-            border-radius: 14px;
-            overflow: hidden;
-            background: #F5F5F5;
-            cursor: grab;
-        }
-        .editor-cell:active { cursor: grabbing; }
-        .editor-cell-img {
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
-            transition: transform 0.3s ease;
-        }
-        .editor-remove {
-            position: absolute;
-            top: 6px;
-            right: 6px;
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            background: rgba(229,115,115,0.95);
-            color: white;
-            border: none;
-            font-size: 16px;
-            line-height: 1;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: sans-serif;
-            z-index: 3;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        }
-        .editor-remove:active { transform: scale(0.9); }
-        .editor-rotate-row {
-            position: absolute;
-            bottom: 6px;
-            left: 6px;
-            right: 6px;
-            display: flex;
-            justify-content: space-between;
-            gap: 6px;
-            z-index: 3;
-        }
-        .editor-rotate {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            border: none;
-            font-size: 15px;
-            line-height: 1;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: sans-serif;
-            backdrop-filter: blur(4px);
-        }
-        .editor-rotate:active { transform: scale(0.9); background: rgba(0,0,0,0.8); }
-        .editor-cell.marked-deleted {
-            opacity: 0.4;
-        }
-        .editor-cell.marked-deleted::after {
-            content: 'Удалить';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-15deg);
-            background: rgba(229,115,115,0.95);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 700;
-            font-family: 'Inter', sans-serif;
-            letter-spacing: 1px;
-            pointer-events: none;
-            z-index: 4;
-        }
-        .editor-cell-add {
-            border: 2px dashed #FF5A3C;
-            background: #FDF8F5;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        }
-        .editor-cell-add:active { transform: scale(0.97); }
-        .editor-plus {
-            font-size: 32px;
-            color: #FF5A3C;
-            font-weight: 300;
-            line-height: 1;
-        }
-        .editor-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 12px;
-        }
-        .editor-btn {
-            flex: 1;
-            padding: 14px;
-            border-radius: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            border: none;
-            transition: transform 0.1s;
-        }
-        .editor-btn:active { transform: scale(0.97); }
-        .editor-btn.cancel { background: white; color: #8C7A6B; border: 1px solid #E0E0E0; }
-        .editor-btn.save { background: #5B9A6B; color: white; }
-
-        /* Sortable drag placeholder */
-        .sortable-ghost {
-            opacity: 0.3;
-            background: #FFD9CC !important;
-        }
-
         /* Защита фото */
         .gallery-hero,
         .gallery-thumb {
@@ -516,98 +230,7 @@
         .deadline { font-size: 13px; color: #E57373; margin-top: 4px; }
 
         /* Описание */
-        .description-block {
-            background: white;
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            margin-bottom: 16px;
-        }
-        .description-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        .description-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #8C7A6B;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .desc-edit-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: white;
-            border: 1px solid #F0EDEA;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.15s, border-color 0.15s;
-        }
-        .desc-edit-btn:active { transform: scale(0.9); }
-        .desc-edit-btn svg { color: #FF5A3C; }
-        .description {
-            font-size: 15px;
-            line-height: 1.6;
-            color: #2D2D2D;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            word-break: break-word;
-        }
-        .desc-empty {
-            color: #B0A8A0;
-            font-style: italic;
-        }
-        .desc-editor textarea {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #E0E0E0;
-            border-radius: 14px;
-            font-size: 15px;
-            font-family: 'Inter', sans-serif;
-            line-height: 1.6;
-            resize: vertical;
-            min-height: 120px;
-            box-sizing: border-box;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .desc-editor textarea:focus { border-color: #FF5A3C; }
-        .desc-editor-error {
-            display: none;
-            background: #FFF3CD;
-            color: #856404;
-            padding: 8px 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            margin-top: 8px;
-            border-left: 3px solid #FFA726;
-        }
-        .desc-editor-error.active { display: block; }
-        .desc-editor-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .desc-btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
-            cursor: pointer;
-            border: none;
-            transition: transform 0.1s;
-        }
-        .desc-btn:active { transform: scale(0.97); }
-        .desc-btn.cancel { background: white; color: #8C7A6B; border: 1px solid #E0E0E0; }
-        .desc-btn.save { background: #5B9A6B; color: white; }
+        .description { font-size: 15px; line-height: 1.6; color: #2D2D2D; margin-bottom: 20px; white-space: pre-wrap; }
 
         /* Список донатов */
         .donations-title { font-size: 17px; font-weight: 700; margin-bottom: 12px; color: #2D2D2D; }
@@ -715,23 +338,9 @@
         .confirm-submit:active { transform: scale(0.97); }
         .manual-mode { display: none; margin-top: 16px; text-align: left; }
         .manual-mode.active { display: block; }
-        .row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #F0EDEA;
-            gap: 12px;
-        }
-        .row:last-child { border-bottom: none; }
-        .row .label { color: #8C7A6B; font-size: 14px; flex-shrink: 0; }
-        .row .value { font-weight: 600; font-size: 15px; color: #2D2D2D; text-align: right; word-break: break-word; }
-        .row .value-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-left: auto;
-        }
+        .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #F0EDEA; }
+        .row .label { color: #8C7A6B; font-size: 14px; }
+        .row .value { font-weight: 700; font-size: 16px; color: #2D2D2D; }
         .copy-btn { background: #F8F9FC; border: 1px solid #E0E0E0; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; }
         .copy-btn:active { background: #F0EDEA; }
         .explain { font-size: 12px; color: #8C7A6B; margin-top: 8px; }
@@ -761,76 +370,24 @@
         </div>
 
         <div class="content">
-            {% if photos_list or is_author %}
-            <!-- ГАЛЕРЕЯ (просмотр) -->
-            <div class="gallery {% if is_author %}is-author{% endif %}" id="gallery" data-photos='{{ photos_list | tojson }}' data-goal-id="{{ goal.id }}">
-                {% if photos_list %}
-                <div class="gallery-hero" onclick="heroClick(event)">
+            {% if photos_list %}
+            <div class="gallery" id="gallery" data-photos='{{ photos_list | tojson }}'>
+                <div class="gallery-hero" onclick="openLightbox(0)">
                     <div id="galleryHero" class="gallery-hero-img" style="background-image: url('{{ photos_list[0] }}');" oncontextmenu="return false;"></div>
                     {% if photos_list | length > 1 %}
                     <div class="gallery-counter" id="galleryCounter">1 / {{ photos_list | length }}</div>
                     {% endif %}
-                    {% if is_author %}
-                    <button class="gallery-edit-btn" onclick="toggleEditor(event)" title="Редактировать галерею">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    </button>
-                    {% endif %}
                 </div>
-                {% else %}
-                <div class="gallery-empty">
-                    <span class="gallery-empty-icon">🖼️</span>
-                    <span class="gallery-empty-text">Нет фото</span>
-                    {% if is_author %}
-                    <button class="gallery-edit-btn-empty" onclick="toggleEditor(event)">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                        Добавить фото
-                    </button>
-                    {% endif %}
-                </div>
-                {% endif %}
                 {% if photos_list | length > 1 %}
-                <div class="gallery-thumbs" id="galleryThumbs">
+                <div class="gallery-thumbs">
                     {% for photo in photos_list %}
-                    <div class="gallery-thumb {% if loop.index0 == 0 %}active{% endif %}" data-index="{{ loop.index0 }}" onclick="selectPhoto({{ loop.index0 }})">
+                    <div class="gallery-thumb {% if loop.index0 == 0 %}active{% endif %}" onclick="selectPhoto({{ loop.index0 }})">
                         <div class="gallery-thumb-img" style="background-image: url('{{ photo }}');"></div>
-                        {% if user and not is_author %}
-                        <button class="photo-report" onclick="reportPhoto(event, {{ loop.index0 }})">Жалоба</button>
-                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
                 {% endif %}
             </div>
-
-            <!-- РЕДАКТОР (только для автора) -->
-            {% if is_author %}
-            <div class="editor-screen" id="editorScreen" style="display:none;">
-                <div class="editor-header">
-                    <span class="editor-title">Редактор фото</span>
-                    <span class="editor-hint">Перетащи, чтобы изменить порядок</span>
-                </div>
-                <div class="editor-grid" id="editorGrid">
-                    {% for photo in photos_list %}
-                    <div class="editor-cell" data-index="{{ loop.index0 }}">
-                        <div class="editor-cell-img" style="background-image: url('{{ photo }}');"></div>
-                        <button class="editor-remove" onclick="removeEditorPhoto(event, this)">&times;</button>
-                        <div class="editor-rotate-row">
-                            <button class="editor-rotate" onclick="rotateEditorPhoto(event, this, -90)">↺</button>
-                            <button class="editor-rotate" onclick="rotateEditorPhoto(event, this, 90)">↻</button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                    <div class="editor-cell editor-cell-add" onclick="triggerAddPhoto()">
-                        <span class="editor-plus">+</span>
-                    </div>
-                </div>
-                <input type="file" id="editorFileInput" accept="image/*" multiple style="display:none;">
-                <div class="editor-actions">
-                    <button class="editor-btn cancel" onclick="cancelEditor()">Отмена</button>
-                    <button class="editor-btn save" onclick="saveEditor()">Сохранить</button>
-                </div>
-            </div>
-            {% endif %}
             {% endif %}
 
             <!-- Карточка статистики -->
@@ -858,32 +415,8 @@
                 {% if goal.status == "active" %}<div class="deadline" style="color:#5B9A6B;">Активен до {{ ends_at_formatted }}</div>{% else %}<div class="deadline" style="color:#E57373;">Не активен</div>{% endif %}
             </div>
 
-            {% if goal.description or is_author %}
-            <div class="description-block">
-                <div class="description-header">
-                    <span class="description-label">Описание</span>
-                    {% if is_author %}
-                    <button class="desc-edit-btn" id="descEditBtn" onclick="editDescription()" title="Редактировать описание">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    </button>
-                    {% endif %}
-                </div>
-
-                <div class="description" id="descView">
-                    {% if goal.description %}{{ goal.description }}{% else %}<span class="desc-empty">Пока нет описания</span>{% endif %}
-                </div>
-
-                {% if is_author %}
-                <div class="desc-editor" id="descEditor" style="display:none;">
-                    <textarea id="descEditorField" maxlength="1000" placeholder="Опишите ситуацию...">{{ goal.description or '' }}</textarea>
-                    <div class="desc-editor-error" id="descEditorError"></div>
-                    <div class="desc-editor-actions">
-                        <button class="desc-btn cancel" onclick="cancelDescEdit()">Отмена</button>
-                        <button class="desc-btn save" onclick="saveDescEdit()">Сохранить</button>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
+            {% if goal.description %}
+            <div class="description">{{ goal.description }}</div>
             {% endif %}
 
             <!-- Кнопка Помочь -->
@@ -988,40 +521,31 @@
 
     <!-- Модальное окно помощи -->
     <div class="modal" id="donateModal">
-        <div class="modal-content" id="donateContent">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">×</span>
+            <h3 style="margin:0 0 16px;">Выберите сумму</h3>
 
-            <!-- ШАГ 1: Выбор суммы + тёплое слово + анонимность -->
-            <div id="donateStep1">
-                <span class="modal-close" onclick="closeModal()">×</span>
-                <h3 class="modal-title">Выберите сумму</h3>
-
-                <button class="amount-btn" onclick="selectAmount(100, event)">100 ₽</button>
-                <button class="amount-btn" onclick="selectAmount(500, event)">500 ₽</button>
-                <button class="amount-btn" onclick="selectAmount(1000, event)">1 000 ₽</button>
-
-                <div id="warmWordBlock" style="display:none;margin-top:12px;">
-                    <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="width:100%;padding:12px 14px;border:1px solid #E0E0E0;border-radius:12px;font-size:14px;box-sizing:border-box;margin-bottom:12px;">
-                    <label class="anon-check-wrap">
-                        <input type="checkbox" id="anonymousCheck">
-                        <span class="anon-check-box"></span>
-                        <span class="anon-check-label">Помочь анонимно</span>
-                    </label>
+            <button class="amount-btn" onclick="selectAmount(100, event)">100 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(500, event)">500 ₽</button>
+            <button class="amount-btn" onclick="selectAmount(1000, event)">1 000 ₽</button>
+            <div id="warmWordBlock" style="display:none;margin-top:8px;">
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="text" id="warmWordInput" maxlength="200" placeholder="Тёплое слово получателю (необязательно)" style="flex:1;padding:12px 14px;border:1px solid #E0E0E0;border-radius:12px;font-size:14px;box-sizing:border-box;">
+                        <button type="button" id="anonymousBtn" onclick="toggleAnonymous()" style="padding:12px 16px;border:1px solid #E0E0E0;border-radius:12px;background:white;color:#8C7A6B;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.2s;">Анонимно</button>
+                        <input type="checkbox" id="anonymousCheck" style="display:none;">
+                    </div>
                 </div>
 
-                <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
-            </div>
 
-            <!-- ШАГ 2: Реквизиты (Plan Б) -->
-            <div id="donateStep2" style="display:none;">
-                <span class="modal-close" onclick="closeModal()">×</span>
-                <h3 class="modal-title">Переведите по реквизитам</h3>
+            <button class="donate-submit" id="donateSubmit" onclick="startDonate()">Помочь <span id="selectedAmount"></span> ₽</button>
 
+            <div class="manual-mode" id="manualMode">
+                <p style="color:#8C7A6B;font-size:14px;">Переведите деньги по реквизитам:</p>
                 <div class="row">
                     <span class="label">Номер</span>
-                    <div class="value-wrap">
-                        <span class="value" id="phoneValue">{{ author.phone }}</span>
-                        <button class="copy-btn" id="copyPhoneBtn" style="background:none;border:none;padding:6px;cursor:pointer;display:flex;align-items:center;" onclick="copyPhone(this)"><i data-feather="copy" style="color:#8C7A6B;width:18px;height:18px;"></i></button>
-                    </div>
+                    <span class="value">{{ author.phone }}</span>
+                    <button class="copy-btn" id="copyPhoneBtn" style="background:none;border:none;padding:8px;cursor:pointer;" onclick="copyPhone(this)"><i data-feather="copy" style="color:#8C7A6B;"></i></button>
+                    
                 </div>
                 <div class="row">
                     <span class="label">Сумма</span>
@@ -1029,20 +553,25 @@
                 </div>
                 <div class="row">
                     <span class="label">Комментарий</span>
+                <div style="font-size:10px;color:#8C7A6B;">юридическая чистота</div>
                     <span class="value">Благотворительный подарок</span>
+                </div>
+                
+
+                <div style="margin-top:12px;">
+                </div>
+                <div style="display:flex;align-items:center;margin-top:8px;font-size:14px;color:#8C7A6B;">
+                    <input type="checkbox" id="anonymousCheckManual" style="width:auto;margin-right:8px;" onchange="document.getElementById('anonymousCheck').checked = this.checked; document.getElementById('confirmAnonymous').value = this.checked ? '1' : '0';">
+                    <label for="anonymousCheckManual" style="cursor:pointer;">Помочь анонимно</label>
                 </div>
 
                 <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
-                    <button type="submit" class="confirm-submit">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        Я перевёл(ла)
-                    </button>
+                    <button type="submit" class="donate-submit" style="margin-top:12px;background:#5B9A6B;display:block;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" stroke="white"></polyline></svg> Я перевёл(ла)</button>
                 </form>
             </div>
-
         </div>
     </div>
 
@@ -1052,16 +581,15 @@
         function openModal() {
             document.body.style.overflow = 'hidden';
             document.getElementById('donateModal').classList.add('active');
-            // Сброс к Шагу 1
-            document.getElementById('donateStep1').style.display = 'block';
-            document.getElementById('donateStep2').style.display = 'none';
-            document.getElementById('warmWordBlock').style.display = 'none';
-            document.getElementById('anonymousCheck').checked = false;
-            document.getElementById('confirmForm').style.display = 'none';
+            document.getElementById('warmWordBlock').style.display='none';document.getElementById('anonymousBtn').style.background='white';document.getElementById('anonymousBtn').style.color='#8C7A6B';document.getElementById('anonymousBtn').style.borderColor='#E0E0E0';document.getElementById('anonymousBtn').textContent='Анонимно';document.getElementById('anonymousCheck').checked=false;
             selectedAmount = 0;
             document.getElementById('donateSubmit').classList.remove('active');
+            document.getElementById('manualMode').classList.remove('active');
+            document.getElementById('confirmForm').style.display = 'none';
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
+            
             document.getElementById('warmWordInput').value = '';
+            document.getElementById('anonymousCheck').checked = false;
         }
 
         function closeModal() {
@@ -1074,16 +602,32 @@
             document.querySelectorAll('.amount-btn').forEach(function(b) { b.classList.remove('selected'); });
             event.target.classList.add('selected');
             document.getElementById('selectedAmount').textContent = amount;
-            document.getElementById('donateSubmit').classList.add('active');
-            document.getElementById('warmWordBlock').style.display = 'block';
-            document.getElementById('donateSubmit').focus();
-            document.getElementById('warmWordBlock').style.animation = 'fadeInUp 0.3s ease forwards';
+            document.getElementById('donateSubmit').classList.add('active');document.getElementById('warmWordBlock').style.display='block';document.getElementById('donateSubmit').focus();document.getElementById('warmWordBlock').style.animation='fadeInUp 0.3s ease forwards';
             document.getElementById('manualAmount').textContent = amount + ' ₽';
             document.getElementById('confirmAmount').value = amount;
         }
 
+        function toggleAnonymous() {
+            var btn = document.getElementById('anonymousBtn');
+            var check = document.getElementById('anonymousCheck');
+            if (check.checked) {
+                check.checked = false;
+                btn.style.background = 'white';
+                btn.style.color = '#8C7A6B';
+                btn.style.borderColor = '#E0E0E0';
+                btn.textContent = 'Анонимно';
+            } else {
+                check.checked = true;
+                btn.style.background = 'linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%)';
+                btn.style.color = 'white';
+                btn.style.borderColor = 'transparent';
+                btn.style.boxShadow = '0 2px 8px rgba(255,107,74,0.15)';
+                btn.textContent = 'Анонимно'; btn.style.transform = 'scale(0.95)'; setTimeout(function(){ btn.style.transform = 'scale(1)'; }, 150);
+            }
+        }
+
         function copyPhone(btn) {
-            var phone = document.getElementById('phoneValue').textContent;
+            var phone = btn.previousElementSibling.textContent;
             var t = document.createElement('textarea');
             t.value = phone;
             t.style.position = 'fixed';
@@ -1093,6 +637,7 @@
             try { document.execCommand('copy'); } catch(e) {}
             document.body.removeChild(t);
 
+            // Анимация: copy → check → copy
             btn.style.transition = 'all 0.2s';
             btn.style.transform = 'scale(0.8)';
             setTimeout(function() {
@@ -1117,19 +662,13 @@
 
         function startDonate() {
             if (!selectedAmount) return;
-            // Переключаемся на Шаг 2
-            document.getElementById('donateStep1').style.display = 'none';
-            document.getElementById('donateStep2').style.display = 'block';
-            // Сохраняем тёплое слово и анонимность
-            document.getElementById('confirmWarmWord').value = document.getElementById('warmWordInput').value;
-            var anon = document.getElementById('anonymousCheck').checked;
-            document.getElementById('confirmAnonymous').value = anon ? '1' : '0';
+            var phone = {{ author.phone | tojson }};
+            document.getElementById('manualMode').classList.add('active');
         }
 
         document.getElementById('confirmForm').addEventListener('submit', function() {
             document.getElementById('confirmWarmWord').value = document.getElementById('warmWordInput').value;
-            var anon = document.getElementById('anonymousCheck').checked;
-            document.getElementById('confirmAnonymous').value = anon ? '1' : '0';
+            var anon = document.getElementById('anonymousCheck').checked || document.getElementById('anonymousCheckManual').checked; document.getElementById('confirmAnonymous').value = anon ? '1' : '0';
         });
 
         document.getElementById('donateModal').addEventListener('click', function(e) {
@@ -1235,176 +774,6 @@
             });
         };
 
-        // ==== Экран редактора ====
-        var editorState = {
-            angles: {},    // { index: angle }
-            deleted: [],   // [index, ...]
-            newFiles: []   // File[]
-        };
-
-        window.toggleEditor = function(e) {
-            if (e) e.stopPropagation();
-            var galleryEl = document.getElementById('gallery');
-            var editorEl = document.getElementById('editorScreen');
-            if (!galleryEl || !editorEl) return;
-            galleryEl.style.display = 'none';
-            editorEl.style.display = 'block';
-            initEditorSortable();
-        };
-
-        window.cancelEditor = function() {
-            if (!confirm('Отменить изменения?')) return;
-            window.location.reload();
-        };
-
-        window.saveEditor = function() {
-            // Собираем актуальный порядок из DOM
-            var grid = document.getElementById('editorGrid');
-            var cells = grid.querySelectorAll('.editor-cell:not(.editor-cell-add)');
-            var order = [];
-            var deleted = editorState.deleted.slice();
-
-            cells.forEach(function(cell) {
-                var idx = parseInt(cell.getAttribute('data-index'), 10);
-                if (isNaN(idx)) return;
-                if (deleted.indexOf(idx) !== -1) return;
-                if (photos[idx]) order.push(photos[idx]);
-            });
-
-            // Angles: { path: angle }
-            var angles = {};
-            Object.keys(editorState.angles).forEach(function(idx) {
-                var path = photos[parseInt(idx, 10)];
-                if (path && deleted.indexOf(parseInt(idx, 10)) === -1) {
-                    angles[path] = editorState.angles[idx];
-                }
-            });
-
-            // Deleted paths
-            var deletedPaths = deleted.map(function(idx) { return photos[idx]; }).filter(Boolean);
-
-            var goalId = document.getElementById('gallery').dataset.goalId;
-
-            fetch('/api/goal/' + goalId + '/photos/update', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ order: order, angles: angles, deleted: deletedPaths })
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.ok) {
-                    window.location.reload();
-                } else {
-                    alert('Ошибка: ' + (data.error || 'неизвестно'));
-                }
-            })
-            .catch(function(e) {
-                alert('Ошибка сети: ' + e.message);
-            });
-        };
-
-        window.removeEditorPhoto = function(e, btn) {
-            if (e) e.stopPropagation();
-            var cell = btn.closest('.editor-cell');
-            if (!cell) return;
-            var idx = cell.getAttribute('data-index');
-            if (idx === null) return;
-            idx = parseInt(idx, 10);
-
-            // Уже помечено? Снимаем пометку
-            var pos = editorState.deleted.indexOf(idx);
-            if (pos !== -1) {
-                editorState.deleted.splice(pos, 1);
-                cell.classList.remove('marked-deleted');
-            } else {
-                editorState.deleted.push(idx);
-                cell.classList.add('marked-deleted');
-            }
-        };
-
-        window.rotateEditorPhoto = function(e, btn, angle) {
-            if (e) e.stopPropagation();
-            var cell = btn.closest('.editor-cell');
-            if (!cell) return;
-            var img = cell.querySelector('.editor-cell-img');
-            if (!img) return;
-            var idx = cell.getAttribute('data-index');
-            // Накапливаем угол для визуальной анимации (без нормализации)
-            var visualAngle = parseInt(img.dataset.visualAngle || '0', 10) + angle;
-            img.dataset.visualAngle = visualAngle;
-            img.style.transform = 'rotate(' + visualAngle + 'deg)';
-            // Для сервера нормализуем
-            var normalized = ((visualAngle % 360) + 360) % 360;
-            if (idx !== null) editorState.angles[parseInt(idx, 10)] = normalized;
-        };
-
-        window.triggerAddPhoto = function() {
-            document.getElementById('editorFileInput').click();
-        };
-
-        window.heroClick = function(e) {
-            openLightbox(currentIndex);
-        };
-
-        window.reportPhoto = function(e, index) {
-            if (e) e.stopPropagation();
-            if (!confirm('Пожаловаться на это фото?')) return;
-            alert('Жалоба отправлена. Спасибо!');
-        };
-
-        function initEditorSortable() {
-            var grid = document.getElementById('editorGrid');
-            if (!grid || typeof Sortable === 'undefined') return;
-            Sortable.create(grid, {
-                animation: 200,
-                delay: 200,
-                delayOnTouchOnly: true,
-                ghostClass: 'sortable-ghost',
-                draggable: '.editor-cell:not(.editor-cell-add)',
-                filter: '.editor-cell-add',
-                onMove: function(evt) {
-                    // Запрещаем перетаскивать что-либо после клетки +
-                    if (evt.related && evt.related.classList.contains('editor-cell-add')) {
-                        return false;
-                    }
-                },
-                onEnd: function() {
-                    var cells = grid.querySelectorAll('.editor-cell:not(.editor-cell-add)');
-                    cells.forEach(function(el, i) { el.setAttribute('data-index', i); });
-                }
-            });
-        }
-
-        // Обработка выбора новых фото в редакторе
-        document.addEventListener('DOMContentLoaded', function() {
-            var fileInput = document.getElementById('editorFileInput');
-            if (fileInput) {
-                fileInput.addEventListener('change', function(e) {
-                    var files = Array.from(e.target.files);
-                    if (!files.length) return;
-                    var goalId = document.getElementById('gallery').dataset.goalId;
-                    var formData = new FormData();
-                    files.forEach(function(f) { formData.append('photos', f); });
-
-                    fetch('/api/goal/' + goalId + '/photos/upload', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (data.ok) {
-                            window.location.reload();
-                        } else {
-                            alert('Ошибка: ' + (data.error || 'неизвестно'));
-                        }
-                    })
-                    .catch(function(e) {
-                        alert('Ошибка сети: ' + e.message);
-                    });
-                });
-            }
-        });
-
         window.openLightbox = function(index) {
             currentIndex = index;
             var lb = document.getElementById('lightbox');
@@ -1476,49 +845,8 @@
         });
     })();
 
-    // Инлайн-редактор описания
-    window.editDescription = function() {
-        document.getElementById('descView').style.display = 'none';
-        document.getElementById('descEditBtn').style.display = 'none';
-        document.getElementById('descEditor').style.display = 'block';
-        document.getElementById('descEditorField').focus();
-    };
-
-    window.cancelDescEdit = function() {
-        document.getElementById('descView').style.display = 'block';
-        document.getElementById('descEditBtn').style.display = 'flex';
-        document.getElementById('descEditor').style.display = 'none';
-        document.getElementById('descEditorError').classList.remove('active');
-    };
-
-    window.saveDescEdit = function() {
-        var newDesc = document.getElementById('descEditorField').value;
-        var goalId = document.getElementById('gallery').dataset.goalId;
-        var errBox = document.getElementById('descEditorError');
-
-        fetch('/api/goal/' + goalId + '/update-description', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ description: newDesc })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.ok) {
-                window.location.reload();
-            } else {
-                errBox.textContent = data.error || 'Ошибка';
-                errBox.classList.add('active');
-            }
-        })
-        .catch(function(e) {
-            errBox.textContent = 'Ошибка сети: ' + e.message;
-            errBox.classList.add('active');
-        });
-    };
-
     feather.replace();
 </script>
-<script src="/static/sortable.min.js"></script>
 <script src="/static/toast.js"></script>
 </body>
 </html>

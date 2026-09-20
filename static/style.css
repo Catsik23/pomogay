@@ -165,12 +165,17 @@ a { color: var(--cta); text-decoration: none; }
 .modal-content {
     background: var(--card);
     border-radius: 20px 20px 0 0;
-    padding: 24px;
+    padding: 24px 24px 40px;
     width: 100%;
     max-width: 500px;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow-y: auto;
     animation: fadeInUp 0.2s ease;
+}
+
+/* Модалка не прижимается к шторке браузера */
+.modal {
+    padding-top: 40px;
 }
 
 /* --- Flash-сообщения --- */
@@ -381,7 +386,147 @@ a { color: var(--cta); text-decoration: none; }
 }
 
 /* Блокировка pull-to-refresh и bounce-scroll */
-html, body {
-    overscroll-behavior-y: none;
-    overscroll-behavior-x: none;
+/* Pull-to-refresh разрешён */
+html {
+    overscroll-behavior-y: auto;
 }
+
+/* ==== Кастомный скроллбар (закатный) ==== */
+
+/* WebKit (Chrome, Edge, Safari, Яндекс, Opera) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(160deg, #E85D3A 0%, #E85D75 50%, #D44A6A 100%);
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #FF5A3C transparent;
+}
+
+/* Модалки — тонкий скроллбар с отступами */
+.modal-content::-webkit-scrollbar,
+.rules-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-thumb,
+.rules-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+    border-radius: 10px;
+    border: none;
+    background-clip: padding-box;
+}
+
+/* Textarea — скроллбар тоже закатный */
+textarea::-webkit-scrollbar {
+    width: 6px;
+}
+textarea::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+    border-radius: 10px;
+    border: none;
+}
+
+
+/* ==== Кастомный скроллбар (закатный) ==== */
+
+/* WebKit (Chrome, Edge, Safari, Яндекс, Opera) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(160deg, #E85D3A 0%, #E85D75 50%, #D44A6A 100%);
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #FF5A3C transparent;
+}
+
+/* Модалки — тонкий скроллбар */
+.modal-content::-webkit-scrollbar,
+.rules-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-thumb,
+.rules-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+    border-radius: 10px;
+    border: none;
+    background-clip: padding-box;
+}
+
+/* Textarea — скроллбар тоже закатный */
+textarea::-webkit-scrollbar {
+    width: 6px;
+}
+textarea::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+    border-radius: 10px;
+    border: none;
+}
+
+
+/* Скроллбар не заезжает на скруглённые углы модалок */
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-track {
+    margin: 16px 0;
+    background: transparent;
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+    border-radius: 10px;
+    border: none;
+}
+.rules-content::-webkit-scrollbar {
+    width: 6px;
+}
+.rules-content::-webkit-scrollbar-track {
+    margin: 16px 0;
+    background: transparent;
+}
+.rules-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+    border-radius: 10px;
+    border: none;
+}
+
+
