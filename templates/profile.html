@@ -488,6 +488,20 @@
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
+        .stats-cell-link {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.15s;
+        }
+        .stats-cell-link:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 0 2px #FFD9CC;
+        }
+        .stats-cell-link:hover {
+            box-shadow: 0 2px 12px rgba(255,90,60,0.15);
+        }
+
         .stats-cell {
             padding: 14px 10px;
             background: #FDF8F5;
@@ -628,16 +642,16 @@
 
         <div class="card">
             <div class="stats-grid">
-                <div class="stats-cell">
+                <a href="/profile/received" class="stats-cell stats-cell-link">
                     <div class="stats-icon"><img src="https://api.iconify.design/reicon/hand-heart.svg?color=%23FF5A3C" width="28" height="28" alt=""></div>
                     <div class="stats-num">{{ received_approved }} / {{ received_total }}</div>
                     <div class="stats-lbl">Мне помогли<br><span class="stats-hint">подтвердил / всего</span></div>
-                </div>
-                <div class="stats-cell">
+                </a>
+                <a href="/profile/sent" class="stats-cell stats-cell-link">
                     <div class="stats-icon">💚</div>
                     <div class="stats-num">{{ sent_approved }} / {{ sent_total }}</div>
                     <div class="stats-lbl">Я помог<br><span class="stats-hint">подтвердили / всего</span></div>
-                </div>
+                </a>
                 <div class="stats-cell">
                     <div class="stats-icon">💰</div>
                     <div class="stats-num">{{ "{:,.0f}".format(user.total_helped_amount or 0).replace(',', ' ') }} ₽</div>

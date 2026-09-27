@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if mode == 'received' %}Мне помогли{% else %}Я помог{% endif %} — помогай.рф</title>
+    <link rel="stylesheet" href="/static/style.css?v=5">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 40px; }
+        .container { max-width: 480px; margin: 0 auto; padding: 0; }
+
+        .page-header {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            padding: 20px 16px 24px;
+            color: white;
+            border-bottom: 3px solid #FF8C69;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .back-link:active { opacity: 0.7; }
+        .page-header h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .page-header .summary { font-size: 14px; opacity: 0.85; }
+
+        .donations-list { padding: 16px; }
+        .donation-card {
+            background: white;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
+        .donation-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .donation-who {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2D2D2D;
+            flex: 1;
+            min-width: 0;
+        }
+        .donation-amount {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D2D2D;
+            flex-shrink: 0;
+        }
+        .donation-goal {
+            font-size: 13px;
+            color: #8C7A6B;
+            margin-bottom: 8px;
+        }
+        .donation-goal a {
+            color: #FF5A3C;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .donation-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            font-size: 12px;
+            color: #B0A8A0;
+            margin-top: 8px;
+        }
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-pending { background: #FFF3CD; color: #856404; }
+        .status-approved { background: #E8F5E9; color: #388E3C; }
+        .warm-word {
+            font-size: 13px;
+            color: #8C7A6B;
+            font-style: italic;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed #F0EDEA;
+        }
+        .confirm-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding: 10px;
+            background: #5B9A6B;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .confirm-btn:active { transform: scale(0.97); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8C7A6B;
+        }
+        .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+        .empty-text { font-size: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <a href="/profile" class="back-link">← Профиль</a>
+            <h1>{% if mode == 'received' %}Мне помогли{% else %}Я помог{% endif %}</h1>
+            <div class="summary">
+                {% if mode == 'received' %}
+                    Подтверждено {{ approved }} из {{ total }}
+                {% else %}
+                    Подтвердили {{ approved }} из {{ total }}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="donations-list">
+            {% if donations %}
+                {% for d in donations %}
+                <div class="donation-card">
+                    <div class="donation-top">
+                        <div class="donation-who">
+                            {% if mode == 'received' %}
+                                {{ d.donor_name or 'Аноним' }}
+                            {% else %}
+                                {{ d.recipient_name or 'Получатель' }}
+                            {% endif %}
+                        </div>
+                        <div class="donation-amount">{{ "%.0f"|format(d.amount_reported) }} ₽</div>
+                    </div>
+
+                    <div class="donation-goal">
+                        {% if mode == 'received' %}
+                            В цель: <a href="/goal/{{ d.goal_id }}">{{ d.goal_title }}</a>
+                        {% else %}
+                            Цель: <a href="/goal/{{ d.goal_id }}">{{ d.goal_title }}</a>
+                        {% endif %}
+                    </div>
+
+                    {% if d.warm_word %}
+                    <div class="warm-word">«{{ d.warm_word }}»</div>
+                    {% endif %}
+
+                    <div class="donation-meta">
+                        <span>{{ d.donor_confirmed_at[:10] }}</span>
+                        {% if d.status == 'donor_confirmed' %}
+                            <span class="status-badge status-pending">ожидает</span>
+                        {% elif d.status == 'recipient_confirmed' %}
+                            <span class="status-badge status-approved">подтверждён</span>
+                        {% elif d.status == 'completed' %}
+                            <span class="status-badge status-approved">засчитан</span>
+                        {% endif %}
+                    </div>
+
+                    {% if mode == 'received' and d.status == 'donor_confirmed' %}
+                    <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
+                        <button type="submit" class="confirm-btn">Подтвердить перевод</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📭</div>
+                    <div class="empty-text">
+                        {% if mode == 'received' %}
+                            Тебе пока никто не помогал
+                        {% else %}
+                            Ты пока никому не помогал
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    <script src="/static/toast.js"></script>
+</body>
+</html>

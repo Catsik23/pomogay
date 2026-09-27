@@ -308,6 +308,64 @@ def profile():
         ignored_donations=ignored_list,
         liked_goals=liked_goals)
 
+@app.route('/profile/received')
+@login_required
+def profile_received():
+    """Донаты в мои цели."""
+    user = get_current_user()
+    db = get_db()
+    donations = db.execute("""
+        SELECT d.*, 
+               CASE WHEN d.is_anonymous = 1 OR d.donor_id IS NULL THEN NULL 
+                    ELSE COALESCE(u.name, '+' || u.phone) 
+               END as donor_name,
+               g.title as goal_title,
+               g.id as goal_id
+        FROM donations d
+        JOIN goals g ON d.goal_id = g.id
+        LEFT JOIN users u ON d.donor_id = u.id
+        WHERE g.user_id = ?
+        ORDER BY d.donor_confirmed_at DESC
+    """, (user['id'],)).fetchall()
+    total = len(donations)
+    approved = sum(1 for d in donations if d['status'] in ('recipient_confirmed', 'completed'))
+    db.close()
+    return render_template('profile_donations.html',
+        mode='received',
+        donations=donations,
+        total=total,
+        approved=approved,
+        user=user)
+
+
+@app.route('/profile/sent')
+@login_required
+def profile_sent():
+    """Мои донаты — кому я помог."""
+    user = get_current_user()
+    db = get_db()
+    donations = db.execute("""
+        SELECT d.*, 
+               g.title as goal_title,
+               g.id as goal_id,
+               COALESCE(u.name, '+' || u.phone) as recipient_name
+        FROM donations d
+        JOIN goals g ON d.goal_id = g.id
+        JOIN users u ON g.user_id = u.id
+        WHERE d.donor_id = ?
+        ORDER BY d.donor_confirmed_at DESC
+    """, (user['id'],)).fetchall()
+    total = len(donations)
+    approved = sum(1 for d in donations if d['status'] in ('recipient_confirmed', 'completed'))
+    db.close()
+    return render_template('profile_donations.html',
+        mode='sent',
+        donations=donations,
+        total=total,
+        approved=approved,
+        user=user)
+
+
 @app.route('/goals/choose')
 @login_required
 def choose_goal_type():
