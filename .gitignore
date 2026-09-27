@@ -11,4 +11,27 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 venv/
-.venv/
+.venv/# Бэкапы
+*.bak
+*.bak_*
+templates/*.bak*
+
+# Фото пользователей
+uploads/
+static/icons/hand-holding-hand.svg
+
+# Демо
+templates/demo_crane.html
+static/crane.css
+static/crane.svg
+
+# Бэкапы
+*.bak
+*.bak_*
+templates/*.bak*
+
+# Демо и нерабочие файлы
+templates/demo_crane.html
+static/crane.css
+static/crane.svg
+static/icons/hand-holding-hand.svg
