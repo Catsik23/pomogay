@@ -40,12 +40,28 @@ def get_trust_level(score):
     return info
 
 
+def get_streak_multiplier(streak_days):
+    """Множитель очков рейтинга в зависимости от серии дней."""
+    if streak_days >= 10:
+        return 2.0
+    if streak_days <= 1:
+        return 1.0
+    return 1.0 + (streak_days * 0.1)
+
+
 def add_trust_score(user_id, action, db):
     """Начисляет Trust Score и обновляет уровень."""
     points = SCORE_ACTIONS.get(action, 0)
     if points == 0:
         return 0
-    
+
+    # Бонус за серию — только для донатов
+    if action in ('donation_recipient_confirmed', 'donation_confirmed'):
+        user_streak = db.execute('SELECT streak_days FROM users WHERE id = ?', (user_id,)).fetchone()
+        if user_streak:
+            multiplier = get_streak_multiplier(user_streak['streak_days'] or 0)
+            points = round(points * multiplier)
+
     db.execute('UPDATE users SET trust_score = trust_score + ? WHERE id = ?', (points, user_id))
     user = db.execute('SELECT trust_score FROM users WHERE id = ?', (user_id,)).fetchone()
     new_score = user['trust_score']

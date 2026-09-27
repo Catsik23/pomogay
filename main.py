@@ -862,8 +862,6 @@ def confirm_donation(donation_id):
         db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
     db.commit()
     add_xp(user['id'], 'confirm')
-    # Обновляем сумму помощи у получателя
-    db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (donation['amount_reported'], user['id']))
     db.commit()
     # Trust Score: получатель +3 за подтверждение, донатор +3 за подтверждённый донат
     add_trust_score(user['id'], 'donation_recipient_confirmed', db)
