@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль — помогай.рф</title>
+    <link rel="stylesheet" href="/static/style.css?v=4">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #FDF8F5;
+            padding-bottom: 40px;
+        }
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        /* Шапка профиля */
+        .profile-header {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            padding: 24px 20px 20px;
+            color: white;
+            border-radius: 0;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.15);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-header::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .profile-header::before {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 15px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .profile-header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .profile-header .phone {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        /* Аватар */
+        .avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: white;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: #FF8C69;
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        /* Карточка */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin: 0 16px 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .card h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 8px;
+        }
+        .card p {
+            font-size: 14px;
+            color: #8C7A6B;
+            margin-bottom: 4px;
+        }
+
+        /* Уровень */
+        .level-badge {
+            display: inline-block;
+            background: #FFF5F2;
+            color: #FF8C69;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        /* Прогресс */
+        .progress-bar {
+            background: #F0F0F0;
+            border-radius: 6px;
+            height: 8px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #5B9A6B, #7BC67E);
+            height: 100%;
+            border-radius: 6px;
+        }
+
+        /* Мои цели */
+        .goal-item {
+            display: block;
+            background: white;
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin: 0 16px 8px;
+            text-decoration: none;
+            color: #2D2D2D;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        }
+        .goal-item .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .goal-item .title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .goal-item .status {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        .status-active { background: #E8F5E9; color: #388E3C; }
+        .status-completed { background: #E3F2FD; color: #1976D2; }
+        .status-frozen { background: #F5F5F5; color: #8C7A6B; }
+
+        .btn {
+            display: block;
+            padding: 14px;
+            text-align: center;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            margin: 8px 16px;
+        }
+        .btn-outline {
+            border: 1px solid #FF8C69;
+            color: #FF8C69;
+            background: white;
+        }
+        .btn-danger {
+            color: #E57373;
+            font-size: 13px;
+            text-align: center;
+            display: block;
+            margin: 16px;
+            text-decoration: none;
+        }
+
+        .fab {
+            display: block;
+            padding: 16px;
+            text-align: center;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            text-decoration: none;
+            margin: 8px 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 16px rgba(255,108,74,0.3);
+        }
+        .fab:active { transform: scale(0.97); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="profile-header">
+            
+            <div style="position:relative; display:inline-block;">
+            <div class="avatar">🐱</div>
+            <span style="position:absolute; bottom:-2px; right:-2px; font-size:18px;">
+                {{ user.xp_level|level_emoji }}
+            </span>
+        </div>
+            <h1>{{ user.name or 'Аноним' }}</h1>
+            <p class="phone">{{ user.phone }}</p>
+        </div>
+
+        <div class="card">
+            <span class="level-badge">{{ user.xp_level|level_name }}</span>
+            {% set pct = get_level_progress(user) %}
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {{ pct }}%;"></div>
+            </div>
+            <p style="font-size:13px;color:#8C7A6B;">Прогресс: {{ pct }}%</p>
+        </div>
+
+        <div class="card">
+            {% if confirmations_total > 0 %}
+            <p>Подтвердил {{ confirmations_approved }} из {{ confirmations_total }} переводов</p>
+            {% endif %}
+            <p>Помог на сумму: {{ user.total_helped_amount or 0 }} ₽</p>
+            <p>Серия: {{ user.streak_days or 0 }} дн.</p>
+            <p>На платформе с: {{ user.created_at|format_date }}</p>
+        </div>
+
+        {% if ignored_donations %}
+        <div class="card">
+            <h3>Переводы без ответа</h3>
+            {% for ig in ignored_donations %}
+            <p style="font-size:13px;color:#8C7A6B;margin-bottom:4px;">
+                {{ ig.amount_reported }} ₽ от {{ ig.donor_phone or 'Аноним' }} — {{ ig.date_formatted }}
+            </p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        <h3 style="margin: 16px 16px 8px; font-size:18px; font-weight:700;">Мои цели</h3>
+
+        {% if goals %}
+            {% for goal in goals %}
+            <a class="goal-item" href="/goal/{{ goal.id }}">
+                <div class="top">
+                    <span class="title">{{ goal.title }}</span>
+                    <span class="status status-{{ goal.status }}">{% if goal.status == 'active' %}активна{% elif goal.status == 'completed' %}завершена{% elif goal.status == 'frozen' %}заморожена{% else %}{{ goal.status }}{% endif %}</span>
+                </div>
+                <div style="font-size:13px;color:#8C7A6B;">
+                    {{ "%.0f"|format(goal.amount_collected) }} ₽ из {{ "%.0f"|format(goal.amount_goal) }} ₽
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+            <p style="color:#8C7A6B; margin: 8px 16px;">У вас пока нет целей. Создать</p>
+        {% endif %}
+
+        <a class="btn-back" href="/goals/choose" class="fab" style="background:white; color:#FF6B4A; border:1px solid #FF6B4A; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">+ Создать цель</a>
+        <a class="btn-back" href="/goals" class="btn-cta" style="margin-top:12px;">Помогать</a>
+        <form method="POST" action="/logout" style="position:fixed; bottom:16px; left:16px;"><button type="submit" style="background:none;border:none;color:#E57373;font-size:13px;cursor:pointer;font-family:Inter,sans-serif;padding:0;">Выйти</button></form>
+    </div>
+<script src="/static/toast.js"></script>
+</body>
+</html>

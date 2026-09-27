@@ -77,3 +77,114 @@ def can_create_goal(user, db):
         (user['id'],)
     ).fetchone()[0]
     return active_count < perks['max_goals']
+
+
+# Палитра 12 уровней — от песка через закат к золоту
+TRUST_COLORS = [
+    '#C4B5A0',  # Гость — песок
+    '#FFB88C',  # Новичок — персик
+    '#FF8C5A',  # Участник — закатный оранж
+    '#FF6B4A',  # Проверенный — коралл
+    '#F55F6E',  # Надёжный — тёплый розовый
+    '#E8457A',  # Свой — малина
+    '#B54A8C',  # Старожил — пурпур
+    '#6E5BA6',  # Хранитель — индиго
+    '#4A6BB8',  # Маяк — глубокий синий
+    '#3D8B9E',  # Страж — морской
+    '#4A9E7F',  # Мудрец — изумруд
+    '#D4A853',  # Легенда — золото
+]
+
+
+def get_trust_segments(score):
+    """Возвращает список сегментов для развёрнутой шкалы рейтинга."""
+    score = score or 0
+    segments = []
+    for i, (min_score, key, emoji_name, perks) in enumerate(TRUST_LEVELS):
+        # Верхняя граница сегмента — начало следующего уровня (или +∞ для последнего)
+        if i < len(TRUST_LEVELS) - 1:
+            max_score = TRUST_LEVELS[i+1][0]
+        else:
+            max_score = 999999
+
+        # Текущий уровень: score попадает в этот диапазон
+        is_current = min_score <= score < max_score
+
+        # Пройденный: score уже перешёл верхнюю границу
+        is_passed = score >= max_score
+
+        segments.append({
+            'level': i + 1,
+            'key': key,
+            'name': get_trust_level_name(key),
+            'min_score': min_score,
+            'max_score': max_score,
+            'color': TRUST_COLORS[i],
+            'is_current': is_current,
+            'is_passed': is_passed,
+        })
+    return segments
+
+
+def get_trust_level_name(level_key):
+    """Возвращает русское имя уровня по ключу."""
+    NAMES = {
+        'guest': 'Гость',
+        'newcomer': 'Новичок',
+        'member': 'Участник',
+        'verified': 'Проверенный',
+        'reliable': 'Надёжный',
+        'trusted': 'Свой',
+        'veteran': 'Старожил',
+        'guardian': 'Хранитель',
+        'beacon': 'Маяк',
+        'guard': 'Страж',
+        'sage': 'Мудрец',
+        'legend': 'Легенда',
+    }
+    return NAMES.get(level_key, 'Гость')
+
+
+def get_trust_progress(score):
+    """
+    Возвращает прогресс до следующего уровня.
+    { current_name, current_score, next_name, next_score, points_to_next, progress_pct }
+    """
+    score = score or 0
+    current_threshold, current_key, _, _ = TRUST_LEVELS[0]
+    next_threshold = None
+    next_key = None
+
+    for threshold, key, name, perks in TRUST_LEVELS:
+        if score >= threshold:
+            current_threshold = threshold
+            current_key = key
+        else:
+            next_threshold = threshold
+            next_key = key
+            break
+
+    current_name = get_trust_level_name(current_key)
+    if next_threshold is None:
+        return {
+            'current_name': current_name,
+            'current_score': score,
+            'next_name': None,
+            'next_score': None,
+            'points_to_next': 0,
+            'progress_pct': 100,
+        }
+
+    next_name = get_trust_level_name(next_key)
+    range_size = next_threshold - current_threshold
+    progress_in_range = score - current_threshold
+    progress_pct = int((progress_in_range / range_size) * 100) if range_size > 0 else 0
+
+    return {
+        'current_name': current_name,
+        'current_score': score,
+        'next_name': next_name,
+        'next_score': next_threshold,
+        'points_to_next': next_threshold - score,
+        'progress_pct': progress_pct,
+    }

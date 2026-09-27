@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журавлик — демо</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #FDF8F5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #2D2D2D;
+            font-size: 26px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        p {
+            color: #8C7A6B;
+            font-size: 15px;
+            margin-bottom: 40px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .crane-stage {
+            width: 100%;
+            max-width: 420px;
+        }
+        .crane-svg {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Журавлик</h1>
+    <p>Хранитель помогай24.рф</p>
+
+    <div class="crane-stage">
+        <svg class="crane-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450">
+            <defs>
+                <linearGradient id="strokeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#FF5A3C"/>
+                    <stop offset="50%" stop-color="#F55F6E"/>
+                    <stop offset="100%" stop-color="#B54A8C"/>
+                </linearGradient>
+            </defs>
+
+            <g fill="none" stroke="url(#strokeGrad)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+
+                <!-- ==== ТЕЛО (центральный ромб) ==== -->
+                <!-- Верхние грани -->
+                <polygon points="270,240 320,190 300,240"/>
+                <polygon points="320,190 370,240 300,240"/>
+
+                <!-- Нижние грани (основание тела) -->
+                <polygon points="270,240 300,240 285,310"/>
+                <polygon points="300,240 370,240 350,310"/>
+                <polygon points="285,310 300,240 350,310"/>
+                <polygon points="285,310 350,310 320,330"/>
+
+                <!-- ==== ШЕЯ (уходит вверх-влево) ==== -->
+                <polygon points="270,240 235,110 255,100 300,240"/>
+
+                <!-- ==== ГОЛОВА ==== -->
+                <polygon points="235,110 255,100 215,90 210,105"/>
+                <!-- Клюв -->
+                <polygon points="210,105 215,90 175,100 195,110"/>
+
+                <!-- ==== ЛЕВОЕ КРЫЛО (уходит влево-вверх) ==== -->
+                <polygon points="270,240 100,215 220,255"/>
+
+                <!-- ==== ПРАВОЕ КРЫЛО (уходит вверх-вправо) ==== -->
+                <polygon points="370,240 460,110 380,190"/>
+
+                <!-- ==== ХВОСТ (уходит вниз-влево) ==== -->
+                <polygon points="270,240 100,280 220,265"/>
+
+            </g>
+        </svg>
+    </div>
+</body>
+</html>

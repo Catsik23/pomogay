@@ -249,9 +249,25 @@ def profile():
     db = get_db()
     goals = db.execute("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC", (user['id'],)).fetchall()
     
-    # Статистика подтверждений
-    total = db.execute("SELECT COUNT(*) FROM donations WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND donor_id IS NOT NULL", (user['id'],)).fetchone()[0]
-    approved = user['confirmations_approved'] or 0
+    # Статистика: донаты МНЕ (в мои цели)
+    received_total = db.execute(
+        "SELECT COUNT(*) FROM donations WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND donor_id IS NOT NULL",
+        (user['id'],)
+    ).fetchone()[0]
+    received_approved = db.execute(
+        "SELECT COUNT(*) FROM donations WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND donor_id IS NOT NULL AND status IN ('recipient_confirmed','completed')",
+        (user['id'],)
+    ).fetchone()[0]
+
+    # Статистика: МОИ донаты (я — донатор)
+    sent_total = db.execute(
+        "SELECT COUNT(*) FROM donations WHERE donor_id = ?",
+        (user['id'],)
+    ).fetchone()[0]
+    sent_approved = db.execute(
+        "SELECT COUNT(*) FROM donations WHERE donor_id = ? AND status IN ('recipient_confirmed','completed')",
+        (user['id'],)
+    ).fetchone()[0]
     
     # Список игноров: донаты в статусе donor_confirmed старше 24 часов для целей пользователя
     ignored = db.execute(
@@ -272,7 +288,14 @@ def profile():
         ignored_list.append(ig)
     
     db.close()
-    return render_template('profile.html', user=user, goals=goals, confirmations_total=total, confirmations_approved=approved, ignored_donations=ignored_list)
+    return render_template('profile.html',
+        user=user,
+        goals=goals,
+        received_total=received_total,
+        received_approved=received_approved,
+        sent_total=sent_total,
+        sent_approved=sent_approved,
+        ignored_donations=ignored_list)
 
 @app.route('/goals/choose')
 @login_required
@@ -432,6 +455,16 @@ def goal_page(goal_id):
     user = get_current_user()
     is_author = (user and user['id'] == goal['user_id'])
     
+    # Лайкнут ли цель текущим пользователем
+    is_liked = False
+    if user:
+        ldb = get_db()
+        is_liked = ldb.execute(
+            "SELECT id FROM likes WHERE user_id = ? AND goal_id = ?",
+            (user['id'], goal_id)
+        ).fetchone() is not None
+        ldb.close()
+    
     # Проверяем, жаловался ли уже пользователь
     already_reported = False
     if user:
@@ -442,7 +475,7 @@ def goal_page(goal_id):
         ).fetchone() is not None
         rdb.close()
     
-    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list)
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list, is_liked=is_liked)
 
 @app.route('/report/<int:goal_id>', methods=['POST'])
 @login_required
@@ -966,6 +999,42 @@ def api_update_description(goal_id):
     return jsonify({'ok': True, 'description': new_desc})
 
 
+@app.route('/demo-crane')
+def demo_crane():
+    return render_template('demo_crane.html')
+
+
+@app.route('/api/goal/<int:goal_id>/like', methods=['POST'])
+@login_required
+def api_goal_like(goal_id):
+    from flask import jsonify
+    user = get_current_user()
+    db = get_db()
+    goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'error': 'Цель не найдена'}), 404
+    try:
+        db.execute("INSERT INTO likes (user_id, goal_id) VALUES (?, ?)", (user['id'], goal_id))
+        db.commit()
+    except Exception:
+        pass
+    db.close()
+    return jsonify({'ok': True, 'liked': True})
+
+
+@app.route('/api/goal/<int:goal_id>/unlike', methods=['POST'])
+@login_required
+def api_goal_unlike(goal_id):
+    from flask import jsonify
+    user = get_current_user()
+    db = get_db()
+    db.execute("DELETE FROM likes WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
+    db.commit()
+    db.close()
+    return jsonify({'ok': True, 'liked': False})
+
+
 @app.route('/health')
 def health():
     return 'OK'
@@ -1014,6 +1083,16 @@ def format_date(date_str):
 app.jinja_env.filters['level_emoji'] = level_emoji
 app.jinja_env.filters['level_name'] = level_name
 app.jinja_env.filters['format_date'] = format_date
+
+# Trust Score helpers
+from trust_engine import get_trust_level_name as _tln, get_trust_progress as _ttp, get_trust_segments as _tsg
+app.jinja_env.filters['trust_name'] = _tln
+app.jinja_env.globals['trust_progress'] = _ttp
+app.jinja_env.globals['trust_segments'] = _tsg
+
+# Lucide иконки
+from lucide.jinja import lucide as lucide_icon
+app.jinja_env.globals['lucide'] = lucide_icon
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
