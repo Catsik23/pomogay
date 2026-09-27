@@ -287,6 +287,16 @@ def profile():
             ig['date_formatted'] = ig['donor_confirmed_at'][:10]
         ignored_list.append(ig)
     
+    # Отложенные — лайкнутые цели
+    liked_goals = db.execute("""
+        SELECT g.*, u.name as author_name, u.xp_level as author_level
+        FROM likes l
+        JOIN goals g ON l.goal_id = g.id
+        JOIN users u ON g.user_id = u.id
+        WHERE l.user_id = ?
+        ORDER BY l.created_at DESC
+    """, (user['id'],)).fetchall()
+    
     db.close()
     return render_template('profile.html',
         user=user,
@@ -295,7 +305,8 @@ def profile():
         received_approved=received_approved,
         sent_total=sent_total,
         sent_approved=sent_approved,
-        ignored_donations=ignored_list)
+        ignored_donations=ignored_list,
+        liked_goals=liked_goals)
 
 @app.route('/goals/choose')
 @login_required

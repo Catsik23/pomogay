@@ -259,6 +259,12 @@
             color: #FF5A3C;
             font-weight: 700;
         }
+        .trust-since {
+            display: block;
+            color: #B0A8A0;
+            font-size: 11px;
+            margin-top: 4px;
+        }
 
         /* ==== Личный рейтинг ==== */
         .rating-bar {
@@ -391,6 +397,92 @@
         }
 
         /* 2×2 сетка статистики */
+        /* Отложенные */
+        .section-title {
+            margin: 16px 16px 8px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D2D2D;
+        }
+        .liked-goal {
+            display: flex;
+            gap: 12px;
+            background: white;
+            border-radius: 14px;
+            padding: 12px;
+            margin: 0 16px 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            align-items: center;
+            position: relative;
+        }
+        .liked-goal-cover {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            background: #F0EDEA center/cover;
+            flex-shrink: 0;
+            text-decoration: none;
+        }
+        .liked-goal-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .liked-goal-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2D2D2D;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .liked-goal-meta {
+            font-size: 12px;
+            color: #8C7A6B;
+        }
+        .liked-goal-actions {
+            display: flex;
+            gap: 3px;
+            flex-shrink: 0;
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+        }
+        .lg-btn-primary {
+            padding: 7px 12px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white;
+            border: none;
+            border-radius: 8px 0 0 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: transform 0.1s;
+        }
+        .lg-btn-primary:active { transform: scale(0.96); }
+        .lg-btn-share {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            background: white;
+            border: 1.5px solid #FF5A3C;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+            box-sizing: border-box;
+        }
+        .lg-btn-share:active { transform: scale(0.94); }
+
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -488,7 +580,6 @@
         <div class="card" style="position:relative;">
             <div class="card-header-row">
                 <span class="card-title">Личный рейтинг</span>
-                <div id="lottie-heart" style="width:32px;height:32px;display:inline-block;"></div>
                 <button class="info-icon" type="button">i</button>
                 <div class="info-popup">
                     <h4>Личный рейтинг</h4>
@@ -521,6 +612,7 @@
                 {% else %}
                     👑 Максимальный уровень
                 {% endif %}
+                <span class="trust-since">На платформе с {{ user.created_at|format_date }}</span>
             </p>
 
             <div class="rating-scale" id="ratingScale">
@@ -556,13 +648,29 @@
                     <div class="stats-num">{{ user.streak_days or 0 }} дн.</div>
                     <div class="stats-lbl">Активен подряд</div>
                 </div>
-                <div class="stats-cell">
-                    <div class="stats-icon">🗓️</div>
-                    <div class="stats-num">{{ user.created_at|format_date }}</div>
-                    <div class="stats-lbl">На платформе с</div>
-                </div>
             </div>
         </div>
+
+        {% if liked_goals %}
+        <h3 class="section-title">Отложенные</h3>
+        {% for lg in liked_goals %}
+        <div class="liked-goal">
+            <a class="liked-goal-cover" href="/goal/{{ lg.id }}" {% if lg.photo_url %}style="background-image: url('{{ lg.photo_url }}');"{% endif %}></a>
+            <div class="liked-goal-info">
+                <a class="liked-goal-title" href="/goal/{{ lg.id }}">{{ lg.title }}</a>
+                <div class="liked-goal-meta">
+                    {{ "%.0f"|format(lg.amount_collected) }} ₽ из {{ "%.0f"|format(lg.amount_goal) }} ₽
+                </div>
+            </div>
+            <div class="liked-goal-actions">
+                <a class="lg-btn-primary" href="/goal/{{ lg.id }}">Перевести</a>
+                <button class="lg-btn-share" onclick="shareGoal('{{ lg.id }}', '{{ lg.title|e }}')" title="Поделиться">
+                    <div class="share-icon-{{ lg.id }}" style="width:20px;height:20px;"></div>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
 
         {% if ignored_donations %}
         <div class="card">
@@ -626,17 +734,52 @@
         }, { passive: false });
     });
 </script>
+<script>
+    function shareGoal(goalId, title) {
+        var url = 'https://помогай24.рф/goal/' + goalId;
+        if (navigator.share) {
+            navigator.share({ title: title, url: url }).catch(function() {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function() {
+                if (typeof showToast === 'function') showToast('Ссылка скопирована', 'success');
+            });
+        }
+    }
+</script>
 <script src="/static/lottie.min.js"></script>
 <script>
-    if (document.getElementById('lottie-heart')) {
-        lottie.loadAnimation({
-            container: document.getElementById('lottie-heart'),
+    // Инициализируем Lottie share для каждой кнопки
+    document.querySelectorAll('[class^="share-icon-"]').forEach(function(el) {
+        var anim = lottie.loadAnimation({
+            container: el,
             renderer: 'svg',
-            loop: true,
-            autoplay: true,
-            path: '/static/animations/heart.json'
+            loop: false,
+            autoplay: false,
+            path: '/static/animations/share.json'
         });
-    }
+        anim.addEventListener('DOMLoaded', function() {
+            var paths = el.querySelectorAll('svg path, svg line, svg polyline');
+            paths.forEach(function(p) {
+                p.style.stroke = '#FF5A3C';
+                p.style.fill = 'none';
+                p.style.strokeWidth = '2';
+            });
+            anim.goToAndStop(0, true);
+        });
+
+        // Привязываем к родительской кнопке
+        var btn = el.closest('.lg-btn-share');
+        if (!btn) return;
+
+        function playOnce() {
+            anim.setSpeed(2.5);
+            anim.setDirection(1);
+            anim.goToAndPlay(0, true);
+        }
+
+        btn.addEventListener('mouseenter', playOnce);
+        btn.addEventListener('touchstart', playOnce, { passive: true });
+    });
 </script>
 <script src="/static/toast.js"></script>
 </body>
