@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ goal.title }} — Помогай</title>
-    <link rel="stylesheet" href="/static/style.css?v=5">
+    <link rel="stylesheet" href="/static/style.css?v=6">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; padding-bottom: 40px; }
@@ -36,6 +36,30 @@
             width: 40px; height: 40px;
             background: rgba(255,255,255,0.06);
             border-radius: 50%;
+        }
+        .goal-back {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 4px 8px 4px 0;
+            display: inline-flex;
+            align-items: center;
+            opacity: 0.9;
+            transition: opacity 0.15s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .goal-back:active { transform: scale(0.9); opacity: 1; }
+        .goal-back svg { width: 22px; height: 22px; }
+        .goal-back-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .goal-header-text {
+            flex: 1;
+            min-width: 0;
         }
         .goal-header h1 { font-size: 22px; font-weight: 700; }
         .goal-header .author-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 14px; opacity: 0.85; }
@@ -793,7 +817,12 @@
 
         <!-- Шапка -->
         <div class="goal-header">
-            <h1>{{ goal.title }}</h1>
+            <div class="goal-back-row">
+                <button class="goal-back" onclick="history.back()" aria-label="Назад">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <h1>{{ goal.title }}</h1>
+            </div>
             <div class="author-row">
                 <div class="avatar">🐱</div>
                 <span>{{ author.name or 'Аноним' }}</span>

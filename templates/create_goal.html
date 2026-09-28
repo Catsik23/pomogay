@@ -4,12 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Создать цель — помогай.рф</title>
-    <link rel="stylesheet" href="/static/style.css?v=5">
+    <link rel="stylesheet" href="/static/style.css?v=6">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; color: #2D2D2D; }
         .container { max-width: 500px; margin: 0 auto; padding: 20px; }
         h1 { color: #FF6B4A; font-size: 28px; margin-bottom: 10px; }
+        
+        
+        
+        
+        
+        .goal-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .goal-top h1 {
+            margin: 0;
+            color: #FF6B4A;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .goal-back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            padding: 0;
+            margin: 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            color: #FF6B4A;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            opacity: 0.85;
+        }
+        .goal-back:active { transform: scale(0.9); opacity: 1; }
+        .goal-back svg { width: 22px; height: 22px; }
+
         .goal-header-row {
             display: flex;
             align-items: center;
@@ -347,7 +387,12 @@
     <div class="container">
         <div class="goal-header-row">
             <div class="goal-header-text">
-                <h1>Создать цель</h1>
+                <div class="goal-top">
+                    <button class="goal-back" onclick="history.back()" aria-label="Назад">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <h1>Создать цель</h1>
+                </div>
                 <div class="goal-type">
                     {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
                 </div>
