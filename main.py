@@ -1142,6 +1142,130 @@ def abuse():
     return render_template('abuse.html')
 
 
+@app.route('/api/regions')
+def api_regions():
+    """Список всех регионов."""
+    from flask import jsonify
+    db = get_db()
+    regions = db.execute(
+        "SELECT DISTINCT region_code, region_name FROM cities ORDER BY region_name"
+    ).fetchall()
+    db.close()
+    return jsonify([{'code': r['region_code'], 'name': r['region_name']} for r in regions])
+
+
+@app.route('/api/cities')
+def api_cities():
+    """Города по региону."""
+    from flask import jsonify
+    region_code = request.args.get('region', '').strip()
+    if not region_code:
+        return jsonify([])
+    db = get_db()
+    cities = db.execute(
+        "SELECT city_name FROM cities WHERE region_code = ? ORDER BY city_name",
+        (region_code,)
+    ).fetchall()
+    db.close()
+    return jsonify([c['city_name'] for c in cities])
+
+
+@app.route('/api/onboarding/step', methods=['POST'])
+@login_required
+def api_onboarding_step():
+    """Сохранение одного шага онбординга."""
+    from flask import jsonify
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    step = data.get('step')
+
+    db = get_db()
+
+    if step == 1:
+        name = (data.get('name') or '').strip()[:50]
+        if name:
+            db.execute("UPDATE users SET name = ?, onboarding_step = 1 WHERE id = ?", (name, user['id']))
+    elif step == 2:
+        region_code = (data.get('region_code') or '').strip()
+        region_name = (data.get('region_name') or '').strip()
+        city = (data.get('city') or '').strip()
+        if region_code and city:
+            db.execute(
+                "UPDATE users SET region_code = ?, region_name = ?, city = ?, onboarding_step = 2 WHERE id = ?",
+                (region_code, region_name, city, user['id'])
+            )
+    elif step == 3:
+        birth_date = (data.get('birth_date') or '').strip()
+        if birth_date:
+            db.execute("UPDATE users SET birth_date = ?, onboarding_step = 3 WHERE id = ?", (birth_date, user['id']))
+    elif step == 4:
+        db.execute("UPDATE users SET onboarding_passed = 1, onboarding_step = 4, profile_completed = 1 WHERE id = ?", (user['id'],))
+
+    db.commit()
+    db.close()
+    return jsonify({'ok': True, 'step': step})
+
+
+@app.route('/api/onboarding/state')
+@login_required
+def api_onboarding_state():
+    """Текущее состояние онбординга пользователя."""
+    from flask import jsonify
+    user = get_current_user()
+    return jsonify({
+        'passed': user['onboarding_passed'] or 0,
+        'step': user['onboarding_step'] or 0,
+        'name': user['name'] or '',
+        'city': user['city'] or '',
+        'region_code': user['region_code'] or '',
+        'region_name': user['region_name'] or '',
+        'birth_date': user['birth_date'] or '',
+    })
+
+
+@app.route('/api/report-photo', methods=['POST'])
+@login_required
+def api_report_photo():
+    """Жалоба на конкретное фото цели."""
+    from flask import jsonify
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    goal_id = data.get('goal_id')
+    photo_index = data.get('photo_index')
+    reason = (data.get('reason') or '').strip()
+
+    if not goal_id or photo_index is None:
+        return jsonify({'error': 'Неверные данные'}), 400
+    if not reason:
+        return jsonify({'error': 'Укажите причину'}), 400
+
+    db = get_db()
+    goal = db.execute("SELECT id, user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'error': 'Цель не найдена'}), 404
+    if goal['user_id'] == user['id']:
+        db.close()
+        return jsonify({'error': 'Нельзя жаловаться на свою цель'}), 403
+
+    # Проверяем, не жаловался ли уже
+    existing = db.execute(
+        "SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ? AND photo_index = ?",
+        (goal_id, user['id'], photo_index)
+    ).fetchone()
+    if existing:
+        db.close()
+        return jsonify({'error': 'Вы уже жаловались на это фото'}), 400
+
+    db.execute(
+        "INSERT INTO reports (goal_id, reporter_id, reason, photo_index) VALUES (?, ?, ?, ?)",
+        (goal_id, user['id'], reason, photo_index)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/health')
 def health():
     return 'OK'
