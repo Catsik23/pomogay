@@ -115,6 +115,52 @@
         .field input[type="password"]:focus {
             border-color: #FF6B4A;
         }
+        /* Чекбоксы согласия */
+        .checkbox-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            padding: 4px 0;
+        }
+        .checkbox-row input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .checkbox-lottie {
+            width: 28px;
+            height: 28px;
+            flex-shrink: 0;
+            margin-top: -2px;
+            pointer-events: none;
+        }
+        .checkbox-text {
+            font-size: 13px;
+            color: #4A4A4A;
+            line-height: 1.5;
+            padding-top: 3px;
+        }
+        .doc-link {
+            color: #FF5A3C;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .doc-link:active { opacity: 0.7; }
+
+        .btn-disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: grayscale(0.5);
+            box-shadow: none !important;
+        }
+        .btn-disabled:active {
+            transform: none !important;
+        }
+
         .btn-register {
             width: 100%;
             padding: 16px;
@@ -205,7 +251,25 @@
                 <label>Подтвердите пароль</label>
                 <input type="password" name="password2" placeholder="" required>
             </div>
-            <button type="submit" class="btn-cta">Зарегистрироваться</button>
+
+            <label class="checkbox-row">
+                <input type="checkbox" name="agree_terms" id="agreeTerms">
+                <span class="checkbox-lottie" id="lottieTerms"></span>
+                <span class="checkbox-text">
+                    Я принимаю <a href="/terms" target="_blank" class="doc-link">Пользовательское соглашение</a>
+                    и <a href="/rules" target="_blank" class="doc-link">Правила размещения целей</a>
+                </span>
+            </label>
+
+            <label class="checkbox-row">
+                <input type="checkbox" name="agree_pd" id="agreePd">
+                <span class="checkbox-lottie" id="lottiePd"></span>
+                <span class="checkbox-text">
+                    Даю <a href="/consent" target="_blank" class="doc-link">согласие на обработку персональных данных</a>
+                </span>
+            </label>
+
+            <button type="submit" class="btn-cta btn-disabled" id="registerBtn" disabled>Зарегистрироваться</button>
         </form>
 
         <div class="bottom-link">
@@ -213,8 +277,96 @@
         </div>
     </div>
 <script src="/static/toast.js"></script>
+<script src="/static/lottie.min.js"></script>
 <script>
     document.getElementById("formTime").value = Date.now()/1000;
+
+    // Lottie-чекбоксы
+    var checkboxAnims = {};
+
+    function initCheckbox(id, containerId) {
+        var input = document.getElementById(id);
+        var container = document.getElementById(containerId);
+        if (!input || !container) return;
+
+        var anim = lottie.loadAnimation({
+            container: container,
+            renderer: 'svg',
+            loop: false,
+            autoplay: false,
+            path: '/static/animations/checkBox.json'
+        });
+
+        // Красим: контур (первый path) — закатный, галочка (второй path) — зелёная
+        function paint() {
+            var paths = container.querySelectorAll('svg path');
+            if (paths.length < 2) return;
+            var outline = paths[0];
+            outline.style.stroke = '#FF5A3C';
+            outline.style.strokeWidth = '2';
+            outline.style.fill = 'none';
+            var check = paths[1];
+            check.style.stroke = '#5B9A6B';
+            check.style.strokeWidth = '2.5';
+            check.style.fill = 'none';
+        }
+
+        anim.addEventListener('DOMLoaded', function() {
+            paint();
+            anim.goToAndStop(0, true);
+        });
+
+        anim.addEventListener('enterFrame', function() {
+            paint();
+        });
+
+        checkboxAnims[id] = anim;
+
+        input.addEventListener('change', function() {
+            paint();
+            if (input.checked) {
+                anim.setDirection(1);
+                anim.play();
+            } else {
+                anim.setDirection(-1);
+                anim.play();
+            }
+            updateButton();
+        });
+    }
+
+    // Проверка обоих чекбоксов — активация кнопки
+    function updateButton() {
+        var t = document.getElementById('agreeTerms');
+        var p = document.getElementById('agreePd');
+        var btn = document.getElementById('registerBtn');
+        if (!t || !p || !btn) return;
+
+        if (t.checked && p.checked) {
+            btn.disabled = false;
+            btn.classList.remove('btn-disabled');
+        } else {
+            btn.disabled = true;
+            btn.classList.add('btn-disabled');
+        }
+    }
+
+    // Валидация перед отправкой формы
+    document.getElementById('regForm').addEventListener('submit', function(e) {
+        var t = document.getElementById('agreeTerms');
+        var p = document.getElementById('agreePd');
+        if (!t.checked || !p.checked) {
+            e.preventDefault();
+            if (typeof showToast === 'function') {
+                showToast('Для регистрации нужно ваше согласие', 'warning');
+            }
+            return false;
+        }
+    });
+
+    initCheckbox('agreeTerms', 'lottieTerms');
+    initCheckbox('agreePd', 'lottiePd');
+    updateButton();
     function goBack() {
         if (document.referrer && document.referrer.indexOf(location.host) !== -1) {
             history.back();
