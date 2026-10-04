@@ -1266,6 +1266,80 @@ def api_report_photo():
     return jsonify({'ok': True})
 
 
+@app.route('/api/deferred/set', methods=['POST'])
+@login_required
+def api_deferred_set():
+    """Установить напоминание о цели."""
+    from flask import jsonify
+    from datetime import datetime, timedelta
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    goal_id = data.get('goal_id')
+    frequency = data.get('frequency', 'once')  # once / daily / custom
+    days = data.get('days')  # для custom
+
+    if not goal_id:
+        return jsonify({'error': 'Не указана цель'}), 400
+
+    db = get_db()
+    goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'error': 'Цель не найдена'}), 404
+
+    now = datetime.now()
+
+    if frequency == 'once':
+        remind_at = (now + timedelta(days=1)).isoformat()
+    elif frequency == 'daily':
+        remind_at = (now + timedelta(days=1)).isoformat()
+    elif frequency == 'custom' and days:
+        try:
+            days = int(days)
+            if days < 1:
+                days = 1
+            if days > 365:
+                days = 365
+            remind_at = (now + timedelta(days=days)).isoformat()
+        except (ValueError, TypeError):
+            db.close()
+            return jsonify({'error': 'Неверное количество дней'}), 400
+    else:
+        db.close()
+        return jsonify({'error': 'Неверный тип напоминания'}), 400
+
+    # Удаляем старое напоминание для этой цели
+    db.execute("DELETE FROM deferred_donations WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
+
+    # Создаём новое
+    db.execute(
+        "INSERT INTO deferred_donations (user_id, goal_id, remind_at, frequency, status) VALUES (?, ?, ?, ?, 'pending')",
+        (user['id'], goal_id, remind_at, frequency)
+    )
+    db.commit()
+    db.close()
+    return jsonify({'ok': True, 'remind_at': remind_at, 'frequency': frequency})
+
+
+@app.route('/api/deferred/cancel', methods=['POST'])
+@login_required
+def api_deferred_cancel():
+    """Отменить напоминание."""
+    from flask import jsonify
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    goal_id = data.get('goal_id')
+
+    if not goal_id:
+        return jsonify({'error': 'Не указана цель'}), 400
+
+    db = get_db()
+    db.execute("DELETE FROM deferred_donations WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
+    db.commit()
+    db.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/health')
 def health():
     return 'OK'
