@@ -79,20 +79,74 @@ def get_trust_perks(score):
     return perks
 
 
-def can_create_goal(user, db):
-    """Проверяет, может ли пользователь создать ещё одну цель."""
+# Слоты целей: какие типы в каком слоте
+GOAL_SLOTS = {
+    'group':       1,   # Общий сбор — открыт всем
+    'super_blitz': 2,   # Блицы — после анкеты
+    'blitz':       2,
+    'urgent':      3,   # Серьёзные — после видео
+    'serious':     3,
+}
+
+
+def get_open_slots(user):
+    """Возвращает список открытых слотов для пользователя."""
+    slots = [1]  # Слот 1 открыт всегда
+    try:
+        if user['profile_completed'] == 1:
+            slots.append(2)
+    except (KeyError, IndexError):
+        pass
+    try:
+        if user['video_verified'] == 1:
+            slots.append(3)
+    except (KeyError, IndexError):
+        pass
+    return slots
+
+
+def can_create_goal(user, db, goal_type=None):
+    """Проверяет, может ли пользователь создать цель этого типа."""
     # Админ — без ограничений
     try:
         if user['is_admin'] == 1:
             return True
     except (KeyError, IndexError):
         pass
-    perks = get_trust_perks(user['trust_score'] or 0)
-    active_count = db.execute(
-        "SELECT COUNT(*) FROM goals WHERE user_id = ? AND status = 'active'",
-        (user['id'],)
+
+    if goal_type is None:
+        # Без типа — просто проверяем, есть ли хоть один открытый слот
+        return len(get_open_slots(user)) > 0
+
+    slot_needed = GOAL_SLOTS.get(goal_type)
+    if slot_needed is None:
+        return False
+
+    open_slots = get_open_slots(user)
+    if slot_needed not in open_slots:
+        return False
+
+    # В этом слоте — не больше 1 активной цели соответствующего типа
+    types_in_slot = [t for t, s in GOAL_SLOTS.items() if s == slot_needed]
+    placeholders = ','.join('?' * len(types_in_slot))
+    active_in_slot = db.execute(
+        f"SELECT COUNT(*) FROM goals WHERE user_id = ? AND status = 'active' AND type IN ({placeholders})",
+        (user['id'], *types_in_slot)
     ).fetchone()[0]
-    return active_count < perks['max_goals']
+
+    return active_in_slot < 1
+
+
+def can_create_goal_reason(user):
+    """Возвращает причину, почему нельзя создать цель — для UX."""
+    slots = get_open_slots(user)
+    if 1 not in slots:
+        return 'no_slot'
+    if 2 not in slots and 3 not in slots:
+        return 'need_profile'
+    if 3 not in slots:
+        return 'need_video'
+    return None
 
 
 # Палитра 12 уровней — от песка через закат к золоту

@@ -16,6 +16,28 @@
             min-height: 100vh;
             padding: 20px;
         }
+        .page-back {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 50%;
+            color: #FF5A3C;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.1s, box-shadow 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 10;
+        }
+        .page-back:active { transform: scale(0.92); }
+        .page-back svg { width: 20px; height: 20px; }
+
         .login-box {
             width: 100%;
             max-width: 400px;
@@ -136,6 +158,9 @@
     </style>
 </head>
 <body>
+    <button class="page-back" onclick="goBack()" aria-label="Назад">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
     <div class="login-box">
         <h1>Вход</h1>
 
@@ -160,6 +185,15 @@
             Нет аккаунта? <a href="/register">Зарегистрироваться</a>
         </div>
     </div>
+<script>
+    function goBack() {
+        if (document.referrer && document.referrer.indexOf(location.host) !== -1) {
+            history.back();
+        } else {
+            window.location.href = '/';
+        }
+    }
+</script>
 <script src="/static/toast.js"></script>
 </body>
 </html>

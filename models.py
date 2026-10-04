@@ -25,9 +25,11 @@ def migrate_db():
         'streak_days': 'INTEGER DEFAULT 0',
         'last_action_date': 'TEXT',
         'ip_registered': 'TEXT',
-        'trust_score': 'INTEGER DEFAULT 50',
+        'trust_score': 'INTEGER DEFAULT 0',
         'trust_level': "TEXT DEFAULT 'guest'",
-        'is_admin': 'INTEGER DEFAULT 0'
+        'is_admin': 'INTEGER DEFAULT 0',
+        'profile_completed': 'INTEGER DEFAULT 0',
+        'video_verified': 'INTEGER DEFAULT 0'
     }
     for col_name, col_def in new_columns.items():
         if col_name not in columns:

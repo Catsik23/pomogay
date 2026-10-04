@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка — помогай24.рф</title>
+    <link rel="stylesheet" href="/static/style.css?v=6">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 60px; }
+        .container { max-width: 640px; margin: 0 auto; padding: 20px 16px; }
+
+        .page-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 50%;
+            color: #FF5A3C;
+            cursor: pointer;
+            margin-bottom: 20px;
+            text-decoration: none;
+            transition: transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .page-back:active { transform: scale(0.92); }
+        .page-back svg { width: 20px; height: 20px; }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 12px;
+            line-height: 1.15;
+        }
+
+        .intro {
+            font-size: 17px;
+            color: #8C7A6B;
+            line-height: 1.55;
+            margin-bottom: 32px;
+        }
+
+        /* Три карточки статусов */
+        .status-card {
+            background: white;
+            border-radius: 18px;
+            padding: 22px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+        .status-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            font-weight: 700;
+        }
+        .status-circle.green { background: linear-gradient(160deg, #5B9A6B, #4A8560); }
+        .status-circle.blue { background: linear-gradient(160deg, #4A6BB8, #3D5A9E); }
+        .status-circle.purple { background: linear-gradient(160deg, #8B5BA6, #6E4A85); }
+
+        .status-content { flex: 1; min-width: 0; }
+        .status-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 6px;
+        }
+        .status-desc {
+            font-size: 15px;
+            color: #4A4A4A;
+            line-height: 1.55;
+        }
+        .status-desc strong {
+            color: #2D2D2D;
+            font-weight: 600;
+        }
+
+        /* Стрелки вниз между карточками */
+        .status-arrow {
+            text-align: center;
+            color: #FFB89C;
+            font-size: 22px;
+            line-height: 1;
+            margin: -4px 0 4px 0;
+            font-weight: 700;
+        }
+
+        /* Большой блок "Проверено ≠ честный" */
+        .big-block {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white;
+            padding: 28px 24px;
+            border-radius: 18px;
+            margin: 32px 0;
+            box-shadow: 0 4px 20px rgba(255,90,60,0.2);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        .big-block::after {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 120px; height: 120px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .big-block-title {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            position: relative;
+            z-index: 1;
+            letter-spacing: -0.5px;
+        }
+        .big-block-text {
+            font-size: 15px;
+            line-height: 1.6;
+            opacity: 0.92;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Секции */
+        .section {
+            background: white;
+            border-radius: 18px;
+            padding: 22px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 14px;
+            line-height: 1.3;
+        }
+        .section-text {
+            font-size: 15px;
+            color: #4A4A4A;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .section-text:last-child { margin-bottom: 0; }
+        .section-text strong { color: #2D2D2D; font-weight: 600; }
+
+        .section ul {
+            padding-left: 22px;
+            margin: 8px 0 12px;
+        }
+        .section li {
+            font-size: 15px;
+            color: #4A4A4A;
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        /* Блок "не означает" */
+        .not-means {
+            background: #FFF3CD;
+            border-left: 3px solid #FFA726;
+            padding: 14px 16px;
+            border-radius: 10px;
+            margin-top: 12px;
+        }
+        .not-means-item {
+            font-size: 14px;
+            color: #856404;
+            line-height: 1.55;
+            margin-bottom: 6px;
+        }
+        .not-means-item:last-child { margin-bottom: 0; }
+        .not-means-item strong { color: #6A4A00; }
+
+        .no-buy {
+            text-align: center;
+            padding: 24px 16px;
+        }
+        .no-buy-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #E57373;
+            margin-bottom: 12px;
+        }
+        .no-buy-text {
+            font-size: 15px;
+            color: #4A4A4A;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .no-buy-principle {
+            font-size: 15px;
+            color: #2D2D2D;
+            font-weight: 600;
+            line-height: 1.6;
+            margin-top: 16px;
+        }
+
+        /* Финальный принцип */
+        .final-principle {
+            text-align: center;
+            margin-top: 40px;
+            padding: 24px 16px;
+            border-top: 1px solid #F0EDEA;
+        }
+        .final-principle-text {
+            font-size: 16px;
+            color: #8C7A6B;
+            line-height: 1.6;
+        }
+        .final-principle-text strong {
+            color: #FF5A3C;
+            font-weight: 700;
+        }
+
+        /* Подвал */
+        .footer {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid #F0EDEA;
+            text-align: center;
+            font-size: 13px;
+            color: #B0A8A0;
+            line-height: 1.8;
+        }
+        .footer a {
+            color: #8C7A6B;
+            text-decoration: none;
+            margin: 0 6px;
+        }
+        .footer a:active { color: #FF5A3C; }
+        .footer-row { margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="page-back" aria-label="На главную">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </a>
+
+        <h1 class="page-title">Проверка</h1>
+        <p class="intro">Мы не говорим «мы вам доверяем». Мы показываем, <strong>что именно проверили</strong>.</p>
+
+        <div class="status-card">
+            <div class="status-circle green">✓</div>
+            <div class="status-content">
+                <div class="status-title">Телефон подтверждён</div>
+                <div class="status-desc">Устанавливается автоматически после подтверждения номера. Означает только то, что номер рабочий.</div>
+            </div>
+        </div>
+
+        <div class="status-arrow">↓</div>
+
+        <div class="status-card">
+            <div class="status-circle blue">✓</div>
+            <div class="status-content">
+                <div class="status-title">Личность проверена</div>
+                <div class="status-desc">Модератор сверил документ и данные: ФИО, дату рождения, фотографию. <strong>Не значит «честный»</strong> — только то, что личность установлена.</div>
+            </div>
+        </div>
+
+        <div class="status-arrow">↓</div>
+
+        <div class="status-card">
+            <div class="status-circle purple">✓</div>
+            <div class="status-content">
+                <div class="status-title">Цель проверена</div>
+                <div class="status-desc">Модератор проверил материалы конкретной цели: справки, чеки, описание, сумму. <strong>Не гарантия</strong> того, что деньги пойдут именно туда.</div>
+            </div>
+        </div>
+
+        <div class="big-block">
+            <div class="big-block-title">Проверено ≠ честный</div>
+            <div class="big-block-text">Проверка подтверждает только то, что указано в статусе. Она не является гарантией результата сбора, честности человека или целевого использования денег.</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Что происходит с документами</div>
+            <div class="section-text">Документы, предоставленные для проверки, предназначены для внутренней работы платформы и <strong>не отображаются другим пользователям</strong>.</div>
+            <div class="section-text">Доступ к ним имеет только модератор — в объёме, необходимом для проверки.</div>
+            <div class="section-text">После того как необходимость хранения документа отпадает, он подлежит удалению в соответствии с установленными сроками и правилами обработки данных.</div>
+            <div class="section-text">В системе сохраняется только <strong>факт проверки</strong>: дата, вид, результат, идентификатор модератора.</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Что проверка НЕ означает</div>
+            <div class="not-means">
+                <div class="not-means-item"><strong>🔵 «Личность проверена»</strong> ≠ человек честный</div>
+                <div class="not-means-item">≠ все сведения о человеке подтверждены</div>
+                <div class="not-means-item">≠ платформа отвечает за человека</div>
+                <div class="not-means-item"><strong>🟣 «Цель проверена»</strong> ≠ деньги пойдут заявленным образом</div>
+                <div class="not-means-item">≠ ситуация не изменится</div>
+                <div class="not-means-item">≠ донатор застрахован от потерь</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="no-buy">
+                <div class="no-buy-title">Можно ли купить проверку?</div>
+                <div class="no-buy-text">Нет.</div>
+                <div class="no-buy-text">Платное продвижение не повышает уровень доверия и не влияет на решение о проведении проверки.</div>
+                <div class="no-buy-principle">Деньги могут купить внимание.<br>Деньги не могут купить доверие.</div>
+            </div>
+        </div>
+
+        <div class="final-principle">
+            <div class="final-principle-text">
+                <strong>Автоматически мы проверяем контент.</strong><br>
+                Людей и серьёзные цели — люди.
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-row">
+                <a href="/rules">Правила</a> ·
+                <a href="/verification">Проверка</a> ·
+                <a href="/abuse">Жалобы</a>
+            </div>
+            <div class="footer-row">
+                <a href="/terms">Пользовательское соглашение</a> ·
+                <a href="/privacy">Конфиденциальность</a> ·
+                <a href="/consent">Обработка данных</a>
+            </div>
+            <div class="footer-row">
+                Поддержка
+            </div>
+        </div>
+    </div>
+</body>
+</html>

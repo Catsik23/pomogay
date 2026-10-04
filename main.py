@@ -190,7 +190,9 @@ def register():
         user = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()
         if user:
             session['user_id'] = user['id']
-            add_trust_score(user['id'], 'registration', db)
+            # trust_score = 50 из DEFAULT, ставим правильный уровень
+            db.execute("UPDATE users SET trust_level = 'member' WHERE id = ?", (user['id'],))
+            db.commit()
         db.close()
         return redirect(url_for('goals_list'))
     return render_template('register.html')
@@ -456,12 +458,20 @@ def create_goal(goal_type):
         photo_url = photos_urls[0] if photos_urls else None
         photos_json = _json.dumps(photos_urls) if photos_urls else None
         db = get_db()
-        # Проверка лимита целей по Trust Score
-        if not can_create_goal(user, db):
-            perks = get_trust_perks(user['trust_score'] or 0)
+        # Проверка слотов: тип цели → слот → открыт ли
+        if not can_create_goal(user, db, goal_type=goal_type):
+            from trust_engine import can_create_goal_reason
+            reason = can_create_goal_reason(user)
             db.close()
-            flash(f"Ваш уровень доверия позволяет создать не более {perks['max_goals']} целей. Завершите текущие или повысьте Trust Score.", 'warning')
-            return redirect(url_for('goals_list'))
+            if reason == 'need_profile':
+                flash('Блицы закрыты. Заполните анкету.', 'warning')
+                return redirect(url_for('profile'))
+            elif reason == 'need_video':
+                flash('Серьёзные сборы закрыты. Нужна видео-верификация.', 'warning')
+                return redirect(url_for('profile'))
+            else:
+                flash('У вас уже есть активная цель в этой категории.', 'warning')
+                return redirect(url_for('goals_list'))
         ends = (datetime.now() + timedelta(days=days)).isoformat()
         if not user:
             flash('Ошибка: пользователь не найден. Войдите заново.', 'danger')
@@ -1100,6 +1110,36 @@ def api_goal_unlike(goal_id):
     db.commit()
     db.close()
     return jsonify({'ok': True, 'liked': False})
+
+
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
+
+@app.route('/consent')
+def consent():
+    return render_template('consent.html')
+
+
+@app.route('/rules')
+def rules():
+    return render_template('rules.html')
+
+
+@app.route('/verification')
+def verification():
+    return render_template('verification.html')
+
+
+@app.route('/abuse')
+def abuse():
+    return render_template('abuse.html')
 
 
 @app.route('/health')

@@ -56,9 +56,40 @@
             transition: transform 0.1s, box-shadow 0.2s;
         }
         .back-link:active { background: rgba(255,255,255,0.12); }
-        .header-text { text-align: right; padding-right: 24px; }
-        .header-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.25; margin-bottom: 3px; }
+        .header-text { text-align: left; padding: 0 16px; }
+        .header-text h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.25; margin: 0; }
         .header-text p { font-size: 14px; font-weight: 400; opacity: 0.65; }
+
+        .goal-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .goal-top h1 {
+            margin: 0;
+            line-height: 1;
+        }
+        .goal-back {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            padding: 0;
+            margin: 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            opacity: 0.9;
+        }
+        .goal-back:active { transform: scale(0.9); opacity: 1; }
+        .goal-back svg { width: 22px; height: 22px; }
 
         .options-section { flex: 1; display: flex; flex-direction: column; padding: 24px 16px; gap: 16px; }
         .option {
@@ -100,9 +131,13 @@
 <body>
     <div class="container">
         <div class="header-section">
-            
             <div class="header-text">
-                <h1>Выберите тип сбора</h1>
+                <div class="goal-top">
+                    <button class="goal-back" onclick="history.back()" aria-label="Назад">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <h1>Выберите тип сбора</h1>
+                </div>
             </div>
         </div>
 
