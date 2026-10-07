@@ -118,6 +118,269 @@
         .fab:active { transform: translateX(-50%) scale(0.97); }
 
         .empty-state { text-align: center; padding: 48px 16px; color: #8C7A6B; }
+        /* ==== Онбординг ==== */
+        .onboard-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .onboard-overlay.active { display: flex; }
+
+        .onboard-modal {
+            background: white;
+            border-radius: 22px;
+            padding: 28px 22px 22px;
+            max-width: 420px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .onboard-progress {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+        }
+        .onboard-progress-seg {
+            flex: 1;
+            height: 4px;
+            background: #F0EDEA;
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+        .onboard-progress-seg.done {
+            background: linear-gradient(160deg, #FF5A3C, #E85D75);
+        }
+        .onboard-progress-seg.active {
+            background: linear-gradient(160deg, #FF5A3C, #E85D75);
+        }
+
+        .onboard-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 8px;
+            line-height: 1.25;
+        }
+        .onboard-subtitle {
+            font-size: 14px;
+            color: #8C7A6B;
+            line-height: 1.5;
+            margin-bottom: 22px;
+        }
+
+        .onboard-field {
+            margin-bottom: 16px;
+        }
+        .onboard-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #8C7A6B;
+            margin-bottom: 6px;
+            padding-left: 4px;
+        }
+        .onboard-field input,
+        .onboard-field select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            background: white;
+        }
+        .onboard-field input:focus,
+        .onboard-field select:focus {
+            border-color: #FF5A3C;
+        }
+
+        /* Кастомный дропдаун */
+        .dropdown {
+            position: relative;
+            width: 100%;
+        }
+        .dropdown-toggle {
+            width: 100%;
+            padding: 14px 16px;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            color: #2D2D2D;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            text-align: left;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .dropdown-toggle:active,
+        .dropdown.open .dropdown-toggle {
+            border-color: #FF5A3C;
+        }
+        .dropdown-toggle.placeholder {
+            color: #B0A8A0;
+        }
+        .dropdown-toggle .arrow {
+            width: 18px;
+            height: 18px;
+            color: #FF5A3C;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .dropdown.open .dropdown-toggle .arrow {
+            transform: rotate(180deg);
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #F0EDEA;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            animation: fadeInUp 0.15s ease;
+        }
+        .dropdown.open .dropdown-menu {
+            display: block;
+        }
+        .dropdown-menu::-webkit-scrollbar {
+            width: 6px;
+        }
+        .dropdown-menu::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 6px 0;
+        }
+        .dropdown-menu::-webkit-scrollbar-thumb {
+            background: linear-gradient(160deg, #FF5A3C, #E85D75);
+            border-radius: 6px;
+        }
+        .dropdown-item {
+            padding: 12px 16px;
+            font-size: 15px;
+            color: #2D2D2D;
+            cursor: pointer;
+            transition: background 0.1s;
+            border-bottom: 1px solid #F8F4F1;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-item:hover,
+        .dropdown-item:active {
+            background: #FDF8F5;
+        }
+        .dropdown-item.selected {
+            background: #FFF5F2;
+            color: #FF5A3C;
+            font-weight: 600;
+        }
+        .dropdown.disabled .dropdown-toggle {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #FDF8F5;
+        }
+
+        .onboard-date-row {
+            display: flex;
+            gap: 8px;
+        }
+        .onboard-date-row input {
+            text-align: center;
+        }
+        .onboard-date-row .day { flex: 0 0 70px; }
+        .onboard-date-row .month { flex: 0 0 70px; }
+        .onboard-date-row .year { flex: 1; }
+
+        .onboard-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 22px;
+        }
+        .onboard-skip {
+            flex: 1;
+            padding: 14px;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            color: #8C7A6B;
+            font-size: 15px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .onboard-skip:active { transform: scale(0.97); }
+
+        .onboard-next {
+            flex: 2;
+            padding: 14px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(255,107,74,0.2);
+            transition: transform 0.1s;
+        }
+        .onboard-next:active { transform: scale(0.97); }
+
+        .onboard-final-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 6px 24px rgba(255,90,60,0.3);
+        }
+        .onboard-final-icon svg {
+            width: 36px;
+            height: 36px;
+            color: white;
+        }
+
+        .onboard-final-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 17px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(255,90,60,0.3);
+            transition: transform 0.1s;
+            margin-top: 8px;
+        }
+        .onboard-final-btn:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
@@ -196,6 +459,321 @@
             document.getElementById('overlay').classList.toggle('active');
         }
     </script>
+<!-- ===== Онбординг ===== -->
+{% if user and not user.onboarding_passed %}
+<div class="onboard-overlay active" id="onboardOverlay">
+    <div class="onboard-modal" id="onboardModal">
+        <div class="onboard-progress">
+            <div class="onboard-progress-seg" data-step="1"></div>
+            <div class="onboard-progress-seg" data-step="2"></div>
+            <div class="onboard-progress-seg" data-step="3"></div>
+            <div class="onboard-progress-seg" data-step="4"></div>
+        </div>
+
+        <!-- Шаг 1: Имя -->
+        <div class="onboard-step" data-step="1">
+            <div class="onboard-title">Как вас зовут?</div>
+            <div class="onboard-subtitle">Это публичное имя. Видно всем. Формат: Иван И.</div>
+            <div class="onboard-field">
+                <input type="text" id="onboardName" maxlength="50" placeholder="Иван И." value="{{ user.name or '' }}">
+            </div>
+            <div class="onboard-actions">
+                <button type="button" class="onboard-skip" onclick="onboardNext(1, true)">Пропустить</button>
+                <button type="button" class="onboard-next" onclick="onboardNext(1, false)">Дальше</button>
+            </div>
+        </div>
+
+        <!-- Шаг 2: Город -->
+        <div class="onboard-step" data-step="2" style="display:none;">
+            <div class="onboard-title">Откуда вы?</div>
+            <div class="onboard-subtitle">Город будет виден в вашем профиле и целях.</div>
+            <div class="onboard-field">
+                <label>Регион</label>
+                <div class="dropdown" id="dropdownRegion">
+                    <button type="button" class="dropdown-toggle placeholder" id="dropdownRegionToggle">
+                        <span id="dropdownRegionText">Выберите регион</span>
+                        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownRegionMenu"></div>
+                    <input type="hidden" id="onboardRegion" value="">
+                </div>
+            </div>
+            <div class="onboard-field">
+                <label>Город</label>
+                <div class="dropdown disabled" id="dropdownCity">
+                    <button type="button" class="dropdown-toggle placeholder" id="dropdownCityToggle">
+                        <span id="dropdownCityText">Сначала выберите регион</span>
+                        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownCityMenu"></div>
+                    <input type="hidden" id="onboardCity" value="">
+                </div>
+            </div>
+            <div class="onboard-actions">
+                <button type="button" class="onboard-skip" onclick="onboardNext(2, true)">Пропустить</button>
+                <button type="button" class="onboard-next" onclick="onboardNext(2, false)">Дальше</button>
+            </div>
+        </div>
+
+        <!-- Шаг 3: Дата рождения -->
+        <div class="onboard-step" data-step="3" style="display:none;">
+            <div class="onboard-title">Когда вы родились?</div>
+            <div class="onboard-subtitle">Нужно для проверки возраста. Полная дата не показывается другим.</div>
+            <div class="onboard-field">
+                <div class="onboard-date-row">
+                    <input type="text" class="day" id="onboardDay" maxlength="2" inputmode="numeric" placeholder="ДД">
+                    <input type="text" class="month" id="onboardMonth" maxlength="2" inputmode="numeric" placeholder="ММ">
+                    <input type="text" class="year" id="onboardYear" maxlength="4" inputmode="numeric" placeholder="ГГГГ">
+                </div>
+            </div>
+            <div class="onboard-actions">
+                <button type="button" class="onboard-skip" onclick="onboardNext(3, true)">Пропустить</button>
+                <button type="button" class="onboard-next" onclick="onboardNext(3, false)">Дальше</button>
+            </div>
+        </div>
+
+        <!-- Шаг 4: Финал -->
+        <div class="onboard-step" data-step="4" style="display:none; text-align:center;">
+            <div class="onboard-final-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div class="onboard-title">Спасибо!</div>
+            <div class="onboard-subtitle">Вы можете помогать прямо сейчас. Чтобы повысить уровень доверия и открыть Блицы, заполните анкету в профиле.</div>
+            <button type="button" class="onboard-final-btn" onclick="onboardFinish()">Помогать</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+    var onboardCurrentStep = {{ user.onboarding_step or 0 }};
+    var onboardRegionsLoaded = false;
+    var onboardCitiesByRegion = {};
+
+    function showOnboardStep(step) {
+        document.querySelectorAll('.onboard-step').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        var current = document.querySelector('.onboard-step[data-step="' + step + '"]');
+        if (current) current.style.display = 'block';
+
+        document.querySelectorAll('.onboard-progress-seg').forEach(function(el, i) {
+            var segStep = i + 1;
+            el.classList.toggle('done', segStep < step);
+            el.classList.toggle('active', segStep === step);
+        });
+    }
+
+    function onboardNext(step, skip) {
+        var data = { step: step };
+
+        if (!skip) {
+            if (step === 1) {
+                data.name = document.getElementById('onboardName').value.trim();
+            } else if (step === 2) {
+                var regionText = document.getElementById('dropdownRegionText').textContent;
+                data.region_code = document.getElementById('onboardRegion').value;
+                data.region_name = regionText === 'Выберите регион' ? '' : regionText;
+                data.city = document.getElementById('onboardCity').value;
+            } else if (step === 3) {
+                var d = document.getElementById('onboardDay').value.trim();
+                var m = document.getElementById('onboardMonth').value.trim();
+                var y = document.getElementById('onboardYear').value.trim();
+                if (d && m && y) {
+                    if (d.length === 1) d = '0' + d;
+                    if (m.length === 1) m = '0' + m;
+                    data.birth_date = y + '-' + m + '-' + d;
+                }
+            }
+        }
+
+        fetch('/api/onboarding/step', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function() {
+            if (step >= 4) {
+                onboardFinish();
+            } else {
+                onboardCurrentStep = step;
+                showOnboardStep(step + 1);
+                if (step + 1 === 2) loadOnboardRegions();
+            }
+        })
+        .catch(function() {
+            if (step >= 4) {
+                onboardFinish();
+            } else {
+                showOnboardStep(step + 1);
+                if (step + 1 === 2) loadOnboardRegions();
+            }
+        });
+    }
+
+    function loadOnboardRegions() {
+        if (onboardRegionsLoaded) return;
+        onboardRegionsLoaded = true;
+        fetch('/api/regions')
+            .then(function(r) { return r.json(); })
+            .then(function(regions) {
+                var menu = document.getElementById('dropdownRegionMenu');
+                menu.innerHTML = '';
+                regions.forEach(function(reg) {
+                    var item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = reg.name;
+                    item.dataset.value = reg.code;
+                    item.dataset.name = reg.name;
+                    item.addEventListener('click', function() {
+                        selectRegion(reg.code, reg.name);
+                    });
+                    menu.appendChild(item);
+                });
+            });
+    }
+
+    function selectRegion(code, name) {
+        document.getElementById('onboardRegion').value = code;
+        document.getElementById('dropdownRegionText').textContent = name;
+        document.getElementById('dropdownRegionToggle').classList.remove('placeholder');
+        document.getElementById('dropdownRegion').classList.remove('open');
+        // Подсветка
+        document.querySelectorAll('#dropdownRegionMenu .dropdown-item').forEach(function(item) {
+            item.classList.toggle('selected', item.dataset.value === code);
+        });
+        // Загрузка городов
+        loadCities(code);
+    }
+
+    function loadCities(regionCode) {
+        var cityDropdown = document.getElementById('dropdownCity');
+        var cityMenu = document.getElementById('dropdownCityMenu');
+        var cityText = document.getElementById('dropdownCityText');
+        cityDropdown.classList.add('disabled');
+        cityMenu.innerHTML = '';
+        cityText.textContent = 'Загрузка...';
+        cityDropdown.classList.remove('disabled');
+        cityText.textContent = 'Выберите город';
+        document.getElementById('onboardCity').value = '';
+
+        fetch('/api/cities?region=' + regionCode)
+            .then(function(r) { return r.json(); })
+            .then(function(cities) {
+                cityMenu.innerHTML = '';
+                cities.forEach(function(c) {
+                    var item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = c;
+                    item.dataset.value = c;
+                    item.addEventListener('click', function() {
+                        selectCity(c);
+                    });
+                    cityMenu.appendChild(item);
+                });
+            });
+    }
+
+    function selectCity(city) {
+        document.getElementById('onboardCity').value = city;
+        document.getElementById('dropdownCityText').textContent = city;
+        document.getElementById('dropdownCityToggle').classList.remove('placeholder');
+        document.getElementById('dropdownCity').classList.remove('open');
+        document.querySelectorAll('#dropdownCityMenu .dropdown-item').forEach(function(item) {
+            item.classList.toggle('selected', item.dataset.value === city);
+        });
+    }
+
+    // Открытие/закрытие дропдаунов
+    document.getElementById('dropdownRegionToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dd = document.getElementById('dropdownRegion');
+        var wasOpen = dd.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) dd.classList.add('open');
+    });
+
+    document.getElementById('dropdownCityToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dd = document.getElementById('dropdownCity');
+        if (dd.classList.contains('disabled')) return;
+        var wasOpen = dd.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) dd.classList.add('open');
+    });
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown').forEach(function(d) {
+            d.classList.remove('open');
+        });
+    }
+
+    document.addEventListener('click', function() {
+        closeAllDropdowns();
+    });
+
+    function onboardFinish() {
+        fetch('/api/onboarding/step', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ step: 4 })
+        })
+        .then(function() {
+            window.location.reload();
+        })
+        .catch(function() {
+            window.location.reload();
+        });
+    }
+
+    // Автопереход между полями даты
+    (function() {
+        var dayInput = document.getElementById('onboardDay');
+        var monthInput = document.getElementById('onboardMonth');
+        var yearInput = document.getElementById('onboardYear');
+        if (!dayInput || !monthInput || !yearInput) return;
+
+        dayInput.addEventListener('input', function() {
+            // Только цифры
+            this.value = this.value.replace(/\D/g, '');
+            if (this.value.length >= 2) {
+                monthInput.focus();
+            }
+        });
+
+        monthInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+            if (this.value.length >= 2) {
+                yearInput.focus();
+            }
+        });
+
+        yearInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+
+        // Backspace — назад
+        monthInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && this.value.length === 0) {
+                dayInput.focus();
+            }
+        });
+        yearInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && this.value.length === 0) {
+                monthInput.focus();
+            }
+        });
+    })();
+
+    // Показываем текущий шаг или первый
+    if (onboardCurrentStep > 0 && onboardCurrentStep < 4) {
+        showOnboardStep(onboardCurrentStep + 1);
+        if (onboardCurrentStep + 1 === 2) loadOnboardRegions();
+    } else {
+        showOnboardStep(1);
+    }
+</script>
 <script src="/static/toast.js"></script>
 </body>
 </html>
