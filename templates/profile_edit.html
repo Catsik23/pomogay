@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анкета — помогай.рф</title>
+    <link rel="stylesheet" href="/static/style.css?v=6">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 100px; }
+        .container { max-width: 520px; margin: 0 auto; padding: 0; }
+
+        /* Шапка */
+        .edit-header {
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            padding: 20px 20px 24px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            border-bottom: 3px solid #FF8C69;
+            box-shadow: 0 4px 16px rgba(255,107,74,0.15);
+        }
+        .edit-header::after {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 120px; height: 120px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 50%;
+        }
+        .edit-header::before {
+            content: '';
+            position: absolute;
+            bottom: -20px; left: 20px;
+            width: 60px; height: 60px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+        .edit-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            margin-bottom: 16px;
+            text-decoration: none;
+            transition: background 0.15s, transform 0.1s;
+            position: relative;
+            z-index: 1;
+        }
+        .edit-back:active { transform: scale(0.92); background: rgba(255,255,255,0.25); }
+        .edit-back svg { width: 18px; height: 18px; }
+
+        .edit-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
+        }
+        .edit-header p {
+            font-size: 14px;
+            opacity: 0.85;
+            position: relative;
+            z-index: 1;
+            line-height: 1.5;
+        }
+
+        /* Прогресс заполнения */
+        .edit-progress {
+            display: flex;
+            gap: 6px;
+            margin-top: 16px;
+            position: relative;
+            z-index: 1;
+        }
+        .edit-progress-seg {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+        .edit-progress-seg.done {
+            background: white;
+        }
+
+        /* Контент */
+        .edit-content {
+            padding: 20px 16px;
+        }
+
+        /* Карточка поля */
+        .edit-card {
+            background: white;
+            border-radius: 18px;
+            padding: 18px 18px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s;
+        }
+        .edit-card.filled {
+            box-shadow: 0 2px 10px rgba(91,154,107,0.1);
+        }
+        .edit-card-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+        .edit-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: #FFF5F2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .edit-card-icon svg {
+            width: 20px;
+            height: 20px;
+            color: #FF5A3C;
+        }
+        .edit-card.filled .edit-card-icon {
+            background: #F0F7F2;
+        }
+        .edit-card.filled .edit-card-icon svg {
+            color: #5B9A6B;
+        }
+        .edit-card-title-wrap {
+            flex: 1;
+            min-width: 0;
+        }
+        .edit-card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2D2D2D;
+            line-height: 1.3;
+        }
+        .edit-card-hint {
+            font-size: 12px;
+            color: #8C7A6B;
+            margin-top: 2px;
+        }
+        .edit-card-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #5B9A6B;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .edit-card.filled .edit-card-check {
+            display: flex;
+        }
+        .edit-card-check svg {
+            width: 14px;
+            height: 14px;
+            color: white;
+        }
+
+        /* Поля ввода */
+        .edit-field input[type="text"],
+        .edit-field input[type="number"] {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+            background: white;
+            color: #2D2D2D;
+            box-sizing: border-box;
+        }
+        .edit-field input:focus {
+            border-color: #FF5A3C;
+        }
+
+        /* Автопереход даты */
+        .edit-date-row {
+            display: flex;
+            gap: 8px;
+        }
+        .edit-date-row input {
+            text-align: center;
+        }
+        .edit-date-row .day { flex: 0 0 70px; }
+        .edit-date-row .month { flex: 0 0 70px; }
+        .edit-date-row .year { flex: 1; }
+
+        /* Кастомный дропдаун */
+        .dropdown {
+            position: relative;
+            width: 100%;
+        }
+        .dropdown-toggle {
+            width: 100%;
+            padding: 14px 16px;
+            background: white;
+            border: 1px solid #E0E0E0;
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            color: #2D2D2D;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            text-align: left;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .dropdown-toggle:active,
+        .dropdown.open .dropdown-toggle {
+            border-color: #FF5A3C;
+        }
+        .dropdown-toggle.placeholder {
+            color: #B0A8A0;
+        }
+        .dropdown-toggle .arrow {
+            width: 18px;
+            height: 18px;
+            color: #FF5A3C;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .dropdown.open .dropdown-toggle .arrow {
+            transform: rotate(180deg);
+        }
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #F0EDEA;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            animation: fadeInUp 0.15s ease;
+        }
+        .dropdown.open .dropdown-menu {
+            display: block;
+        }
+        .dropdown-menu::-webkit-scrollbar { width: 6px; }
+        .dropdown-menu::-webkit-scrollbar-track { background: transparent; margin: 6px 0; }
+        .dropdown-menu::-webkit-scrollbar-thumb {
+            background: linear-gradient(160deg, #FF5A3C, #E85D75);
+            border-radius: 6px;
+        }
+        .dropdown-item {
+            padding: 12px 16px;
+            font-size: 15px;
+            color: #2D2D2D;
+            cursor: pointer;
+            transition: background 0.1s;
+            border-bottom: 1px solid #F8F4F1;
+        }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover,
+        .dropdown-item:active { background: #FDF8F5; }
+        .dropdown-item.selected {
+            background: #FFF5F2;
+            color: #FF5A3C;
+            font-weight: 600;
+        }
+        .dropdown.disabled .dropdown-toggle {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #FDF8F5;
+        }
+
+        /* Sticky кнопка внизу */
+        .edit-bottom {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            background: linear-gradient(to top, #FDF8F5 80%, transparent);
+            z-index: 50;
+        }
+        .edit-save-btn {
+            display: block;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 16px;
+            background: linear-gradient(160deg, #FF5A3C 0%, #FF7B5C 35%, #E85D75 100%);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(255,90,60,0.25);
+            transition: transform 0.1s;
+            box-sizing: border-box;
+        }
+        .edit-save-btn:active { transform: scale(0.97); }
+        .edit-save-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="edit-header">
+            <a href="/profile" class="edit-back" aria-label="Назад">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            </a>
+            <h1>Анкета</h1>
+            <p>Заполните, чтобы открыть больше типов сборов</p>
+            <div class="edit-progress">
+                <div class="edit-progress-seg" id="prog1"></div>
+                <div class="edit-progress-seg" id="prog2"></div>
+                <div class="edit-progress-seg" id="prog3"></div>
+                <div class="edit-progress-seg" id="prog4"></div>
+            </div>
+        </div>
+
+        <div class="edit-content">
+            <!-- Имя -->
+            <div class="edit-card" id="card-name">
+                <div class="edit-card-head">
+                    <div class="edit-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </div>
+                    <div class="edit-card-title-wrap">
+                        <div class="edit-card-title">Имя</div>
+                        <div class="edit-card-hint">Формат: Иван И.</div>
+                    </div>
+                    <div class="edit-card-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                </div>
+                <div class="edit-field">
+                    <input type="text" id="fieldName" maxlength="50" placeholder="Иван И." value="{{ user.name or '' }}">
+                </div>
+            </div>
+
+            <!-- Регион -->
+            <div class="edit-card" id="card-region">
+                <div class="edit-card-head">
+                    <div class="edit-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    </div>
+                    <div class="edit-card-title-wrap">
+                        <div class="edit-card-title">Регион</div>
+                        <div class="edit-card-hint">Где вы живёте</div>
+                    </div>
+                    <div class="edit-card-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                </div>
+                <div class="dropdown" id="dropdownRegion">
+                    <button type="button" class="dropdown-toggle placeholder" id="dropdownRegionToggle">
+                        <span id="dropdownRegionText">{{ user.region_name or 'Выберите регион' }}</span>
+                        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownRegionMenu"></div>
+                    <input type="hidden" id="fieldRegion" value="{{ user.region_code or '' }}">
+                </div>
+            </div>
+
+            <!-- Город -->
+            <div class="edit-card" id="card-city">
+                <div class="edit-card-head">
+                    <div class="edit-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path></svg>
+                    </div>
+                    <div class="edit-card-title-wrap">
+                        <div class="edit-card-title">Город</div>
+                        <div class="edit-card-hint">Ваш населённый пункт</div>
+                    </div>
+                    <div class="edit-card-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                </div>
+                <div class="dropdown disabled" id="dropdownCity">
+                    <button type="button" class="dropdown-toggle placeholder" id="dropdownCityToggle">
+                        <span id="dropdownCityText">{{ user.city or 'Сначала выберите регион' }}</span>
+                        <svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownCityMenu"></div>
+                    <input type="hidden" id="fieldCity" value="{{ user.city or '' }}">
+                </div>
+            </div>
+
+            <!-- Дата рождения -->
+            <div class="edit-card" id="card-birth">
+                <div class="edit-card-head">
+                    <div class="edit-card-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                    <div class="edit-card-title-wrap">
+                        <div class="edit-card-title">Дата рождения</div>
+                        <div class="edit-card-hint">Нужна для проверки возраста. Не показывается другим.</div>
+                    </div>
+                    <div class="edit-card-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                </div>
+                <div class="edit-field">
+                    <div class="edit-date-row">
+                        <input type="text" class="day" id="fieldDay" maxlength="2" inputmode="numeric" placeholder="ДД">
+                        <input type="text" class="month" id="fieldMonth" maxlength="2" inputmode="numeric" placeholder="ММ">
+                        <input type="text" class="year" id="fieldYear" maxlength="4" inputmode="numeric" placeholder="ГГГГ">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="edit-bottom">
+            <button type="button" class="edit-save-btn" id="saveBtn" onclick="saveProfile()">Сохранить</button>
+        </div>
+    </div>
+
+<script src="/static/toast.js"></script>
+<script>
+    // ===== Состояние =====
+    var currentRegionCode = '{{ user.region_code or "" }}';
+    var currentRegionName = '{{ user.region_name or "" }}';
+    var currentCity = '{{ user.city or "" }}';
+    var birthDateRaw = '{{ user.birth_date or "" }}';
+
+    // ===== Регионы =====
+    var regionsLoaded = false;
+    function loadRegions() {
+        if (regionsLoaded) return;
+        regionsLoaded = true;
+        fetch('/api/regions')
+            .then(function(r) { return r.json(); })
+            .then(function(regions) {
+                var menu = document.getElementById('dropdownRegionMenu');
+                menu.innerHTML = '';
+                regions.forEach(function(reg) {
+                    var item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = reg.name;
+                    item.dataset.value = reg.code;
+                    item.dataset.name = reg.name;
+                    if (reg.code === currentRegionCode) item.classList.add('selected');
+                    item.addEventListener('click', function() {
+                        selectRegion(reg.code, reg.name);
+                    });
+                    menu.appendChild(item);
+                });
+            });
+    }
+
+    function selectRegion(code, name) {
+        currentRegionCode = code;
+        currentRegionName = name;
+        document.getElementById('fieldRegion').value = code;
+        document.getElementById('dropdownRegionText').textContent = name;
+        document.getElementById('dropdownRegionToggle').classList.remove('placeholder');
+        document.getElementById('dropdownRegion').classList.remove('open');
+        document.querySelectorAll('#dropdownRegionMenu .dropdown-item').forEach(function(item) {
+            item.classList.toggle('selected', item.dataset.value === code);
+        });
+        // Сброс города
+        currentCity = '';
+        document.getElementById('fieldCity').value = '';
+        document.getElementById('dropdownCityText').textContent = 'Загрузка...';
+        document.getElementById('dropdownCityToggle').classList.add('placeholder');
+        loadCities(code);
+        updateCards();
+    }
+
+    function loadCities(regionCode) {
+        var cityDropdown = document.getElementById('dropdownCity');
+        var cityMenu = document.getElementById('dropdownCityMenu');
+        cityDropdown.classList.remove('disabled');
+        fetch('/api/cities?region=' + regionCode)
+            .then(function(r) { return r.json(); })
+            .then(function(cities) {
+                cityMenu.innerHTML = '';
+                cities.forEach(function(c) {
+                    var item = document.createElement('div');
+                    item.className = 'dropdown-item';
+                    item.textContent = c;
+                    item.dataset.value = c;
+                    if (c === currentCity) item.classList.add('selected');
+                    item.addEventListener('click', function() {
+                        selectCity(c);
+                    });
+                    cityMenu.appendChild(item);
+                });
+                document.getElementById('dropdownCityText').textContent = currentCity || 'Выберите город';
+            });
+    }
+
+    function selectCity(city) {
+        currentCity = city;
+        document.getElementById('fieldCity').value = city;
+        document.getElementById('dropdownCityText').textContent = city;
+        document.getElementById('dropdownCityToggle').classList.remove('placeholder');
+        document.getElementById('dropdownCity').classList.remove('open');
+        document.querySelectorAll('#dropdownCityMenu .dropdown-item').forEach(function(item) {
+            item.classList.toggle('selected', item.dataset.value === city);
+        });
+        updateCards();
+    }
+
+    // ===== Дропдауны =====
+    document.getElementById('dropdownRegionToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dd = document.getElementById('dropdownRegion');
+        var wasOpen = dd.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) {
+            dd.classList.add('open');
+            loadRegions();
+        }
+    });
+
+    document.getElementById('dropdownCityToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var dd = document.getElementById('dropdownCity');
+        if (dd.classList.contains('disabled')) return;
+        var wasOpen = dd.classList.contains('open');
+        closeAllDropdowns();
+        if (!wasOpen) dd.classList.add('open');
+    });
+
+    function closeAllDropdowns() {
+        document.querySelectorAll('.dropdown').forEach(function(d) {
+            d.classList.remove('open');
+        });
+    }
+    document.addEventListener('click', closeAllDropdowns);
+
+    // ===== Дата рождения =====
+    var dayInput = document.getElementById('fieldDay');
+    var monthInput = document.getElementById('fieldMonth');
+    var yearInput = document.getElementById('fieldYear');
+
+    // Восстановление из БД
+    if (birthDateRaw) {
+        var parts = birthDateRaw.split('-');
+        if (parts.length === 3) {
+            yearInput.value = parts[0];
+            monthInput.value = parts[1];
+            dayInput.value = parts[2];
+        }
+    }
+
+    dayInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
+        if (this.value.length >= 2) monthInput.focus();
+        updateCards();
+    });
+    monthInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
+        if (this.value.length >= 2) yearInput.focus();
+        updateCards();
+    });
+    yearInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
+        updateCards();
+    });
+    monthInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && this.value.length === 0) dayInput.focus();
+    });
+    yearInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && this.value.length === 0) monthInput.focus();
+    });
+
+    // ===== Имя =====
+    document.getElementById('fieldName').addEventListener('input', updateCards);
+
+    // ===== Прогресс и подсветка карточек =====
+    function getBirthDate() {
+        var d = dayInput.value.trim();
+        var m = monthInput.value.trim();
+        var y = yearInput.value.trim();
+        if (d && m && y && y.length === 4) {
+            if (d.length === 1) d = '0' + d;
+            if (m.length === 1) m = '0' + m;
+            return y + '-' + m + '-' + d;
+        }
+        return '';
+    }
+
+    function updateCards() {
+        var name = document.getElementById('fieldName').value.trim();
+        var region = currentRegionCode;
+        var city = currentCity;
+        var birth = getBirthDate();
+
+        var filled = 0;
+        if (name) { document.getElementById('card-name').classList.add('filled'); filled++; }
+        else { document.getElementById('card-name').classList.remove('filled'); }
+
+        if (region) { document.getElementById('card-region').classList.add('filled'); filled++; }
+        else { document.getElementById('card-region').classList.remove('filled'); }
+
+        if (city) { document.getElementById('card-city').classList.add('filled'); filled++; }
+        else { document.getElementById('card-city').classList.remove('filled'); }
+
+        if (birth) { document.getElementById('card-birth').classList.add('filled'); filled++; }
+        else { document.getElementById('card-birth').classList.remove('filled'); }
+
+        // Прогресс
+        for (var i = 1; i <= 4; i++) {
+            document.getElementById('prog' + i).classList.toggle('done', i <= filled);
+        }
+    }
+
+    // ===== Сохранение =====
+    function saveProfile() {
+        var name = document.getElementById('fieldName').value.trim();
+        var birth = getBirthDate();
+
+        if (!name && !currentRegionCode && !currentCity && !birth) {
+            if (typeof showToast === 'function') showToast('Заполните хотя бы одно поле', 'warning');
+            return;
+        }
+
+        var payload = {
+            name: name,
+            region_code: currentRegionCode,
+            region_name: currentRegionName,
+            city: currentCity,
+            birth_date: birth
+        };
+
+        var btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Сохранение...';
+
+        fetch('/api/profile/save', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                if (typeof showToast === 'function') showToast('Анкета сохранена', 'success');
+                setTimeout(function() {
+                    window.location.href = '/profile';
+                }, 800);
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Сохранить';
+                if (typeof showToast === 'function') showToast(data.error || 'Ошибка', 'danger');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'Сохранить';
+            if (typeof showToast === 'function') showToast('Ошибка сети', 'danger');
+        });
+    }
+
+    // При открытии — если регион уже есть, загружаем города
+    if (currentRegionCode) {
+        document.getElementById('dropdownRegionToggle').classList.remove('placeholder');
+        document.getElementById('dropdownRegionText').textContent = currentRegionName;
+        loadCities(currentRegionCode);
+        if (currentCity) {
+            document.getElementById('dropdownCityToggle').classList.remove('placeholder');
+        }
+    }
+
+    updateCards();
+</script>
+</body>
+</html>

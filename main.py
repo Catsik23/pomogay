@@ -1340,6 +1340,43 @@ def api_deferred_cancel():
     return jsonify({'ok': True})
 
 
+@app.route('/profile/edit')
+@login_required
+def profile_edit():
+    """Страница редактирования анкеты."""
+    user = get_current_user()
+    return render_template('profile_edit.html', user=user)
+
+
+@app.route('/api/profile/save', methods=['POST'])
+@login_required
+def api_profile_save():
+    """Сохранение анкеты."""
+    from flask import jsonify
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+
+    name = (data.get('name') or '').strip()[:50]
+    region_code = (data.get('region_code') or '').strip()
+    region_name = (data.get('region_name') or '').strip()
+    city = (data.get('city') or '').strip()
+    birth_date = (data.get('birth_date') or '').strip()
+
+    db = get_db()
+    db.execute(
+        "UPDATE users SET name = ?, region_code = ?, region_name = ?, city = ?, birth_date = ? WHERE id = ?",
+        (name or None, region_code or None, region_name or None, city or None, birth_date or None, user['id'])
+    )
+
+    # Если все 4 поля заполнены — открываем слот 2
+    if name and region_code and city and birth_date:
+        db.execute("UPDATE users SET profile_completed = 1 WHERE id = ?", (user['id'],))
+
+    db.commit()
+    db.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/health')
 def health():
     return 'OK'
