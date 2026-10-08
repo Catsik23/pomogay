@@ -460,7 +460,7 @@
         }
     </script>
 <!-- ===== Онбординг ===== -->
-{% if user and not user.onboarding_passed %}
+{% if user and not user.onboarding_passed and not user.profile_completed %}
 <div class="onboard-overlay active" id="onboardOverlay">
     <div class="onboard-modal" id="onboardModal">
         <div class="onboard-progress">

@@ -371,7 +371,8 @@ def profile_sent():
 @app.route('/goals/choose')
 @login_required
 def choose_goal_type():
-    return render_template('choose_goal_type.html')
+    user = get_current_user()
+    return render_template('choose_goal_type.html', user=user)
 
 @app.route('/goals/new/<goal_type>', methods=['GET','POST'])
 @login_required
@@ -1199,7 +1200,20 @@ def api_onboarding_step():
         if birth_date:
             db.execute("UPDATE users SET birth_date = ?, onboarding_step = 3 WHERE id = ?", (birth_date, user['id']))
     elif step == 4:
-        db.execute("UPDATE users SET onboarding_passed = 1, onboarding_step = 4, profile_completed = 1 WHERE id = ?", (user['id'],))
+        # Проверяем, всё ли заполнено
+        u = db.execute("SELECT name, region_code, city, birth_date FROM users WHERE id = ?", (user['id'],)).fetchone()
+        all_filled = u and u['name'] and u['region_code'] and u['city'] and u['birth_date']
+        if all_filled:
+            db.execute(
+                "UPDATE users SET onboarding_passed = 1, onboarding_step = 4, profile_completed = 1 WHERE id = ?",
+                (user['id'],)
+            )
+        else:
+            # Онбординг пройден (модалки больше не показываем), но анкета не заполнена
+            db.execute(
+                "UPDATE users SET onboarding_passed = 1, onboarding_step = 4 WHERE id = ?",
+                (user['id'],)
+            )
 
     db.commit()
     db.close()
@@ -1368,9 +1382,18 @@ def api_profile_save():
         (name or None, region_code or None, region_name or None, city or None, birth_date or None, user['id'])
     )
 
-    # Если все 4 поля заполнены — открываем слот 2
+    # Любое сохранение через /profile/edit — пользователь "прошёл" онбординг
+    # (модалки больше не показываем)
     if name and region_code and city and birth_date:
-        db.execute("UPDATE users SET profile_completed = 1 WHERE id = ?", (user['id'],))
+        db.execute(
+            "UPDATE users SET profile_completed = 1, onboarding_passed = 1, onboarding_step = 4 WHERE id = ?",
+            (user['id'],)
+        )
+    else:
+        db.execute(
+            "UPDATE users SET onboarding_passed = 1, onboarding_step = 4 WHERE id = ?",
+            (user['id'],)
+        )
 
     db.commit()
     db.close()

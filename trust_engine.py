@@ -82,9 +82,9 @@ def get_trust_perks(score):
 # Слоты целей: какие типы в каком слоте
 GOAL_SLOTS = {
     'group':       1,   # Общий сбор — открыт всем
-    'super_blitz': 2,   # Блицы — после анкеты
-    'blitz':       2,
-    'urgent':      3,   # Серьёзные — после видео
+    'super_blitz': 2,   # Супер-блиц — после основной анкеты
+    'blitz':       3,   # Блиц, Срочный, Жизненный — после верификации личности
+    'urgent':      3,
     'serious':     3,
 }
 
@@ -98,7 +98,7 @@ def get_open_slots(user):
     except (KeyError, IndexError):
         pass
     try:
-        if user['video_verified'] == 1:
+        if user['identity_verified'] == 1:
             slots.append(3)
     except (KeyError, IndexError):
         pass
