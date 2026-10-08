@@ -25,23 +25,27 @@
             z-index: 10;
         }
         .hamburger {
-            width: 32px;
-            height: 32px;
+            width: 50px;
+            height: 50px;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            gap: 5px;
+            align-items: center;
+            gap: 6px;
             cursor: pointer;
             flex-shrink: 0;
+            position: relative;
             transition: transform 0.1s;
+            margin-left: -8px;
+            margin-top: 5px;
         }
-        .hamburger:active { transform: scale(0.9); }
-        .hamburger span {
+        .hamburger:active { transform: scale(0.92); }
+        .hamburger > span:not(.hamburger-dot) {
             display: block;
-            height: 2.5px;
+            width: 28px;
+            height: 3px;
             background: white;
             border-radius: 2px;
-            transition: all 0.2s;
         }
         .header-title {
             font-size: 30px;
@@ -55,25 +59,265 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 90; }
         .overlay.active { display: block; }
         .sidebar {
-            position: fixed; top: 0; left: -280px; width: 270px; height: 100%;
-            background: white; z-index: 95; transition: left 0.25s ease;
-            display: flex; flex-direction: column; padding: 20px;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+            position: fixed; top: 0; left: -300px; width: 290px; height: 100%;
+            background: white; z-index: 95; transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+            overflow-y: auto;
         }
         .sidebar.active { left: 0; }
-        .sidebar .logo { font-size: 22px; font-weight: 700; color: #FF6B4A; margin-bottom: 32px; }
-        .sidebar a {
-            display: block;
-            padding: 14px 12px;
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #FFD9CC;
+            border-radius: 4px;
+        }
+
+        /* Профиль-блок */
+        .sidebar-profile {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 24px 20px 20px;
+            background: linear-gradient(160deg, #FFF9F6 0%, #FFFFFF 100%);
+            text-decoration: none;
+            border-bottom: 1px solid #F5F0EC;
+        }
+        .sidebar-profile:active { background: #FFF5F2; }
+        .sidebar-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(255,90,60,0.25);
+        }
+        .sidebar-profile-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .sidebar-profile-name {
             font-size: 16px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-profile-level {
+            font-size: 12px;
+            color: #FF5A3C;
+            font-weight: 600;
+            background: #FFF5F2;
+            padding: 2px 8px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        /* Навигация */
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            padding: 12px 12px 0;
+            gap: 2px;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 13px 14px;
+            font-size: 15px;
             font-weight: 500;
             color: #2D2D2D;
             text-decoration: none;
             border-radius: 12px;
             transition: background 0.15s;
+            position: relative;
         }
-        .sidebar a:active { background: #F5F5F5; }
-        .sidebar .divider { height: 1px; background: #F0EDEA; margin: 12px 0; }
+        .sidebar-link:active { background: #F5F0EC; }
+        .sidebar-link:hover { background: #FDF8F5; }
+        .sidebar-icon {
+            width: 20px;
+            height: 20px;
+            color: #8C7A6B;
+            flex-shrink: 0;
+        }
+        .sidebar-link span:first-of-type {
+            flex: 1;
+        }
+        .sidebar-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #FF5A3C;
+            display: none;
+            box-shadow: 0 0 0 3px #FFF5F2;
+            flex-shrink: 0;
+        }
+        .sidebar-dot.active { display: block; }
+
+        /* Уведомления в sidebar */
+        .sidebar-notifications {
+            padding: 0 12px;
+            margin-top: 8px;
+        }
+        .sidebar-notif-toggle {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 13px 14px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #2D2D2D;
+            font-family: 'Inter', sans-serif;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: background 0.15s;
+            text-align: left;
+        }
+        .sidebar-notif-toggle:active { background: #F5F0EC; }
+        .sidebar-notif-toggle span:first-of-type {
+            flex: 1;
+        }
+        .sidebar-notif-count {
+            background: linear-gradient(160deg, #FF5A3C 0%, #E85D75 100%);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            min-width: 20px;
+            text-align: center;
+            display: none;
+        }
+        .sidebar-notif-count.active { display: inline-block; }
+        .sidebar-chevron {
+            width: 16px;
+            height: 16px;
+            color: #8C7A6B;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+        .sidebar-notif-toggle.open .sidebar-chevron {
+            transform: rotate(180deg);
+        }
+        .sidebar-notif-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .sidebar-notif-panel.open {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .notif-list {
+            padding: 8px 0;
+        }
+        .notif-item {
+            display: block;
+            padding: 12px 14px;
+            background: #FDF8F5;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            border-left: 3px solid transparent;
+            text-decoration: none;
+            color: inherit;
+        }
+        .notif-item:active { background: #F5F0EC; transform: scale(0.98); }
+        .notif-item.onboarding { border-left-color: #FF5A3C; }
+        .notif-item.donation { border-left-color: #5B9A6B; }
+        .notif-item.reminder { border-left-color: #8B5BA6; }
+        .notif-item.event { border-left-color: #4A6BB8; }
+        .notif-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+        .notif-message {
+            font-size: 12px;
+            color: #8C7A6B;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+        .notif-empty {
+            padding: 16px;
+            text-align: center;
+            font-size: 13px;
+            color: #B0A8A0;
+        }
+
+        /* Разделитель */
+        .sidebar-divider {
+            height: 1px;
+            background: #F0EDEA;
+            margin: 8px 20px;
+        }
+
+        /* Logout */
+        .sidebar-logout-form {
+            margin-top: auto;
+            padding: 12px;
+            border-top: 1px solid #F5F0EC;
+        }
+        .sidebar-logout {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 13px 14px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #E57373;
+            font-family: 'Inter', sans-serif;
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-radius: 12px;
+            text-align: left;
+            transition: background 0.15s;
+        }
+        .sidebar-logout:active { background: #FFEBEE; }
+        .sidebar-logout .sidebar-icon { color: #E57373; }
+
+        /* Бургер с точкой */
+        .hamburger-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            background: #FFFFFF;
+            color: #FF5A3C;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+            font-family: 'Inter', sans-serif;
+            box-shadow: 0 0 0 2px #FF5A3C, 0 2px 8px rgba(255,90,60,0.4);
+            line-height: 1;
+        }
+        .hamburger-dot.active {
+            display: flex;
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
 
         
 
@@ -387,8 +631,9 @@
     <div class="container">
         <!-- Шапка -->
         <div class="header">
-            <div class="hamburger" onclick="toggleMenu()">
+            <div class="hamburger" id="hamburgerBtn" onclick="toggleMenu()">
                 <span></span><span></span><span></span>
+                <span class="hamburger-dot" id="hamburgerDot"></span>
             </div>
             <div class="header-title">помогай.рф</div>
         </div>
@@ -440,25 +685,203 @@
     <div class="overlay" id="overlay" onclick="toggleMenu()"></div>
 
     <!-- Боковое меню -->
-    <div class="sidebar" id="sidebar">
-        <div class="logo">помогай.рф</div>
+   <div class="sidebar" id="sidebar">
+        <!-- Профиль-блок -->
         {% if user %}
-            <a href="/profile">Профиль</a>
-            <form method="POST" action="/logout" style="display:inline;"><button type="submit" style="background:none;border:none;padding:14px 12px;font-size:16px;font-weight:500;color:#2D2D2D;cursor:pointer;font-family:Inter,sans-serif;width:100%;text-align:left;border-radius:12px;">Выйти</button></form>
-        {% else %}
-            <a href="/login">Вход</a>
-            <a href="/register">Регистрация</a>
+        <a href="/profile" class="sidebar-profile">
+            <div class="sidebar-avatar">🐱</div>
+            <div class="sidebar-profile-info">
+                <div class="sidebar-profile-name">{{ user.name or 'Аноним' }}</div>
+                <div class="sidebar-profile-level">
+                    {% if user.trust_level %}
+                        {{ user.trust_level|trust_name }}
+                    {% else %}
+                        Новичок
+                    {% endif %}
+                </div>
+            </div>
+        </a>
         {% endif %}
-        <div class="divider"></div>
-        <a class="btn-back" href="/goals">Все цели</a>
+
+        <!-- Основное меню -->
+        <nav class="sidebar-nav">
+            <a href="/goals" class="sidebar-link">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span>Лента</span>
+            </a>
+            {% if user %}
+            <a href="/profile" class="sidebar-link">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>Профиль</span>
+            </a>
+            <a href="/profile/received" class="sidebar-link" id="linkReceived">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path></svg>
+                <span>Мне помогли</span>
+                <span class="sidebar-dot" id="dotReceived"></span>
+            </a>
+            <a href="/profile/sent" class="sidebar-link">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <span>Я помог</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <!-- Уведомления -->
+        {% if user %}
+        <div class="sidebar-notifications" id="sidebarNotifications">
+            <button type="button" class="sidebar-notif-toggle" onclick="toggleNotifications(event)">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                <span>Уведомления</span>
+                <span class="sidebar-notif-count" id="notifCount"></span>
+                <svg class="sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <div class="sidebar-notif-panel" id="notifPanel">
+                <div class="notif-list" id="notifList">
+                    <div class="notif-empty">Пока тихо</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-divider"></div>
+
+        <form method="POST" action="/logout" class="sidebar-logout-form">
+            <button type="submit" class="sidebar-logout">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span>Выйти</span>
+            </button>
+        </form>
+        {% else %}
+        <nav class="sidebar-nav">
+            <a href="/login" class="sidebar-link">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                <span>Вход</span>
+            </a>
+            <a href="/register" class="sidebar-link">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                <span>Регистрация</span>
+            </a>
+        </nav>
+        {% endif %}
     </div>
 
-    <script>
-        function toggleMenu() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('overlay').classList.toggle('active');
+<script src="/static/lottie.min.js"></script>
+<script>
+    var menuOpen = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadState();
+    });
+
+    function toggleMenu() {
+        var sidebar = document.getElementById('sidebar');
+        var overlay = document.getElementById('overlay');
+        menuOpen = !menuOpen;
+        sidebar.classList.toggle('active', menuOpen);
+        overlay.classList.toggle('active', menuOpen);
+    }
+
+    // ===== Загрузка состояния (действия) =====
+    function loadState() {
+        fetch('/api/state')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                renderNotifications(data.actions || []);
+                updateDots(data.actions || []);
+            })
+            .catch(function() {});
+    }
+
+    function getDismissed() {
+        try {
+            return JSON.parse(localStorage.getItem('dismissed_notifs') || '[]');
+        } catch (e) { return []; }
+    }
+
+    function dismissNotification(a) {
+        var key = a.type + ':' + (a.action_url || '');
+        var dismissed = getDismissed();
+        if (dismissed.indexOf(key) === -1) {
+            dismissed.push(key);
+            localStorage.setItem('dismissed_notifs', JSON.stringify(dismissed));
         }
-    </script>
+    }
+
+    function filterDismissed(actions) {
+        var dismissed = getDismissed();
+        return actions.filter(function(a) {
+            var key = a.type + ':' + (a.action_url || '');
+            return dismissed.indexOf(key) === -1;
+        });
+    }
+
+    function renderNotifications(actions) {
+        var list = document.getElementById('notifList');
+        var count = document.getElementById('notifCount');
+        var dot = document.getElementById('hamburgerDot');
+
+        if (!list) return;
+
+        // Фильтруем скрытые
+        actions = filterDismissed(actions);
+
+        if (!actions.length) {
+            list.innerHTML = '<div class="notif-empty">Пока тихо</div>';
+            if (count) count.classList.remove('active');
+            if (dot) dot.classList.remove('active');
+            return;
+        }
+
+        list.innerHTML = '';
+        actions.forEach(function(a) {
+            var item = document.createElement('a');
+            item.className = 'notif-item ' + (a.type || '');
+            item.href = a.action_url;
+            item.innerHTML =
+                '<div class="notif-title">' + escapeHtml(a.title) + '</div>' +
+                '<div class="notif-message">' + escapeHtml(a.message) + '</div>';
+            item.addEventListener('click', function() {
+                dismissNotification(a);
+            });
+            list.appendChild(item);
+        });
+
+        // Счётчик
+        if (count) {
+            count.textContent = actions.length;
+            count.classList.add('active');
+        }
+        // Точка на бургере с числом
+        if (dot) {
+            dot.textContent = actions.length > 9 ? '9+' : actions.length;
+            dot.classList.add('active');
+        }
+    }
+
+    function updateDots(actions) {
+        // Точка напротив "Мне помогли" — если есть донаты
+        var hasDonations = actions.some(function(a) { return a.type === 'donation'; });
+        var dotReceived = document.getElementById('dotReceived');
+        if (dotReceived) {
+            dotReceived.classList.toggle('active', hasDonations);
+        }
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ===== Открытие/закрытие панели уведомлений =====
+    function toggleNotifications(e) {
+        if (e) e.stopPropagation();
+        var btn = document.querySelector('.sidebar-notif-toggle');
+        var panel = document.getElementById('notifPanel');
+        if (!btn || !panel) return;
+        var isOpen = panel.classList.contains('open');
+        btn.classList.toggle('open', !isOpen);
+        panel.classList.toggle('open', !isOpen);
+    }
+</script>
 <!-- ===== Онбординг ===== -->
 {% if user and not user.onboarding_passed and not user.profile_completed %}
 <div class="onboard-overlay active" id="onboardOverlay">
