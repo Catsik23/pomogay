@@ -1457,6 +1457,132 @@ def identity_file(filename):
     return send_from_directory(os.path.join(BASE_DIR, 'uploads', 'identity'), filename)
 
 
+@app.route('/api/state')
+@login_required
+def api_state():
+    """
+    Текущее состояние пользователя — действия на лету.
+    """
+    from flask import jsonify
+    from datetime import datetime
+    user = get_current_user()
+    db = get_db()
+    actions = []
+
+    # 1. Профиль не заполнен
+    if not user['profile_completed']:
+        missing = []
+        if not user['name']:
+            missing.append('имя')
+        if not user['region_code'] or not user['city']:
+            missing.append('город')
+        if not user['birth_date']:
+            missing.append('дата рождения')
+        if missing:
+            actions.append({
+                'type': 'onboarding',
+                'priority': 1,
+                'title': 'Завершите профиль',
+                'message': 'Осталось: ' + ', '.join(missing) + '.',
+                'action_url': '/profile/edit',
+                'action_label': 'Заполнить'
+            })
+
+    # 2. Неподтверждённые донаты
+    unconfirmed = db.execute("""
+        SELECT d.id, d.amount_reported, g.title as goal_title,
+               COALESCE(u.name, 'Донатор') as donor_name
+        FROM donations d
+        JOIN goals g ON d.goal_id = g.id
+        LEFT JOIN users u ON d.donor_id = u.id
+        WHERE g.user_id = ? AND d.status = 'donor_confirmed'
+    """, (user['id'],)).fetchall()
+
+    if unconfirmed:
+        actions.append({
+            'type': 'donation',
+            'priority': 2,
+            'title': 'Переводы ожидают подтверждения',
+            'message': str(len(unconfirmed)) + ' перевод(а) ждут вашего подтверждения.',
+            'action_url': '/profile/received',
+            'action_label': 'Проверить'
+        })
+
+    # 3. Отложенные напоминания (созревшие)
+    now_iso = datetime.now().isoformat()
+    deferred = db.execute("""
+        SELECT dd.id, dd.goal_id, g.title as goal_title
+        FROM deferred_donations dd
+        JOIN goals g ON dd.goal_id = g.id
+        WHERE dd.user_id = ? AND dd.status = 'pending' AND dd.remind_at <= ?
+    """, (user['id'], now_iso)).fetchall()
+
+    if deferred:
+        actions.append({
+            'type': 'reminder',
+            'priority': 3,
+            'title': 'Напоминание',
+            'message': str(len(deferred)) + ' цель(и) ждёт вашей поддержки.',
+            'action_url': '/goal/' + str(deferred[0]['goal_id']) if len(deferred) == 1 else '/profile',
+            'action_label': 'Перейти'
+        })
+
+    # 4. Непрочитанные события
+    unread_events = db.execute(
+        "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0",
+        (user['id'],)
+    ).fetchone()[0]
+
+    if unread_events:
+        actions.append({
+            'type': 'events',
+            'priority': 4,
+            'title': 'Новые события',
+            'message': str(unread_events) + ' новых уведомлений.',
+            'action_url': '/notifications',
+            'action_label': 'Открыть'
+        })
+
+    db.close()
+    return jsonify({
+        'actions': actions,
+        'count': len(actions)
+    })
+
+
+@app.route('/api/notifications')
+@login_required
+def api_notifications():
+    """Только события (что-то произошло)."""
+    from flask import jsonify
+    user = get_current_user()
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
+        (user['id'],)
+    ).fetchall()
+    db.close()
+    return jsonify({'items': [dict(r) for r in rows]})
+
+
+@app.route('/api/notifications/read', methods=['POST'])
+@login_required
+def api_notifications_read():
+    """Отметить уведомление прочитанным."""
+    from flask import jsonify
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    nid = data.get('id')
+    db = get_db()
+    if nid:
+        db.execute("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?", (nid, user['id']))
+    else:
+        db.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (user['id'],))
+    db.commit()
+    db.close()
+    return jsonify({'ok': True})
+
+
 @app.route('/health')
 def health():
     return 'OK'
