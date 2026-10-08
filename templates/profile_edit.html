@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Анкета — помогай.рф</title>
-    <link rel="stylesheet" href="/static/style.css?v=6">
+    <link rel="stylesheet" href="/static/style.css?v=7">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Inter', -apple-system, sans-serif; background: #FDF8F5; padding-bottom: 100px; }
@@ -672,7 +672,7 @@
                     <input type="file" id="filePassport" accept="image/*" onchange="uploadIdentity('passport')">
                 </div>
 
-                <div class="upload-cell {% if user.identity_selfie_path %}filled{% endif %}" id="cellSelfie" onclick="document.getElementById('fileSelfie').click()">
+                <div class="upload-cell {% if user.identity_selfie_path %}filled{% endif %}" id="cellSelfie" onclick="openCamera()">
                     {% if user.identity_selfie_path %}
                     <img src="/{{ user.identity_selfie_path }}" alt="Селфи">
                     {% else %}
@@ -680,7 +680,6 @@
                     <div class="upload-label">Фото лица</div>
                     {% endif %}
                     <div class="upload-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                    <input type="file" id="fileSelfie" accept="image/*" onchange="uploadIdentity('selfie')">
                 </div>
             </div>
         </div>
@@ -701,6 +700,25 @@
             <button type="button" class="edit-save-btn" id="saveBtn" onclick="saveProfile()">Сохранить</button>
         </div>
     </div>
+
+<!-- Модалка камеры -->
+<div class="lock-modal" id="cameraModal" style="z-index: 10001;">
+    <div class="lock-modal-content" style="max-width: 480px; padding: 20px;">
+        <div class="lock-modal-title" style="margin-bottom: 14px;">Фото лица</div>
+        <div style="position: relative; width: 100%; aspect-ratio: 3/4; background: #000; border-radius: 16px; overflow: hidden; margin-bottom: 16px;">
+            <video id="cameraVideo" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+        </div>
+        <div id="cameraError" style="display:none; text-align:center; padding: 20px 10px;">
+            <div style="font-size: 40px; margin-bottom: 12px;">📷</div>
+            <div style="font-size: 16px; font-weight: 600; color: #2D2D2D; margin-bottom: 8px;">Камера не найдена</div>
+            <div style="font-size: 14px; color: #8C7A6B; line-height: 1.5; margin-bottom: 16px;">Продолжите подтверждение со смартфона. Откройте эту страницу на телефоне и нажмите «Фото лица».</div>
+        </div>
+        <div id="cameraActions" style="display: flex; gap: 8px;">
+            <button type="button" class="lock-modal-btn" onclick="closeCamera()" style="background: white; color: #8C7A6B; border: 1px solid #E0E0E0; box-shadow: none;">Отмена</button>
+            <button type="button" class="lock-modal-btn" id="captureBtn" onclick="capturePhoto()" style="display: none;">Сделать фото</button>
+        </div>
+    </div>
+</div>
 
 <script src="/static/toast.js"></script>
 <script>
@@ -1024,6 +1042,125 @@
     }
 
     checkIdentityComplete();
+
+    // ===== Камера для селфи =====
+    var cameraStream = null;
+
+    window.openCamera = function() {
+        var modal = document.getElementById('cameraModal');
+        var video = document.getElementById('cameraVideo');
+        var errorBox = document.getElementById('cameraError');
+        var actions = document.getElementById('cameraActions');
+        var captureBtn = document.getElementById('captureBtn');
+
+        modal.classList.add('active');
+        errorBox.style.display = 'none';
+        actions.style.display = 'flex';
+        captureBtn.style.display = 'none';
+
+        // Проверяем поддержку
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCameraError('Ваш браузер не поддерживает камеру');
+            return;
+        }
+
+        // Пытаемся открыть фронтальную камеру
+        navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' },
+            audio: false
+        })
+        .then(function(stream) {
+            cameraStream = stream;
+            video.srcObject = stream;
+            captureBtn.style.display = 'block';
+        })
+        .catch(function(err) {
+            // Не нашли фронтальную — пробуем любую
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                .then(function(stream) {
+                    cameraStream = stream;
+                    video.srcObject = stream;
+                    captureBtn.style.display = 'block';
+                })
+                .catch(function() {
+                    showCameraError('Камера не найдена');
+                });
+        });
+    };
+
+    function showCameraError(msg) {
+        document.getElementById('cameraError').style.display = 'block';
+        document.getElementById('cameraActions').style.display = 'none';
+        var video = document.getElementById('cameraVideo');
+        if (video) video.style.display = 'none';
+    }
+
+    window.closeCamera = function() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(function(t) { t.stop(); });
+            cameraStream = null;
+        }
+        document.getElementById('cameraModal').classList.remove('active');
+        var video = document.getElementById('cameraVideo');
+        if (video) {
+            video.srcObject = null;
+            video.style.display = 'block';
+        }
+    };
+
+    window.capturePhoto = function() {
+        var video = document.getElementById('cameraVideo');
+        if (!video || !cameraStream) return;
+
+        var canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        canvas.toBlob(function(blob) {
+            if (!blob) return;
+            closeCamera();
+
+            var formData = new FormData();
+            formData.append('file', blob, 'selfie.jpg');
+            formData.append('type', 'selfie');
+
+            if (typeof showToast === 'function') showToast('Загрузка...', 'info');
+
+            fetch('/api/identity/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ok) {
+                    var cell = document.getElementById('cellSelfie');
+                    cell.classList.add('filled');
+                    var existingImg = cell.querySelector('img');
+                    if (existingImg) existingImg.remove();
+                    var img = document.createElement('img');
+                    img.src = data.path;
+                    cell.insertBefore(img, cell.firstChild);
+                    if (typeof showToast === 'function') showToast('Фото загружено', 'success');
+                    checkIdentityComplete();
+                } else {
+                    if (typeof showToast === 'function') showToast(data.error || 'Ошибка', 'danger');
+                }
+            })
+            .catch(function() {
+                if (typeof showToast === 'function') showToast('Ошибка сети', 'danger');
+            });
+        }, 'image/jpeg', 0.85);
+    };
+
+    // Закрытие по клику вне
+    var cameraModal = document.getElementById('cameraModal');
+    if (cameraModal) {
+        cameraModal.addEventListener('click', function(e) {
+            if (e.target === this) closeCamera();
+        });
+    }
 </script>
 </body>
 </html>
