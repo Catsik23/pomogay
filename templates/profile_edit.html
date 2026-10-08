@@ -65,7 +65,8 @@
         }
         .edit-header p {
             font-size: 14px;
-            opacity: 0.85;
+            opacity: 0.95;
+            color: #FFFFFF;
             position: relative;
             z-index: 1;
             line-height: 1.5;
@@ -285,6 +286,228 @@
             background: #FDF8F5;
         }
 
+        /* Фиолетовый разделитель */
+        .identity-divider {
+            height: 2px;
+            background: linear-gradient(90deg, #8B5BA6 0%, #B54A8C 100%);
+            margin: 28px 0 20px;
+            border-radius: 1px;
+            opacity: 0.85;
+        }
+
+        /* Заголовок секции верификации */
+        .identity-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding: 0 4px;
+        }
+        .identity-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2D2D2D;
+            flex: 1;
+            line-height: 1.3;
+        }
+        .identity-info-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #8B5BA6 0%, #B54A8C 100%);
+            color: white;
+            border: none;
+            font-size: 13px;
+            font-weight: 700;
+            font-style: italic;
+            font-family: Georgia, serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s, box-shadow 0.15s;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(139,91,166,0.25);
+        }
+        .identity-info-btn:active { transform: scale(0.9); }
+        .identity-info-btn:hover { box-shadow: 0 4px 12px rgba(139,91,166,0.4); }
+
+        /* Ячейки загрузки */
+        .identity-uploads {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .upload-cell {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            background: linear-gradient(160deg, #F9F5FB 0%, #FDF8F5 100%);
+            border: 2px dashed #C4A8D4;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.1s, box-shadow 0.2s;
+            overflow: hidden;
+            padding: 12px;
+            text-align: center;
+        }
+        .upload-cell:active { transform: scale(0.97); }
+        .upload-cell:hover {
+            border-color: #8B5BA6;
+            box-shadow: 0 4px 16px rgba(139,91,166,0.15);
+        }
+        .upload-cell.filled {
+            border-style: solid;
+            border-color: #8B5BA6;
+            background: #F9F5FB;
+        }
+        .upload-cell img {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 14px;
+        }
+        .upload-cell .upload-icon {
+            width: 36px;
+            height: 36px;
+            color: #8B5BA6;
+        }
+        .upload-cell .upload-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #8B5BA6;
+            line-height: 1.3;
+        }
+        .upload-cell.filled .upload-icon,
+        .upload-cell.filled .upload-label {
+            display: none;
+        }
+        .upload-cell .upload-check {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #8B5BA6 0%, #B54A8C 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            box-shadow: 0 2px 8px rgba(139,91,166,0.35);
+        }
+        .upload-cell.filled .upload-check {
+            display: flex;
+        }
+        .upload-cell .upload-check svg {
+            width: 14px;
+            height: 14px;
+            color: white;
+        }
+        .upload-cell input[type="file"] {
+            display: none;
+        }
+
+        /* Статус верификации */
+        .identity-status {
+            background: #FFF3CD;
+            border-left: 3px solid #FFA726;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #856404;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            display: none;
+        }
+        .identity-status.active { display: block; }
+        .identity-status.success {
+            background: #F0F7F2;
+            border-left-color: #5B9A6B;
+            color: #3D6B4A;
+        }
+
+        /* Модалка */
+        .lock-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .lock-modal.active { display: flex; }
+        .lock-modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 26px 22px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            animation: fadeInUp 0.25s ease;
+        }
+        .lock-modal-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(160deg, #8B5BA6 0%, #B54A8C 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 18px;
+            box-shadow: 0 6px 20px rgba(139,91,166,0.25);
+        }
+        .lock-modal-icon svg {
+            width: 30px;
+            height: 30px;
+            color: white;
+        }
+        .lock-modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2D2D2D;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        .lock-modal-text {
+            font-size: 15px;
+            color: #8C7A6B;
+            line-height: 1.55;
+            margin-bottom: 22px;
+        }
+        .lock-modal-btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(160deg, #8B5BA6 0%, #B54A8C 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(139,91,166,0.25);
+            transition: transform 0.1s;
+            box-sizing: border-box;
+        }
+        .lock-modal-btn:active { transform: scale(0.97); }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         /* Sticky кнопка внизу */
         .edit-bottom {
             position: fixed;
@@ -418,6 +641,59 @@
                         <input type="text" class="year" id="fieldYear" maxlength="4" inputmode="numeric" placeholder="ГГГГ">
                     </div>
                 </div>
+            </div>
+
+            <!-- Фиолетовый разделитель -->
+            <div class="identity-divider"></div>
+
+            <!-- Секция верификации -->
+            <div class="identity-header">
+                <span class="identity-title">Подтверждение личности</span>
+                <button type="button" class="identity-info-btn" onclick="showIdentityInfo()">i</button>
+            </div>
+
+            <div class="identity-status {% if user.identity_verified %}success active{% endif %}" id="identityStatus">
+                {% if user.identity_verified %}
+                    ✓ Личность подтверждена
+                {% else %}
+                    Загрузите паспорт и фото лица — модератор проверит вручную
+                {% endif %}
+            </div>
+
+            <div class="identity-uploads">
+                <div class="upload-cell {% if user.identity_doc_path %}filled{% endif %}" id="cellPassport" onclick="document.getElementById('filePassport').click()">
+                    {% if user.identity_doc_path %}
+                    <img src="/{{ user.identity_doc_path }}" alt="Паспорт">
+                    {% else %}
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="M21 16l-5-5-8 8"></path></svg>
+                    <div class="upload-label">Паспорт</div>
+                    {% endif %}
+                    <div class="upload-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                    <input type="file" id="filePassport" accept="image/*" onchange="uploadIdentity('passport')">
+                </div>
+
+                <div class="upload-cell {% if user.identity_selfie_path %}filled{% endif %}" id="cellSelfie" onclick="document.getElementById('fileSelfie').click()">
+                    {% if user.identity_selfie_path %}
+                    <img src="/{{ user.identity_selfie_path }}" alt="Селфи">
+                    {% else %}
+                    <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>
+                    <div class="upload-label">Фото лица</div>
+                    {% endif %}
+                    <div class="upload-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+                    <input type="file" id="fileSelfie" accept="image/*" onchange="uploadIdentity('selfie')">
+                </div>
+            </div>
+        </div>
+
+        <!-- Модалка "О верификации" -->
+        <div class="lock-modal" id="identityInfoModal">
+            <div class="lock-modal-content">
+                <div class="lock-modal-icon" style="background: linear-gradient(160deg, #8B5BA6 0%, #B54A8C 100%);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v6c0 5 3.5 10 9 11 5.5-1 9-6 9-11V7l-9-5z"></path><path d="M9 12l2 2 4-4"></path></svg>
+                </div>
+                <div class="lock-modal-title">Зачем верификация?</div>
+                <div class="lock-modal-text">Чтобы открывать более серьёзные сборы — Блиц, Срочный, Жизненный — нужно подтвердить личность. Мы сверим документ и фото вручную. Данные не публикуются и не передаются третьим лицам.</div>
+                <button type="button" class="lock-modal-btn" onclick="closeIdentityInfo()">Понятно</button>
             </div>
         </div>
 
@@ -676,6 +952,78 @@
     }
 
     updateCards();
+
+    // ===== Верификация =====
+    window.showIdentityInfo = function() {
+        document.getElementById('identityInfoModal').classList.add('active');
+    };
+    window.closeIdentityInfo = function() {
+        document.getElementById('identityInfoModal').classList.remove('active');
+    };
+
+    window.uploadIdentity = function(type) {
+        var inputId = type === 'passport' ? 'filePassport' : 'fileSelfie';
+        var cellId = type === 'passport' ? 'cellPassport' : 'cellSelfie';
+        var input = document.getElementById(inputId);
+        if (!input || !input.files || !input.files[0]) return;
+
+        var file = input.files[0];
+        if (file.size > 10 * 1024 * 1024) {
+            if (typeof showToast === 'function') showToast('Файл слишком большой (макс. 10 МБ)', 'warning');
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', type);
+
+        if (typeof showToast === 'function') showToast('Загрузка...', 'info');
+
+        fetch('/api/identity/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                var cell = document.getElementById(cellId);
+                cell.classList.add('filled');
+                // Обновляем содержимое ячейки
+                var existingImg = cell.querySelector('img');
+                if (existingImg) existingImg.remove();
+                var img = document.createElement('img');
+                img.src = data.path;
+                cell.insertBefore(img, cell.firstChild);
+                if (typeof showToast === 'function') showToast('Загружено', 'success');
+                checkIdentityComplete();
+            } else {
+                if (typeof showToast === 'function') showToast(data.error || 'Ошибка', 'danger');
+            }
+        })
+        .catch(function() {
+            if (typeof showToast === 'function') showToast('Ошибка сети', 'danger');
+        });
+    };
+
+    function checkIdentityComplete() {
+        var passport = document.getElementById('cellPassport').classList.contains('filled');
+        var selfie = document.getElementById('cellSelfie').classList.contains('filled');
+        if (passport && selfie) {
+            var status = document.getElementById('identityStatus');
+            status.classList.add('active');
+            status.textContent = 'Материалы загружены. Модератор проверит в ближайшее время.';
+        }
+    }
+
+    // Модалка
+    var identityModal = document.getElementById('identityInfoModal');
+    if (identityModal) {
+        identityModal.addEventListener('click', function(e) {
+            if (e.target === this) closeIdentityInfo();
+        });
+    }
+
+    checkIdentityComplete();
 </script>
 </body>
 </html>

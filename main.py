@@ -1400,6 +1400,63 @@ def api_profile_save():
     return jsonify({'ok': True})
 
 
+@app.route('/api/identity/upload', methods=['POST'])
+@login_required
+def api_identity_upload():
+    """Загрузка документа или селфи для верификации."""
+    from flask import jsonify
+    user = get_current_user()
+    doc_type = request.form.get('type', '').strip()
+    if doc_type not in ('passport', 'selfie'):
+        return jsonify({'error': 'Неверный тип'}), 400
+
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'error': 'Файл не загружен'}), 400
+
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Неверный формат файла'}), 400
+
+    # Папка uploads/identity
+    identity_folder = os.path.join(BASE_DIR, 'uploads', 'identity')
+    os.makedirs(identity_folder, exist_ok=True)
+
+    try:
+        data = file.read()
+        compressed = compress_photo(data)
+        fname = f"{user['id']}_{doc_type}.jpg"
+        fpath = os.path.join(identity_folder, fname)
+        with open(fpath, 'wb') as f:
+            f.write(compressed)
+    except Exception as e:
+        return jsonify({'error': f'Ошибка сохранения: {e}'}), 500
+
+    rel_path = f"uploads/identity/{fname}"
+    db = get_db()
+    if doc_type == 'passport':
+        db.execute("UPDATE users SET identity_doc_path = ? WHERE id = ?", (rel_path, user['id']))
+    else:
+        db.execute("UPDATE users SET identity_selfie_path = ? WHERE id = ?", (rel_path, user['id']))
+
+    # Проверяем, оба ли загружены
+    u = db.execute("SELECT identity_doc_path, identity_selfie_path FROM users WHERE id = ?", (user['id'],)).fetchone()
+    db.commit()
+    db.close()
+
+    return jsonify({'ok': True, 'path': '/' + rel_path})
+
+
+@app.route('/uploads/identity/<filename>')
+@login_required
+def identity_file(filename):
+    """Отдача файлов верификации — только владельцу."""
+    user = get_current_user()
+    if not filename.startswith(f"{user['id']}_"):
+        from flask import abort
+        abort(403)
+    return send_from_directory(os.path.join(BASE_DIR, 'uploads', 'identity'), filename)
+
+
 @app.route('/health')
 def health():
     return 'OK'
