@@ -1,0 +1,105 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Жалобы{% endblock %}
+{% block page_title %}Жалобы{% endblock %}
+{% block page_subtitle %}{{ counts_total }} всего · {{ counts_today }} за сегодня · {{ counts_goals_with_3 }} целей с 3+ жалобами{% endblock %}
+
+{% block content %}
+
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="text" name="search" value="{{ search }}" placeholder="Название цели, ID цели или ID жалобщика"
+               style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; flex: 1; min-width: 200px;">
+        <button type="submit" style="padding: 6px 16px; background: var(--m-gradient); border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">Найти</button>
+        {% if search %}
+        <a href="/_metrics/reports" style="padding: 6px 16px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text-2); text-decoration: none; font-size: 13px; font-weight: 600;">Сброс</a>
+        {% endif %}
+    </form>
+</div>
+
+{% if counts_goals_with_3 > 0 %}
+<div class="m-section" style="margin-bottom: 16px; border-color: var(--m-danger);">
+    <div class="m-section-title" style="color: var(--m-danger);">Цели с 3+ жалобами</div>
+    <table class="m-table">
+        <thead><tr><th>Цель</th><th>Автор</th><th>Жалоб</th><th>Статус</th><th></th></tr></thead>
+        <tbody>
+            {% for gr in goal_reports %}
+            {% if gr.count >= 3 %}
+            <tr>
+                <td>
+                    <a href="/_metrics/goals/{{ gr.goal_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-weight: 600;">
+                        #{{ gr.goal_id }} · {{ gr.goal_title }}
+                    </a>
+                </td>
+                <td>
+                    <a href="/_metrics/users/{{ gr.goal_author_id }}" style="color: var(--m-text-2); text-decoration: none;">{{ gr.goal_author_name }}</a>
+                </td>
+                <td><span class="m-badge danger">{{ gr.count }}</span></td>
+                <td>
+                    {% if gr.goal_status == 'hidden' %}<span class="m-badge danger">скрыта</span>
+                    {% elif gr.goal_status == 'active' %}<span class="m-badge warning">активна</span>
+                    {% else %}<span class="m-badge muted">{{ gr.goal_status }}</span>{% endif %}
+                </td>
+                <td>
+                    {% if gr.goal_status == 'active' %}
+                    <form method="POST" action="/_metrics/goals/{{ gr.goal_id }}/hide" style="display: inline;">
+                        <button type="submit" onclick="return confirm('Скрыть цель?')" 
+                                style="padding: 4px 10px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 6px; color: var(--m-danger); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;">
+                            Скрыть
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="m-section">
+    <div class="m-section-title">Все жалобы ({{ counts_total }})</div>
+    {% if reports %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Цель</th>
+                <th>Жалобщик</th>
+                <th>Причина</th>
+                <th>Фото N</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in reports %}
+            <tr>
+                <td class="muted" style="white-space: nowrap;">{{ r.created_at[:16] }}</td>
+                <td>
+                    <a href="/_metrics/goals/{{ r.goal_id }}" style="color: var(--m-sunset-1); text-decoration: none;">
+                        #{{ r.goal_id }} · {{ r.goal_title[:40] }}{% if r.goal_title|length > 40 %}...{% endif %}
+                    </a>
+                </td>
+                <td>
+                    {% if r.reporter_user_id %}
+                        <a href="/_metrics/users/{{ r.reporter_user_id }}" style="color: var(--m-text-2); text-decoration: none;">{{ r.reporter_name }}</a>
+                    {% else %}
+                        <span class="muted">-</span>
+                    {% endif %}
+                </td>
+                <td>{{ r.reason or '-' }}</td>
+                <td class="muted">{{ r.photo_index if r.photo_index is not none else '-' }}</td>
+                <td>
+                    <a href="/_metrics/goals/{{ r.goal_id }}" style="color: var(--m-text-3); text-decoration: none; font-size: 12px;">Открыть</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Жалоб пока нет.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

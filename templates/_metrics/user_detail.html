@@ -1,0 +1,178 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}#{{ u.id }} — {{ u.name or u.phone }}{% endblock %}
+{% block page_title %}#{{ u.id }} · {{ u.name or 'Аноним' }}{% endblock %}
+{% block page_subtitle %}{{ u.phone }} · Trust {{ u.trust_score or 0 }}{% endblock %}
+
+{% block content %}
+
+<!-- Кнопки действий -->
+<div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    <a href="/_metrics/dialogs/new?user_id={{ u.id }}" 
+       style="padding: 8px 16px; background: var(--m-gradient); border-radius: 8px; color: white; text-decoration: none; font-size: 13px; font-weight: 600;">
+        Написать
+    </a>
+    {% if not u.is_banned %}
+    <form method="POST" action="/_metrics/users/{{ u.id }}/ban" style="display: inline;">
+        <button type="submit" onclick="return confirm('Забанить?')" 
+                style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Забанить
+        </button>
+    </form>
+    {% else %}
+    <form method="POST" action="/_metrics/users/{{ u.id }}/unban" style="display: inline;">
+        <button type="submit" 
+                style="padding: 8px 16px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Разбанить
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Основные данные -->
+<div class="m-grid m-grid-4" style="margin-bottom: 16px;">
+    <div class="m-card">
+        <div class="m-card-label">Trust Score</div>
+        <div class="m-card-value">{{ u.trust_score or 0 }}</div>
+        <div class="m-card-sub">{{ u.trust_level or '—' }}</div>
+    </div>
+    <div class="m-card">
+        <div class="m-card-label">Помог на</div>
+        <div class="m-card-value success">{{ "{:,.0f}".format(total_sent).replace(",", " ") }} ₽</div>
+        <div class="m-card-sub">{{ donations_sent|length }} донатов</div>
+    </div>
+    <div class="m-card">
+        <div class="m-card-label">Получил</div>
+        <div class="m-card-value">{{ "{:,.0f}".format(total_received).replace(",", " ") }} ₽</div>
+        <div class="m-card-sub">{{ donations_received|length }} донатов</div>
+    </div>
+    <div class="m-card">
+        <div class="m-card-label">Флаги CG</div>
+        <div class="m-card-value {% if flags|length > 0 %}warning{% endif %}">{{ flags|length }}</div>
+        <div class="m-card-sub">срабатываний</div>
+    </div>
+</div>
+
+<!-- Профиль -->
+<div class="m-section">
+    <div class="m-section-title">Профиль</div>
+    <table class="m-table">
+        <tr><td style="width: 200px; color: var(--m-text-2);">Имя</td><td>{{ u.name or '—' }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Телефон</td><td>{{ u.phone }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Регион / город</td><td>{{ u.region_code or '—' }} / {{ u.city or '—' }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Дата рождения</td><td>{{ u.birth_date or '—' }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Анкета заполнена</td><td>{% if u.profile_completed %}✅ да{% else %}❌ нет{% endif %}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Личность проверена</td><td>{% if u.identity_verified %}✅ да{% else %}❌ нет{% endif %}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Регистрация</td><td>{{ u.created_at[:16] }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">IP при регистрации</td><td>{{ u.ip_registered or '—' }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Серия дней</td><td>{{ u.streak_days or 0 }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Статус</td><td>
+            {% if u.is_banned %}<span class="m-badge danger">забанен</span>
+            {% elif u.is_admin %}<span class="m-badge info">админ</span>
+            {% else %}<span class="m-badge success">активен</span>{% endif %}
+        </td></tr>
+    </table>
+</div>
+
+<!-- Цели -->
+<div class="m-section">
+    <div class="m-section-title">Цели ({{ goals|length }})</div>
+    {% if goals %}
+    <table class="m-table">
+        <thead><tr><th>ID</th><th>Название</th><th>Тип</th><th>Собрано</th><th>Статус</th><th>Создана</th></tr></thead>
+        <tbody>
+            {% for g in goals %}
+            <tr onclick="location.href='/_metrics/goals/{{ g.id }}'" style="cursor: pointer;">
+                <td>#{{ g.id }}</td>
+                <td>{{ g.title }}</td>
+                <td><span class="m-badge muted">{{ g.type }}</span></td>
+                <td>{{ "{:,.0f}".format(g.amount_collected).replace(",", " ") }} / {{ "{:,.0f}".format(g.amount_goal).replace(",", " ") }} ₽</td>
+                <td>
+                    {% if g.status == 'active' %}<span class="m-badge success">активна</span>
+                    {% elif g.status == 'completed' %}<span class="m-badge info">закрыта</span>
+                    {% elif g.status == 'hidden' %}<span class="m-badge danger">скрыта</span>
+                    {% else %}<span class="m-badge muted">{{ g.status }}</span>{% endif %}
+                </td>
+                <td class="muted">{{ g.created_at[:10] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Нет целей.</div>
+    {% endif %}
+</div>
+
+<!-- Донаты отправленные -->
+<div class="m-section">
+    <div class="m-section-title">Помог ({{ donations_sent|length }})</div>
+    {% if donations_sent %}
+    <table class="m-table">
+        <thead><tr><th>Дата</th><th>Кому</th><th>Сумма</th><th>Статус</th></tr></thead>
+        <tbody>
+            {% for d in donations_sent %}
+            <tr>
+                <td class="muted">{{ d.donor_confirmed_at[:10] }}</td>
+                <td><a href="/_metrics/goals/{{ d.goal_id }}" style="color: var(--m-sunset-1); text-decoration: none;">{{ d.goal_title }}</a></td>
+                <td style="font-weight: 600;">{{ "{:,.0f}".format(d.amount_reported).replace(",", " ") }} ₽</td>
+                <td>
+                    {% if d.status == 'recipient_confirmed' %}<span class="m-badge success">подтверждён</span>
+                    {% elif d.status == 'donor_confirmed' %}<span class="m-badge warning">ожидает</span>
+                    {% else %}<span class="m-badge muted">{{ d.status }}</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Не помогал.</div>
+    {% endif %}
+</div>
+
+<!-- Флаги Content Guard -->
+{% if flags %}
+<div class="m-section">
+    <div class="m-section-title">Флаги Content Guard ({{ flags|length }})</div>
+    <table class="m-table">
+        <thead><tr><th>Дата</th><th>Слово</th><th>Категория</th><th>Статус</th><th>Текст</th></tr></thead>
+        <tbody>
+            {% for f in flags %}
+            <tr>
+                <td class="muted">{{ f.created_at[:16] }}</td>
+                <td><strong>{{ f.found_word }}</strong></td>
+                <td><span class="m-badge muted">{{ f.category }}</span></td>
+                <td>
+                    {% if f.status == 'blocked' %}<span class="m-badge danger">блок</span>
+                    {% elif f.status == 'flagged' %}<span class="m-badge warning">флаг</span>{% endif %}
+                </td>
+                <td class="muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.original_text }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Диалоги -->
+<div class="m-section">
+    <div class="m-section-title">Диалоги ({{ dialogs|length }})</div>
+    {% if dialogs %}
+    <table class="m-table">
+        <thead><tr><th>ID</th><th>Тема</th><th>Статус</th><th>Создан</th></tr></thead>
+        <tbody>
+            {% for d in dialogs %}
+            <tr onclick="location.href='/_metrics/dialogs/{{ d.id }}'" style="cursor: pointer;">
+                <td>#{{ d.id }}</td>
+                <td>{{ d.subject or '—' }}</td>
+                <td>{% if d.status == 'open' %}<span class="m-badge warning">открыт</span>{% else %}<span class="m-badge muted">закрыт</span>{% endif %}</td>
+                <td class="muted">{{ d.created_at[:16] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Нет диалогов.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

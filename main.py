@@ -65,6 +65,35 @@ def get_current_user():
             db.close()
     return None
 
+def log_guard(result, text, context, user_action):
+    """Логирует срабатывание Content Guard в БД."""
+    if not result or result.get('status') == 'passed':
+        return
+    try:
+        db = get_db()
+        user = get_current_user()
+        db.execute("""
+            INSERT INTO content_guard_log 
+            (user_id, ip_address, context, original_text, found_word, category, status, user_action, position_start, position_end)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user['id'] if user else None,
+            request.remote_addr,
+            context,
+            text[:2000],
+            result.get('found'),
+            result.get('category'),
+            result.get('status'),
+            user_action,
+            result.get('position', [None, None])[0] if result.get('position') else None,
+            result.get('position', [None, None])[1] if result.get('position') else None,
+        ))
+        db.commit()
+        db.close()
+    except Exception as e:
+        print(f'[content_guard_log] Ошибка: {e}')
+
+
 def login_required(f):
     @wraps(f)
     def wrap(*args, **kwargs):
@@ -75,12 +104,13 @@ def login_required(f):
     return wrap
 
 def admin_required(f):
+    """Доступ только для is_admin=1. Для остальных — 404 (маскировка)."""
     @wraps(f)
     def wrap(*args, **kwargs):
         user = get_current_user()
-        if not user or user['phone'] != '79885260358':
-            flash('Доступ запрещён.', 'danger')
-            return redirect(url_for('index'))
+        if not user or not user['is_admin']:
+            from flask import abort
+            abort(404)
         return f(*args, **kwargs)
     return wrap
 
@@ -398,6 +428,7 @@ def create_goal(goal_type):
         if is_filter_enabled(db_check):
             db_check.close()
             r_title = cg_check(title, 'goal_title')
+            log_guard(r_title, title, 'goal_title', 'create_goal')
             if r_title['status'] == 'blocked':
                 return render_template('create_goal.html', goal_type=goal_type,
                     error_message=r_title['message'],
@@ -406,6 +437,7 @@ def create_goal(goal_type):
                     title=title, description=desc,
                     amount=amt_str, days=days_str)
             r_desc = cg_check(desc, 'goal_description')
+            log_guard(r_desc, desc, 'goal_description', 'create_goal')
             if r_desc['status'] == 'blocked':
                 return render_template('create_goal.html', goal_type=goal_type,
                     error_message=r_desc['message'],
@@ -949,6 +981,7 @@ def api_guard_check():
     if not text:
         return jsonify({'status': 'passed'})
     result = cg_check(text, context)
+    log_guard(result, text, context, 'live_check')
     return jsonify({
         'status': result.get('status', 'passed'),
         'category': result.get('category'),
@@ -1118,6 +1151,7 @@ def api_update_description(goal_id):
 
     # Content Guard
     r = cg_check(new_desc, 'goal_description')
+    log_guard(r, new_desc, 'goal_description', 'edit_description')
     if r['status'] == 'blocked':
         db.close()
         return jsonify({
@@ -1581,7 +1615,35 @@ def api_state():
             'action_label': 'Перейти'
         })
 
-    # 4. Непрочитанные события
+    # 4. Открытые диалоги с админом
+    open_dialogs = db.execute("""
+        SELECT d.id, d.subject,
+               (SELECT COUNT(*) FROM admin_dialog_messages 
+                WHERE dialog_id = d.id AND sender_type = 'admin' AND is_read = 0) as unread,
+               (SELECT COUNT(*) FROM admin_dialog_messages 
+                WHERE dialog_id = d.id) as total
+        FROM admin_dialogs d
+        WHERE d.user_id = ? AND d.status = 'open'
+        ORDER BY d.id DESC LIMIT 3
+    """, (user['id'],)).fetchall()
+
+    if open_dialogs:
+        total_unread = sum(d['unread'] for d in open_dialogs)
+        first_dialog = open_dialogs[0]
+        if total_unread > 0:
+            message = str(total_unread) + ' новых сообщений.'
+        else:
+            message = 'Диалог с администрацией открыт.'
+        actions.append({
+            'type': 'dialog',
+            'priority': 1,
+            'title': 'Сообщение от администрации',
+            'message': message,
+            'action_url': '/dialogs/' + str(first_dialog['id']),
+            'action_label': 'Открыть'
+        })
+
+    # 5. Непрочитанные события
     unread_events = db.execute(
         "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0",
         (user['id'],)
@@ -1590,7 +1652,7 @@ def api_state():
     if unread_events:
         actions.append({
             'type': 'events',
-            'priority': 4,
+            'priority': 5,
             'title': 'Новые события',
             'message': str(unread_events) + ' новых уведомлений.',
             'action_url': '/notifications',
@@ -1635,6 +1697,980 @@ def api_notifications_read():
     db.commit()
     db.close()
     return jsonify({'ok': True})
+
+
+# ============================================
+# МОСТИК — админ-панель /_metrics
+# ============================================
+
+@app.route('/_metrics')
+@app.route('/_metrics/')
+@admin_required
+def metrics_dashboard():
+    """Дашборд — сводка за сегодня."""
+    from datetime import datetime, timedelta
+    user = get_current_user()
+    db = get_db()
+    
+    today = datetime.now().strftime('%Y-%m-%d')
+    
+    # Метрики за сегодня
+    flags_today = db.execute(
+        "SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = ?",
+        (today,)
+    ).fetchone()[0]
+    
+    reports_new = db.execute(
+        "SELECT COUNT(*) FROM reports WHERE date(created_at) = ?",
+        (today,)
+    ).fetchone()[0]
+    
+    moderation_pending = db.execute(
+        "SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'"
+    ).fetchone()[0]
+    
+    new_users_today = db.execute(
+        "SELECT COUNT(*) FROM users WHERE date(created_at) = ?",
+        (today,)
+    ).fetchone()[0]
+    
+    donations_sum_today = db.execute(
+        "SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE date(donor_confirmed_at) = ? AND status IN ('recipient_confirmed','completed')",
+        (today,)
+    ).fetchone()[0]
+    
+    donations_count_today = db.execute(
+        "SELECT COUNT(*) FROM donations WHERE date(donor_confirmed_at) = ?",
+        (today,)
+    ).fetchone()[0]
+    
+    active_goals = db.execute(
+        "SELECT COUNT(*) FROM goals WHERE status = 'active'"
+    ).fetchone()[0]
+    
+    suspicious_new = db.execute(
+        "SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'"
+    ).fetchone()[0]
+    
+    dialogs_open = db.execute(
+        "SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'"
+    ).fetchone()[0]
+    
+    # Последние флаги
+    recent_flags = db.execute(
+        "SELECT * FROM content_guard_log ORDER BY id DESC LIMIT 10"
+    ).fetchall()
+    
+    # Для sidebar — счётчики
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = ?", (today,)).fetchone()[0],
+        'reports': reports_new,
+        'moderation': moderation_pending,
+        'suspicious': suspicious_new,
+        'dialogs': dialogs_open,
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/dashboard.html',
+        user=user,
+        active='dashboard',
+        counts=counts,
+        flags_today=flags_today,
+        reports_new=reports_new,
+        moderation_pending=moderation_pending,
+        new_users_today=new_users_today,
+        donations_sum_today=donations_sum_today,
+        donations_count_today=donations_count_today,
+        active_goals=active_goals,
+        suspicious_new=suspicious_new,
+        dialogs_open=dialogs_open,
+        recent_flags=recent_flags,
+    )
+
+
+@app.route('/_metrics/flags')
+@admin_required
+def metrics_flags():
+    """Список срабатываний Content Guard."""
+    user = get_current_user()
+    db = get_db()
+    
+    # Фильтры
+    status_filter = request.args.get('status', 'all')
+    category_filter = request.args.get('category', 'all')
+    user_filter = request.args.get('user', '').strip()
+    
+    query = "SELECT * FROM content_guard_log WHERE 1=1"
+    params = []
+    
+    if status_filter != 'all':
+        query += " AND status = ?"
+        params.append(status_filter)
+    
+    if category_filter != 'all':
+        query += " AND category = ?"
+        params.append(category_filter)
+    
+    if user_filter:
+        query += " AND (user_id = ? OR ip_address LIKE ?)"
+        params.append(user_filter if user_filter.isdigit() else -1)
+        params.append(f'%{user_filter}%')
+    
+    query += " ORDER BY id DESC LIMIT 200"
+    flags = db.execute(query, params).fetchall()
+    
+    # Все категории для фильтра
+    categories = db.execute(
+        "SELECT DISTINCT category FROM content_guard_log WHERE category IS NOT NULL ORDER BY category"
+    ).fetchall()
+    
+    # Счётчики по статусам
+    counts_status = {
+        'all': db.execute("SELECT COUNT(*) FROM content_guard_log").fetchone()[0],
+        'blocked': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE status = 'blocked'").fetchone()[0],
+        'flagged': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE status = 'flagged'").fetchone()[0],
+    }
+    
+    counts = {
+        'flags': counts_status['blocked'] + counts_status['flagged'],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/flags.html',
+        user=user,
+        active='flags',
+        counts=counts,
+        flags=flags,
+        categories=[c['category'] for c in categories],
+        status_filter=status_filter,
+        category_filter=category_filter,
+        user_filter=user_filter,
+        counts_status=counts_status,
+    )
+
+
+@app.route('/_metrics/users')
+@admin_required
+def metrics_users():
+    """Список всех пользователей."""
+    user = get_current_user()
+    db = get_db()
+    
+    search = request.args.get('search', '').strip()
+    filter_type = request.args.get('filter', 'all')  # all, banned, flagged, active
+    
+    query = """
+        SELECT u.*,
+            (SELECT COUNT(*) FROM goals WHERE user_id = u.id) as goals_count,
+            (SELECT COUNT(*) FROM donations WHERE donor_id = u.id AND status IN ('recipient_confirmed','completed')) as donations_sent,
+            (SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE donor_id = u.id AND status IN ('recipient_confirmed','completed')) as total_sent,
+            (SELECT COUNT(*) FROM content_guard_log WHERE user_id = u.id) as flags_count,
+            (SELECT COUNT(*) FROM reports WHERE reporter_id = u.id) as reports_made
+        FROM users u
+        WHERE 1=1
+    """
+    params = []
+    
+    if search:
+        query += " AND (u.phone LIKE ? OR u.name LIKE ? OR CAST(u.id AS TEXT) = ?)"
+        params.extend([f'%{search}%', f'%{search}%', search])
+    
+    if filter_type == 'banned':
+        query += " AND u.is_banned = 1"
+    elif filter_type == 'flagged':
+        query += " AND (SELECT COUNT(*) FROM content_guard_log WHERE user_id = u.id) > 0"
+    elif filter_type == 'active':
+        query += " AND (SELECT COUNT(*) FROM donations WHERE donor_id = u.id) > 0"
+    
+    query += " ORDER BY u.id DESC LIMIT 200"
+    users = db.execute(query, params).fetchall()
+    
+    # Счётчики
+    counts_total = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    counts_banned = db.execute("SELECT COUNT(*) FROM users WHERE is_banned = 1").fetchone()[0]
+    counts_flagged = db.execute("SELECT COUNT(DISTINCT user_id) FROM content_guard_log WHERE user_id IS NOT NULL").fetchone()[0]
+    counts_active = db.execute("SELECT COUNT(DISTINCT donor_id) FROM donations WHERE donor_id IS NOT NULL").fetchone()[0]
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/users.html',
+        user=user,
+        active='users',
+        counts=counts,
+        users=users,
+        search=search,
+        filter_type=filter_type,
+        counts_total=counts_total,
+        counts_banned=counts_banned,
+        counts_flagged=counts_flagged,
+        counts_active=counts_active,
+    )
+
+
+@app.route('/_metrics/users/<int:user_id>')
+@admin_required
+def metrics_user_detail(user_id):
+    """Карточка пользователя — всё о нём."""
+    admin = get_current_user()
+    db = get_db()
+    
+    u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not u:
+        db.close()
+        from flask import abort
+        abort(404)
+    
+    # Статистика
+    goals = db.execute(
+        "SELECT * FROM goals WHERE user_id = ? ORDER BY id DESC",
+        (user_id,)
+    ).fetchall()
+    
+    donations_sent = db.execute(
+        """SELECT d.*, g.title as goal_title, g.id as goal_id,
+                  COALESCE(gu.name, gu.phone) as recipient_name
+           FROM donations d
+           JOIN goals g ON d.goal_id = g.id
+           JOIN users gu ON g.user_id = gu.id
+           WHERE d.donor_id = ?
+           ORDER BY d.id DESC LIMIT 50""",
+        (user_id,)
+    ).fetchall()
+    
+    donations_received = db.execute(
+        """SELECT d.*, g.title as goal_title, g.id as goal_id,
+                  COALESCE(du.name, du.phone) as donor_name
+           FROM donations d
+           JOIN goals g ON d.goal_id = g.id
+           LEFT JOIN users du ON d.donor_id = du.id
+           WHERE g.user_id = ?
+           ORDER BY d.id DESC LIMIT 50""",
+        (user_id,)
+    ).fetchall()
+    
+    flags = db.execute(
+        "SELECT * FROM content_guard_log WHERE user_id = ? ORDER BY id DESC LIMIT 30",
+        (user_id,)
+    ).fetchall()
+    
+    reports_made = db.execute(
+        "SELECT r.*, g.title as goal_title FROM reports r JOIN goals g ON r.goal_id = g.id WHERE r.reporter_id = ? ORDER BY r.id DESC LIMIT 20",
+        (user_id,)
+    ).fetchall()
+    
+    reports_received = db.execute(
+        """SELECT r.*, g.title as goal_title FROM reports r 
+           JOIN goals g ON r.goal_id = g.id 
+           WHERE g.user_id = ? ORDER BY r.id DESC LIMIT 20""",
+        (user_id,)
+    ).fetchall()
+    
+    dialogs = db.execute(
+        "SELECT * FROM admin_dialogs WHERE user_id = ? ORDER BY id DESC LIMIT 10",
+        (user_id,)
+    ).fetchall()
+    
+    # Итоги
+    total_sent = db.execute(
+        "SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE donor_id = ? AND status IN ('recipient_confirmed','completed')",
+        (user_id,)
+    ).fetchone()[0]
+    
+    total_received = db.execute(
+        "SELECT COALESCE(SUM(d.amount_reported), 0) FROM donations d JOIN goals g ON d.goal_id = g.id WHERE g.user_id = ? AND d.status IN ('recipient_confirmed','completed')",
+        (user_id,)
+    ).fetchone()[0]
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/user_detail.html',
+        user=admin,
+        active='users',
+        counts=counts,
+        u=u,
+        goals=goals,
+        donations_sent=donations_sent,
+        donations_received=donations_received,
+        flags=flags,
+        reports_made=reports_made,
+        reports_received=reports_received,
+        dialogs=dialogs,
+        total_sent=total_sent,
+        total_received=total_received,
+    )
+
+
+@app.route('/_metrics/users/<int:user_id>/ban', methods=['POST'])
+@admin_required
+def metrics_user_ban(user_id):
+    """Забанить пользователя."""
+    admin = get_current_user()
+    db = get_db()
+    u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not u:
+        db.close()
+        from flask import abort
+        abort(404)
+    if u['is_admin']:
+        db.close()
+        flash('Нельзя забанить админа.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    db.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (user_id,))
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'ban_user', 'user', ?, ?)",
+        (admin['id'], str(user_id), '{"reason": "manual"}')
+    )
+    db.commit()
+    db.close()
+    flash(f'Пользователь #{user_id} забанен.', 'success')
+    return redirect(url_for('metrics_user_detail', user_id=user_id))
+
+
+@app.route('/_metrics/users/<int:user_id>/unban', methods=['POST'])
+@admin_required
+def metrics_user_unban(user_id):
+    """Разбанить пользователя."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'unban_user', 'user', ?, NULL)",
+        (admin['id'], str(user_id))
+    )
+    db.commit()
+    db.close()
+    flash(f'Пользователь #{user_id} разбанен.', 'success')
+    return redirect(url_for('metrics_user_detail', user_id=user_id))
+
+
+@app.route('/_metrics/goals')
+@admin_required
+def metrics_goals():
+    """Список всех целей."""
+    user = get_current_user()
+    db = get_db()
+    
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', 'all')
+    type_filter = request.args.get('type', 'all')
+    
+    query = """
+        SELECT g.*, 
+            COALESCE(u.name, u.phone) as author_name,
+            u.phone as author_phone,
+            (SELECT COUNT(*) FROM donations WHERE goal_id = g.id) as donations_count,
+            (SELECT COUNT(*) FROM reports WHERE goal_id = g.id) as reports_count
+        FROM goals g
+        JOIN users u ON g.user_id = u.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if search:
+        query += " AND (g.title LIKE ? OR CAST(g.id AS TEXT) = ?)"
+        params.extend([f'%{search}%', search])
+    
+    if status_filter != 'all':
+        query += " AND g.status = ?"
+        params.append(status_filter)
+    
+    if type_filter != 'all':
+        query += " AND g.type = ?"
+        params.append(type_filter)
+    
+    query += " ORDER BY g.id DESC LIMIT 200"
+    goals = db.execute(query, params).fetchall()
+    
+    # Счётчики
+    counts_all = db.execute("SELECT COUNT(*) FROM goals").fetchone()[0]
+    counts_active = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'active'").fetchone()[0]
+    counts_completed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed'").fetchone()[0]
+    counts_hidden = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'hidden'").fetchone()[0]
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/goals.html',
+        user=user,
+        active='goals',
+        counts=counts,
+        goals=goals,
+        search=search,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        counts_all=counts_all,
+        counts_active=counts_active,
+        counts_completed=counts_completed,
+        counts_hidden=counts_hidden,
+    )
+
+
+@app.route('/_metrics/goals/<int:goal_id>')
+@admin_required
+def metrics_goal_detail(goal_id):
+    """Карточка цели — всё о ней."""
+    admin = get_current_user()
+    db = get_db()
+    
+    g = db.execute("""
+        SELECT g.*, 
+            COALESCE(u.name, u.phone) as author_name,
+            u.phone as author_phone,
+            u.id as author_id,
+            u.trust_score as author_trust,
+            u.identity_verified as author_verified,
+            u.is_banned as author_banned
+        FROM goals g
+        JOIN users u ON g.user_id = u.id
+        WHERE g.id = ?
+    """, (goal_id,)).fetchone()
+    
+    if not g:
+        db.close()
+        from flask import abort
+        abort(404)
+    
+    donations = db.execute("""
+        SELECT d.*, 
+            COALESCE(u.name, u.phone) as donor_name,
+            u.id as donor_user_id
+        FROM donations d
+        LEFT JOIN users u ON d.donor_id = u.id
+        WHERE d.goal_id = ?
+        ORDER BY d.id DESC
+    """, (goal_id,)).fetchall()
+    
+    reports = db.execute("""
+        SELECT r.*, 
+            COALESCE(u.name, u.phone) as reporter_name,
+            u.id as reporter_user_id
+        FROM reports r
+        LEFT JOIN users u ON r.reporter_id = u.id
+        WHERE r.goal_id = ?
+        ORDER BY r.id DESC
+    """, (goal_id,)).fetchall()
+    
+    flags = db.execute("""
+        SELECT * FROM content_guard_log 
+        WHERE user_id = ? AND (context LIKE '%goal%' OR context = 'goal_title' OR context = 'goal_description')
+        ORDER BY id DESC LIMIT 20
+    """, (g['user_id'],)).fetchall()
+    
+    # Парсим фото
+    photos = []
+    if g['photos']:
+        try:
+            import json as _json
+            photos = _json.loads(g['photos'])
+        except:
+            pass
+    elif g['photo_url']:
+        photos = [g['photo_url']]
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/goal_detail.html',
+        user=admin,
+        active='goals',
+        counts=counts,
+        g=g,
+        donations=donations,
+        reports=reports,
+        flags=flags,
+        photos=photos,
+    )
+
+
+@app.route('/_metrics/goals/<int:goal_id>/hide', methods=['POST'])
+@admin_required
+def metrics_goal_hide(goal_id):
+    """Скрыть цель."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute("UPDATE goals SET status = 'hidden' WHERE id = ?", (goal_id,))
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'hide_goal', 'goal', ?, NULL)",
+        (admin['id'], str(goal_id))
+    )
+    db.commit()
+    db.close()
+    flash(f'Цель #{goal_id} скрыта.', 'success')
+    return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
+
+
+@app.route('/_metrics/goals/<int:goal_id>/restore', methods=['POST'])
+@admin_required
+def metrics_goal_restore(goal_id):
+    """Восстановить цель."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute("UPDATE goals SET status = 'active' WHERE id = ?", (goal_id,))
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'restore_goal', 'goal', ?, NULL)",
+        (admin['id'], str(goal_id))
+    )
+    db.commit()
+    db.close()
+    flash(f'Цель #{goal_id} восстановлена.', 'success')
+    return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
+
+
+@app.route('/_metrics/reports')
+@admin_required
+def metrics_reports():
+    """Список всех жалоб."""
+    user = get_current_user()
+    db = get_db()
+    
+    search = request.args.get('search', '').strip()
+    
+    query = """
+        SELECT r.*, 
+            g.title as goal_title,
+            g.status as goal_status,
+            g.user_id as goal_author_id,
+            COALESCE(au.name, au.phone) as goal_author_name,
+            COALESCE(ru.name, ru.phone) as reporter_name,
+            ru.id as reporter_user_id
+        FROM reports r
+        JOIN goals g ON r.goal_id = g.id
+        JOIN users au ON g.user_id = au.id
+        LEFT JOIN users ru ON r.reporter_id = ru.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if search:
+        query += " AND (g.title LIKE ? OR CAST(r.goal_id AS TEXT) = ? OR CAST(r.reporter_id AS TEXT) = ?)"
+        params.extend([f'%{search}%', search, search])
+    
+    query += " ORDER BY r.id DESC LIMIT 200"
+    reports = db.execute(query, params).fetchall()
+    
+    # Группируем по цели — сколько жалоб на каждую
+    goal_reports = {}
+    for r in reports:
+        gid = r['goal_id']
+        if gid not in goal_reports:
+            goal_reports[gid] = {
+                'goal_id': gid,
+                'goal_title': r['goal_title'],
+                'goal_status': r['goal_status'],
+                'goal_author_name': r['goal_author_name'],
+                'goal_author_id': r['goal_author_id'],
+                'count': 0
+            }
+        goal_reports[gid]['count'] += 1
+    
+    # Счётчики
+    counts_total = len(reports)
+    counts_today = db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0]
+    counts_goals_with_3 = db.execute("""
+        SELECT COUNT(*) FROM (
+            SELECT goal_id FROM reports GROUP BY goal_id HAVING COUNT(*) >= 3
+        )
+    """).fetchone()[0]
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': counts_today,
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/reports.html',
+        user=user,
+        active='reports',
+        counts=counts,
+        reports=reports,
+        goal_reports=list(goal_reports.values()),
+        search=search,
+        counts_total=counts_total,
+        counts_today=counts_today,
+        counts_goals_with_3=counts_goals_with_3,
+    )
+
+
+@app.route('/_metrics/dialogs')
+@admin_required
+def metrics_dialogs():
+    """Список диалогов с пользователями."""
+    user = get_current_user()
+    db = get_db()
+    
+    status_filter = request.args.get('status', 'open')
+    
+    query = """
+        SELECT d.*,
+            COALESCE(u.name, u.phone) as user_name,
+            u.phone as user_phone,
+            (SELECT COUNT(*) FROM admin_dialog_messages WHERE dialog_id = d.id) as messages_count,
+            (SELECT COUNT(*) FROM admin_dialog_messages WHERE dialog_id = d.id AND sender_type = 'user' AND is_read = 0) as unread_count,
+            (SELECT message FROM admin_dialog_messages WHERE dialog_id = d.id ORDER BY id DESC LIMIT 1) as last_message,
+            (SELECT created_at FROM admin_dialog_messages WHERE dialog_id = d.id ORDER BY id DESC LIMIT 1) as last_message_at
+        FROM admin_dialogs d
+        JOIN users u ON d.user_id = u.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if status_filter != 'all':
+        query += " AND d.status = ?"
+        params.append(status_filter)
+    
+    query += " ORDER BY d.id DESC LIMIT 100"
+    dialogs = db.execute(query, params).fetchall()
+    
+    # Счётчики
+    counts_open = db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0]
+    counts_closed = db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'closed'").fetchone()[0]
+    counts_unread = db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0]
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': counts_unread,
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/dialogs.html',
+        user=user,
+        active='dialogs',
+        counts=counts,
+        dialogs=dialogs,
+        status_filter=status_filter,
+        counts_open=counts_open,
+        counts_closed=counts_closed,
+        counts_unread=counts_unread,
+    )
+
+
+@app.route('/_metrics/dialogs/<int:dialog_id>')
+@admin_required
+def metrics_dialog_detail(dialog_id):
+    """Карточка диалога с чатом."""
+    admin = get_current_user()
+    db = get_db()
+    
+    d = db.execute("""
+        SELECT d.*, 
+            COALESCE(u.name, u.phone) as user_name,
+            u.phone as user_phone,
+            u.id as user_id
+        FROM admin_dialogs d
+        JOIN users u ON d.user_id = u.id
+        WHERE d.id = ?
+    """, (dialog_id,)).fetchone()
+    
+    if not d:
+        db.close()
+        from flask import abort
+        abort(404)
+    
+    messages = db.execute("""
+        SELECT * FROM admin_dialog_messages 
+        WHERE dialog_id = ? 
+        ORDER BY id ASC
+    """, (dialog_id,)).fetchall()
+    
+    # Помечаем сообщения пользователя как прочитанные
+    db.execute(
+        "UPDATE admin_dialog_messages SET is_read = 1 WHERE dialog_id = ? AND sender_type = 'user' AND is_read = 0",
+        (dialog_id,)
+    )
+    db.commit()
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/dialog_detail.html',
+        user=admin,
+        active='dialogs',
+        counts=counts,
+        d=d,
+        messages=messages,
+    )
+
+
+@app.route('/_metrics/dialogs/<int:dialog_id>/send', methods=['POST'])
+@admin_required
+def metrics_dialog_send(dialog_id):
+    """Отправить сообщение в диалог."""
+    from flask import jsonify
+    admin = get_current_user()
+    data = request.get_json(silent=True) or {}
+    text = (data.get('message') or '').strip()
+    if not text:
+        return jsonify({'ok': False, 'error': 'Пустое сообщение'}), 400
+    
+    db = get_db()
+    d = db.execute("SELECT * FROM admin_dialogs WHERE id = ?", (dialog_id,)).fetchone()
+    if not d:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
+    if d['status'] == 'closed':
+        db.close()
+        return jsonify({'ok': False, 'error': 'Диалог закрыт'}), 400
+    
+    db.execute(
+        "INSERT INTO admin_dialog_messages (dialog_id, sender_type, sender_id, message) VALUES (?, 'admin', ?, ?)",
+        (dialog_id, admin['id'], text)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({'ok': True})
+
+
+@app.route('/_metrics/dialogs/<int:dialog_id>/close', methods=['POST'])
+@admin_required
+def metrics_dialog_close(dialog_id):
+    """Закрыть диалог."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute(
+        "UPDATE admin_dialogs SET status = 'closed', closed_at = datetime('now') WHERE id = ?",
+        (dialog_id,)
+    )
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'close_dialog', 'dialog', ?, NULL)",
+        (admin['id'], str(dialog_id))
+    )
+    db.commit()
+    db.close()
+    flash('Диалог закрыт.', 'success')
+    return redirect(url_for('metrics_dialogs'))
+
+
+@app.route('/_metrics/dialogs/new', methods=['GET', 'POST'])
+@admin_required
+def metrics_dialog_new():
+    """Создать новый диалог с пользователем."""
+    admin = get_current_user()
+    
+    if request.method == 'POST':
+        user_id = request.form.get('user_id', '').strip()
+        subject = request.form.get('subject', '').strip()
+        message = request.form.get('message', '').strip()
+        
+        if not user_id or not message:
+            flash('Заполните все поля.', 'danger')
+            return redirect(url_for('metrics_dialog_new'))
+        
+        db = get_db()
+        u = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not u:
+            db.close()
+            flash('Пользователь не найден.', 'danger')
+            return redirect(url_for('metrics_dialog_new'))
+        
+        db.execute(
+            "INSERT INTO admin_dialogs (user_id, admin_id, subject, status) VALUES (?, ?, ?, 'open')",
+            (user_id, admin['id'], subject or None)
+        )
+        dialog_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        
+        db.execute(
+            "INSERT INTO admin_dialog_messages (dialog_id, sender_type, sender_id, message) VALUES (?, 'admin', ?, ?)",
+            (dialog_id, admin['id'], message)
+        )
+        
+        db.execute(
+            "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'create_dialog', 'user', ?, ?)",
+            (admin['id'], str(user_id), '{"dialog_id": ' + str(dialog_id) + '}')
+        )
+        
+        db.commit()
+        db.close()
+        flash('Диалог создан.', 'success')
+        return redirect(url_for('metrics_dialog_detail', dialog_id=dialog_id))
+    
+    # GET — форма создания
+    user_id = request.args.get('user_id', '').strip()
+    db = get_db()
+    u = None
+    if user_id:
+        u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
+    }
+    db.close()
+    
+    return render_template('_metrics/dialog_new.html',
+        user=admin,
+        active='dialogs',
+        counts=counts,
+        u=u,
+    )
+
+
+# ============================================
+# API диалогов для пользователя
+# ============================================
+
+@app.route('/api/dialogs/<int:dialog_id>')
+@login_required
+def api_dialog_get(dialog_id):
+    """Получить сообщения диалога."""
+    from flask import jsonify
+    user = get_current_user()
+    db = get_db()
+    
+    d = db.execute(
+        "SELECT * FROM admin_dialogs WHERE id = ? AND user_id = ?",
+        (dialog_id, user['id'])
+    ).fetchone()
+    
+    if not d:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
+    
+    messages = db.execute(
+        "SELECT id, sender_type, message, created_at FROM admin_dialog_messages WHERE dialog_id = ? ORDER BY id ASC",
+        (dialog_id,)
+    ).fetchall()
+    
+    db.execute(
+        "UPDATE admin_dialog_messages SET is_read = 1 WHERE dialog_id = ? AND sender_type = 'admin' AND is_read = 0",
+        (dialog_id,)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({
+        'ok': True,
+        'dialog': {
+            'id': d['id'],
+            'subject': d['subject'],
+            'status': d['status'],
+        },
+        'messages': [dict(m) for m in messages]
+    })
+
+
+@app.route('/api/dialogs/<int:dialog_id>/send', methods=['POST'])
+@login_required
+def api_dialog_send(dialog_id):
+    """Пользователь отправляет сообщение в диалог."""
+    from flask import jsonify
+    user = get_current_user()
+    data = request.get_json(silent=True) or {}
+    text = (data.get('message') or '').strip()
+    
+    if not text:
+        return jsonify({'ok': False, 'error': 'Пустое сообщение'}), 400
+    if len(text) > 2000:
+        return jsonify({'ok': False, 'error': 'Слишком длинное сообщение'}), 400
+    
+    from content_guard import check as cg_check
+    r = cg_check(text, 'dialog_message')
+    log_guard(r, text, 'dialog_message', 'dialog_reply')
+    if r.get('status') == 'blocked':
+        return jsonify({'ok': False, 'error': r.get('message', 'Сообщение не прошло проверку')}), 400
+    
+    db = get_db()
+    d = db.execute(
+        "SELECT * FROM admin_dialogs WHERE id = ? AND user_id = ?",
+        (dialog_id, user['id'])
+    ).fetchone()
+    
+    if not d:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
+    if d['status'] == 'closed':
+        db.close()
+        return jsonify({'ok': False, 'error': 'Диалог закрыт'}), 400
+    
+    db.execute(
+        "INSERT INTO admin_dialog_messages (dialog_id, sender_type, sender_id, message) VALUES (?, 'user', ?, ?)",
+        (dialog_id, user['id'], text)
+    )
+    db.commit()
+    db.close()
+    
+    return jsonify({'ok': True})
+
+
+@app.route('/api/dialogs/check')
+@login_required
+def api_dialogs_check():
+    """Проверка новых сообщений во всех открытых диалогах (для polling)."""
+    from flask import jsonify
+    user = get_current_user()
+    db = get_db()
+    
+    dialogs = db.execute("""
+        SELECT d.id, d.subject,
+               (SELECT COUNT(*) FROM admin_dialog_messages 
+                WHERE dialog_id = d.id AND sender_type = 'admin' AND is_read = 0) as unread
+        FROM admin_dialogs d
+        WHERE d.user_id = ? AND d.status = 'open'
+    """, (user['id'],)).fetchall()
+    
+    db.close()
+    
+    total_unread = sum(d['unread'] for d in dialogs)
+    
+    return jsonify({
+        'ok': True,
+        'unread': total_unread,
+        'dialogs': [{'id': d['id'], 'subject': d['subject'], 'unread': d['unread']} for d in dialogs]
+    })
 
 
 @app.route('/health')

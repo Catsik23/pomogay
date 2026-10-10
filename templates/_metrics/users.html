@@ -1,0 +1,90 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Пользователи{% endblock %}
+{% block page_title %}Пользователи{% endblock %}
+{% block page_subtitle %}{{ counts_total }} всего · {{ counts_active }} активных · {{ counts_flagged }} с флагами{% endblock %}
+
+{% block content %}
+
+<!-- Фильтры -->
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+            <a href="?filter=all" class="m-badge {% if filter_type == 'all' %}info{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">Все ({{ counts_total }})</a>
+            <a href="?filter=active" class="m-badge {% if filter_type == 'active' %}success{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">Активные ({{ counts_active }})</a>
+            <a href="?filter=flagged" class="m-badge {% if filter_type == 'flagged' %}warning{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">С флагами ({{ counts_flagged }})</a>
+            <a href="?filter=banned" class="m-badge {% if filter_type == 'banned' %}danger{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">Забаненные ({{ counts_banned }})</a>
+        </div>
+        
+        <input type="text" name="search" value="{{ search }}" placeholder="Телефон, имя или ID"
+               style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; flex: 1; min-width: 200px;">
+        
+        <button type="submit" 
+                style="padding: 6px 16px; background: var(--m-gradient); border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Найти
+        </button>
+    </form>
+</div>
+
+<!-- Таблица -->
+<div class="m-section">
+    {% if users %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Имя / телефон</th>
+                <th>Trust</th>
+                <th>Целей</th>
+                <th>Донатов</th>
+                <th>Помог на</th>
+                <th>Флаги</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr onclick="location.href='/_metrics/users/{{ u.id }}'" style="cursor: pointer;">
+                <td><strong>#{{ u.id }}</strong></td>
+                <td>
+                    <div style="font-weight: 600;">{{ u.name or 'Аноним' }}</div>
+                    <div class="muted" style="font-size: 11px;">{{ u.phone }}</div>
+                </td>
+                <td>
+                    <span class="m-badge {% if (u.trust_score or 0) >= 150 %}success{% elif (u.trust_score or 0) >= 70 %}info{% else %}muted{% endif %}">
+                        {{ u.trust_score or 0 }}
+                    </span>
+                </td>
+                <td>{{ u.goals_count }}</td>
+                <td>{{ u.donations_sent }}</td>
+                <td style="font-weight: 600;">{{ "{:,.0f}".format(u.total_sent).replace(",", " ") }} ₽</td>
+                <td>
+                    {% if u.flags_count > 0 %}
+                        <span class="m-badge warning">{{ u.flags_count }}</span>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.is_banned %}
+                        <span class="m-badge danger">забанен</span>
+                    {% elif u.is_admin %}
+                        <span class="m-badge info">админ</span>
+                    {% else %}
+                        <span class="m-badge success">активен</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Ничего не найдено.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

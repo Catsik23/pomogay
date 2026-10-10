@@ -1,0 +1,65 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Диалоги{% endblock %}
+{% block page_title %}Диалоги{% endblock %}
+{% block page_subtitle %}{{ counts_open }} открытых · {{ counts_closed }} закрытых{% if counts_unread %} · {{ counts_unread }} непрочитанных{% endif %}{% endblock %}
+
+{% block content %}
+
+<div class="m-section" style="margin-bottom: 16px;">
+    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <a href="?status=open" class="m-badge {% if status_filter == 'open' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Открытые ({{ counts_open }})</a>
+        <a href="?status=closed" class="m-badge {% if status_filter == 'closed' %}muted{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Закрытые ({{ counts_closed }})</a>
+        <a href="?status=all" class="m-badge {% if status_filter == 'all' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Все</a>
+        
+        <a href="/_metrics/dialogs/new" style="margin-left: auto; padding: 6px 16px; background: var(--m-gradient); border-radius: 8px; color: white; text-decoration: none; font-size: 13px; font-weight: 600;">
+            Новый диалог
+        </a>
+    </div>
+</div>
+
+<div class="m-section">
+    {% if dialogs %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Пользователь</th>
+                <th>Тема</th>
+                <th>Последнее сообщение</th>
+                <th>Сообщений</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in dialogs %}
+            <tr onclick="location.href='/_metrics/dialogs/{{ d.id }}'" style="cursor: pointer;">
+                <td><strong>#{{ d.id }}</strong></td>
+                <td>
+                    <div style="font-weight: 600;">{{ d.user_name }}</div>
+                    <div class="muted" style="font-size: 11px;">{{ d.user_phone }}</div>
+                </td>
+                <td>{{ d.subject or '-' }}</td>
+                <td class="muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ d.last_message[:60] if d.last_message else '-' }}{% if d.last_message and d.last_message|length > 60 %}...{% endif %}
+                </td>
+                <td>
+                    {{ d.messages_count }}
+                    {% if d.unread_count > 0 %}
+                        <span class="m-badge warning" style="margin-left: 6px;">{{ d.unread_count }} новых</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if d.status == 'open' %}<span class="m-badge success">открыт</span>
+                    {% else %}<span class="m-badge muted">закрыт</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Диалогов нет.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

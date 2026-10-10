@@ -1,0 +1,82 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Цели{% endblock %}
+{% block page_title %}Цели{% endblock %}
+{% block page_subtitle %}{{ counts_all }} всего · {{ counts_active }} активных · {{ counts_completed }} закрыто{% endblock %}
+
+{% block content %}
+
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+            <a href="?status=all" class="m-badge {% if status_filter == 'all' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Все ({{ counts_all }})</a>
+            <a href="?status=active" class="m-badge {% if status_filter == 'active' %}success{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Активные ({{ counts_active }})</a>
+            <a href="?status=completed" class="m-badge {% if status_filter == 'completed' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Закрытые ({{ counts_completed }})</a>
+            <a href="?status=hidden" class="m-badge {% if status_filter == 'hidden' %}danger{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Скрытые ({{ counts_hidden }})</a>
+        </div>
+        
+        <select name="type" onchange="this.form.submit()" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
+            <option value="all">Все типы</option>
+            <option value="super_blitz" {% if type_filter == 'super_blitz' %}selected{% endif %}>Супер-блиц</option>
+            <option value="blitz" {% if type_filter == 'blitz' %}selected{% endif %}>Блиц</option>
+            <option value="urgent" {% if type_filter == 'urgent' %}selected{% endif %}>Срочный</option>
+            <option value="serious" {% if type_filter == 'serious' %}selected{% endif %}>Жизненный</option>
+            <option value="group" {% if type_filter == 'group' %}selected{% endif %}>Общий</option>
+        </select>
+        
+        <input type="text" name="search" value="{{ search }}" placeholder="Название или ID" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; flex: 1; min-width: 180px;">
+        
+        <button type="submit" style="padding: 6px 16px; background: var(--m-gradient); border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">Найти</button>
+    </form>
+</div>
+
+<div class="m-section">
+    {% if goals %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Автор</th>
+                <th>Тип</th>
+                <th>Собрано</th>
+                <th>Донаты</th>
+                <th>Жалобы</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for g in goals %}
+            <tr onclick="location.href='/_metrics/goals/{{ g.id }}'" style="cursor: pointer;">
+                <td><strong>#{{ g.id }}</strong></td>
+                <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ g.title }}</td>
+                <td>
+                    <div style="font-weight: 600;">{{ g.author_name }}</div>
+                    <div class="muted" style="font-size: 11px;">{{ g.author_phone }}</div>
+                </td>
+                <td><span class="m-badge muted">{{ g.type }}</span></td>
+                <td>
+                    <div style="font-weight: 600;">{{ "{:,.0f}".format(g.amount_collected).replace(",", " ") }} / {{ "{:,.0f}".format(g.amount_goal).replace(",", " ") }} ₽</div>
+                </td>
+                <td>{{ g.donations_count }}</td>
+                <td>
+                    {% if g.reports_count > 0 %}
+                        <span class="m-badge warning">{{ g.reports_count }}</span>
+                    {% else %}<span class="muted">—</span>{% endif %}
+                </td>
+                <td>
+                    {% if g.status == 'active' %}<span class="m-badge success">активна</span>
+                    {% elif g.status == 'completed' %}<span class="m-badge info">закрыта</span>
+                    {% elif g.status == 'hidden' %}<span class="m-badge danger">скрыта</span>
+                    {% else %}<span class="m-badge muted">{{ g.status }}</span>{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Ничего не найдено.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

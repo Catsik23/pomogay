@@ -1,0 +1,181 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}#{{ g.id }} — {{ g.title }}{% endblock %}
+{% block page_title %}#{{ g.id }} · {{ g.title }}{% endblock %}
+{% block page_subtitle %}
+{{ g.type }} · 
+{% if g.status == 'active' %}активна{% elif g.status == 'completed' %}закрыта{% elif g.status == 'hidden' %}скрыта{% else %}{{ g.status }}{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Действия -->
+<div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    <a href="/goal/{{ g.id }}" target="_blank" 
+       style="padding: 8px 16px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text); text-decoration: none; font-size: 13px; font-weight: 600;">
+        Открыть на сайте
+    </a>
+    {% if g.status == 'active' %}
+    <form method="POST" action="/_metrics/goals/{{ g.id }}/hide" style="display: inline;">
+        <button type="submit" onclick="return confirm('Скрыть цель?')" 
+                style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Скрыть
+        </button>
+    </form>
+    {% elif g.status == 'hidden' %}
+    <form method="POST" action="/_metrics/goals/{{ g.id }}/restore" style="display: inline;">
+        <button type="submit" 
+                style="padding: 8px 16px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Восстановить
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Метрики -->
+<div class="m-grid m-grid-4" style="margin-bottom: 16px;">
+    <div class="m-card">
+        <div class="m-card-label">Собрано</div>
+        <div class="m-card-value success">{{ "{:,.0f}".format(g.amount_collected).replace(",", " ") }} ₽</div>
+        <div class="m-card-sub">из {{ "{:,.0f}".format(g.amount_goal).replace(",", " ") }} ₽</div>
+    </div>
+    <div class="m-card">
+        <div class="m-card-label">Донатов</div>
+        <div class="m-card-value">{{ donations|length }}</div>
+        <div class="m-card-sub">всего</div>
+    </div>
+    <div class="m-card">
+        <div class="m-card-label">Жалоб</div>
+        <div class="m-card-value {% if reports|length > 0 %}warning{% endif %}">{{ reports|length }}</div>
+        <div class="m-card-sub">на цель</div>
+    </div>
+    <div class="m-card">
+        <div class="m-card-label">Дедлайн</div>
+        <div class="m-card-value" style="font-size: 18px;">{{ g.ends_at[:10] if g.ends_at else '—' }}</div>
+        <div class="m-card-sub">окончание</div>
+    </div>
+</div>
+
+<!-- Автор -->
+<div class="m-section">
+    <div class="m-section-title">Автор</div>
+    <table class="m-table">
+        <tr>
+            <td style="width: 200px; color: var(--m-text-2);">Автор</td>
+            <td>
+                <a href="/_metrics/users/{{ g.author_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-weight: 600;">
+                    {{ g.author_name }}
+                </a>
+                <span class="muted">· {{ g.author_phone }}</span>
+                {% if g.author_banned %}<span class="m-badge danger" style="margin-left: 8px;">забанен</span>{% endif %}
+                {% if g.author_verified %}<span class="m-badge success" style="margin-left: 8px;">личность проверена</span>{% endif %}
+            </td>
+        </tr>
+        <tr><td style="color: var(--m-text-2);">Trust автора</td><td>{{ g.author_trust or 0 }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Создана</td><td>{{ g.created_at[:16] }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Модерация</td><td>{{ g.moderation_status or '—' }}</td></tr>
+    </table>
+</div>
+
+<!-- Описание -->
+{% if g.description %}
+<div class="m-section">
+    <div class="m-section-title">Описание</div>
+    <div style="background: var(--m-bg-3); padding: 16px; border-radius: 10px; line-height: 1.6; white-space: pre-wrap;">{{ g.description }}</div>
+</div>
+{% endif %}
+
+<!-- Фото -->
+{% if photos %}
+<div class="m-section">
+    <div class="m-section-title">Фото ({{ photos|length }})</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px;">
+        {% for p in photos %}
+        <a href="{{ p }}" target="_blank" style="display: block;">
+            <img src="{{ p }}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; border: 1px solid var(--m-border);">
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Донаты -->
+<div class="m-section">
+    <div class="m-section-title">Донаты ({{ donations|length }})</div>
+    {% if donations %}
+    <table class="m-table">
+        <thead><tr><th>Дата</th><th>Донатор</th><th>Сумма</th><th>Статус</th><th>Слово</th></tr></thead>
+        <tbody>
+            {% for d in donations %}
+            <tr>
+                <td class="muted">{{ d.donor_confirmed_at[:16] if d.donor_confirmed_at else '—' }}</td>
+                <td>
+                    {% if d.donor_user_id %}
+                        <a href="/_metrics/users/{{ d.donor_user_id }}" style="color: var(--m-sunset-1); text-decoration: none;">{{ d.donor_name }}</a>
+                    {% else %}
+                        <span class="muted">Аноним</span>
+                    {% endif %}
+                </td>
+                <td style="font-weight: 600;">{{ "{:,.0f}".format(d.amount_reported).replace(",", " ") }} ₽</td>
+                <td>
+                    {% if d.status == 'recipient_confirmed' %}<span class="m-badge success">подтверждён</span>
+                    {% elif d.status == 'donor_confirmed' %}<span class="m-badge warning">ожидает</span>
+                    {% elif d.status == 'completed' %}<span class="m-badge info">засчитан</span>
+                    {% else %}<span class="m-badge muted">{{ d.status }}</span>{% endif %}
+                </td>
+                <td class="muted" style="font-style: italic;">{{ d.warm_word or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Донатов нет.</div>
+    {% endif %}
+</div>
+
+<!-- Жалобы -->
+{% if reports %}
+<div class="m-section">
+    <div class="m-section-title">Жалобы ({{ reports|length }})</div>
+    <table class="m-table">
+        <thead><tr><th>Дата</th><th>Кто</th><th>Причина</th><th>Фото №</th></tr></thead>
+        <tbody>
+            {% for r in reports %}
+            <tr>
+                <td class="muted">{{ r.created_at[:16] }}</td>
+                <td>
+                    {% if r.reporter_user_id %}
+                        <a href="/_metrics/users/{{ r.reporter_user_id }}" style="color: var(--m-sunset-1); text-decoration: none;">{{ r.reporter_name }}</a>
+                    {% endif %}
+                </td>
+                <td>{{ r.reason or '—' }}</td>
+                <td class="muted">{{ r.photo_index if r.photo_index is not none else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Флаги -->
+{% if flags %}
+<div class="m-section">
+    <div class="m-section-title">Флаги Content Guard ({{ flags|length }})</div>
+    <table class="m-table">
+        <thead><tr><th>Дата</th><th>Слово</th><th>Категория</th><th>Статус</th><th>Текст</th></tr></thead>
+        <tbody>
+            {% for f in flags %}
+            <tr>
+                <td class="muted">{{ f.created_at[:16] }}</td>
+                <td><strong>{{ f.found_word }}</strong></td>
+                <td><span class="m-badge muted">{{ f.category }}</span></td>
+                <td>{% if f.status == 'blocked' %}<span class="m-badge danger">блок</span>{% else %}<span class="m-badge warning">флаг</span>{% endif %}</td>
+                <td class="muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.original_text }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

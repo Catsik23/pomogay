@@ -1,0 +1,93 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Флаги{% endblock %}
+{% block page_title %}Флаги Content Guard{% endblock %}
+{% block page_subtitle %}{{ counts_status.all }} всего · {{ counts_status.blocked }} блок · {{ counts_status.flagged }} флаг{% endblock %}
+
+{% block content %}
+
+<!-- Фильтры -->
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+            <a href="?status=all{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" 
+               class="m-badge {% if status_filter == 'all' %}info{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">Все ({{ counts_status.all }})</a>
+            <a href="?status=blocked{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" 
+               class="m-badge {% if status_filter == 'blocked' %}danger{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">Блок ({{ counts_status.blocked }})</a>
+            <a href="?status=flagged{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" 
+               class="m-badge {% if status_filter == 'flagged' %}warning{% else %}muted{% endif %}" 
+               style="text-decoration: none; padding: 6px 12px;">Флаг ({{ counts_status.flagged }})</a>
+        </div>
+        
+        <select name="category" onchange="this.form.submit()" 
+                style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
+            <option value="all">Все категории</option>
+            {% for c in categories %}
+            <option value="{{ c }}" {% if category_filter == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        
+        <input type="text" name="user" value="{{ user_filter }}" placeholder="ID юзера или IP"
+               style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; flex: 1; min-width: 180px;">
+        
+        <button type="submit" 
+                style="padding: 6px 16px; background: var(--m-gradient); border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Применить
+        </button>
+    </form>
+</div>
+
+<!-- Таблица -->
+<div class="m-section">
+    {% if flags %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>Время</th>
+                <th>Юзер / IP</th>
+                <th>Слово</th>
+                <th>Категория</th>
+                <th>Статус</th>
+                <th>Действие</th>
+                <th>Текст</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in flags %}
+            <tr>
+                <td class="muted" style="white-space: nowrap;">{{ f.created_at[:16] }}</td>
+                <td>
+                    {% if f.user_id %}
+                        <a href="/_metrics/users/{{ f.user_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-weight: 600;">ID {{ f.user_id }}</a>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                    <div class="muted" style="font-size: 11px;">{{ f.ip_address or '—' }}</div>
+                </td>
+                <td><strong>{{ f.found_word }}</strong></td>
+                <td><span class="m-badge muted">{{ f.category }}</span></td>
+                <td>
+                    {% if f.status == 'blocked' %}
+                        <span class="m-badge danger">блок</span>
+                    {% elif f.status == 'flagged' %}
+                        <span class="m-badge warning">флаг</span>
+                    {% else %}
+                        <span class="m-badge muted">{{ f.status }}</span>
+                    {% endif %}
+                </td>
+                <td class="muted" style="font-size: 12px;">{{ f.user_action or '—' }}</td>
+                <td class="muted" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ f.original_text }}">
+                    {{ f.original_text }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Ничего не найдено по этим фильтрам.</div>
+    {% endif %}
+</div>
+
+{% endblock %}

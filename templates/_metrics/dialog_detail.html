@@ -1,0 +1,95 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Диалог #{{ d.id }}{% endblock %}
+{% block page_title %}Диалог #{{ d.id }}{% endblock %}
+{% block page_subtitle %}{{ d.user_name }} · {{ d.user_phone }}{% endblock %}
+
+{% block content %}
+
+<div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    <a href="/_metrics/users/{{ d.user_id }}" 
+       style="padding: 8px 16px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text); text-decoration: none; font-size: 13px; font-weight: 600;">
+        Профиль
+    </a>
+    {% if d.status == 'open' %}
+    <form method="POST" action="/_metrics/dialogs/{{ d.id }}/close" style="display: inline;">
+        <button type="submit" onclick="return confirm('Закрыть диалог?')" 
+                style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+            Закрыть диалог
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+{% if d.subject %}
+<div class="m-section" style="margin-bottom: 16px;">
+    <div class="m-card-label">Тема</div>
+    <div style="font-size: 15px; font-weight: 600;">{{ d.subject }}</div>
+</div>
+{% endif %}
+
+<div class="m-section" id="chatContainer">
+    <div class="m-section-title">Чат</div>
+    <div id="chatMessages" style="display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; padding: 12px 0;">
+        {% for m in messages %}
+        <div style="display: flex; {% if m.sender_type == 'admin' %}justify-content: flex-end;{% else %}justify-content: flex-start;{% endif %}">
+            <div style="max-width: 70%; padding: 12px 16px; border-radius: 14px; 
+                        {% if m.sender_type == 'admin' %}background: linear-gradient(160deg, #FF5A3C, #E85D75); color: white;{% else %}background: var(--m-bg-3); color: var(--m-text); border: 1px solid var(--m-border-2);{% endif %}">
+                <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px;">
+                    {% if m.sender_type == 'admin' %}Админ{% else %}{{ d.user_name }}{% endif %} · {{ m.created_at[:16] }}
+                </div>
+                <div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">{{ m.message }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        {% if not messages %}
+        <div class="m-empty">Сообщений пока нет.</div>
+        {% endif %}
+    </div>
+    
+    {% if d.status == 'open' %}
+    <div style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--m-border); padding-top: 16px;">
+        <textarea id="messageInput" placeholder="Написать сообщение..." rows="2"
+                  style="flex: 1; padding: 12px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 10px; color: var(--m-text); font-size: 14px; font-family: inherit; resize: vertical; min-height: 50px;"
+                  onkeydown="if(event.ctrlKey && event.key==='Enter'){sendMessage();event.preventDefault();}"></textarea>
+        <button onclick="sendMessage()" 
+                style="padding: 12px 24px; background: var(--m-gradient); border: none; border-radius: 10px; color: white; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; align-self: flex-end;">
+            Отправить
+        </button>
+    </div>
+    <div class="muted" style="font-size: 11px; margin-top: 6px;">Ctrl+Enter — отправить</div>
+    {% else %}
+    <div style="margin-top: 16px; padding: 16px; background: var(--m-bg-3); border-radius: 10px; text-align: center; color: var(--m-text-2); font-size: 13px;">
+        Диалог закрыт {{ d.closed_at[:16] if d.closed_at else '' }}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Скролл вниз при загрузке
+var chatEl = document.getElementById('chatMessages');
+if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+
+function sendMessage() {
+    var input = document.getElementById('messageInput');
+    var text = input.value.trim();
+    if (!text) return;
+    
+    fetch('/_metrics/dialogs/{{ d.id }}/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: text})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.ok) {
+            alert(data.error || 'Ошибка');
+            return;
+        }
+        location.reload();
+    })
+    .catch(function() { alert('Ошибка сети'); });
+}
+</script>
+
+{% endblock %}

@@ -83,8 +83,77 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS deferred_donations (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, goal_id INTEGER NOT NULL, remind_at TEXT NULL, status TEXT DEFAULT 'pending', frequency TEXT DEFAULT 'once', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(id), FOREIGN KEY (goal_id) REFERENCES goals(id))")
     c.execute("CREATE TABLE IF NOT EXISTS community_pots (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NULL, created_by INTEGER NOT NULL, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (created_by) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS community_pot_goals (id INTEGER PRIMARY KEY AUTOINCREMENT, pot_id INTEGER NOT NULL, goal_id INTEGER NOT NULL, FOREIGN KEY (pot_id) REFERENCES community_pots(id), FOREIGN KEY (goal_id) REFERENCES goals(id))")
+    
+    # ============================================
+    # Таблицы для админ-панели /_metrics
+    # ============================================
+    
+    # Лог срабатываний Content Guard
+    c.execute("""CREATE TABLE IF NOT EXISTS content_guard_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        ip_address TEXT NULL,
+        context TEXT NULL,
+        original_text TEXT NULL,
+        found_word TEXT NULL,
+        category TEXT NULL,
+        status TEXT NULL,
+        user_action TEXT NULL,
+        position_start INTEGER NULL,
+        position_end INTEGER NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+    )""")
+    
+    # Действия администратора
+    c.execute("""CREATE TABLE IF NOT EXISTS admin_actions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        admin_id INTEGER NOT NULL,
+        action_type TEXT NOT NULL,
+        target_type TEXT NULL,
+        target_id TEXT NULL,
+        details TEXT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (admin_id) REFERENCES users(id)
+    )""")
+    
+    # Подозрительная активность
+    c.execute("""CREATE TABLE IF NOT EXISTS suspicious_activity (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NULL,
+        ip_address TEXT NULL,
+        activity_type TEXT NOT NULL,
+        details TEXT NULL,
+        status TEXT DEFAULT 'new',
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    )""")
+    
+    # Диалоги администрации с пользователями
+    c.execute("""CREATE TABLE IF NOT EXISTS admin_dialogs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        admin_id INTEGER NOT NULL,
+        subject TEXT NULL,
+        status TEXT DEFAULT 'open',
+        created_at TEXT DEFAULT (datetime('now')),
+        closed_at TEXT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (admin_id) REFERENCES users(id)
+    )""")
+    
+    c.execute("""CREATE TABLE IF NOT EXISTS admin_dialog_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dialog_id INTEGER NOT NULL,
+        sender_type TEXT NOT NULL,
+        sender_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (dialog_id) REFERENCES admin_dialogs(id)
+    )""")
+    
     conn.commit()
     conn.close()
     # Миграция после создания таблиц
     migrate_db()
-    print("База данных готова. Все 11 таблиц созданы.")
+    print("База данных готова. Все 16 таблиц созданы.")

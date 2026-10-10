@@ -1,0 +1,120 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Дашборд{% endblock %}
+{% block page_title %}Дашборд{% endblock %}
+{% block page_subtitle %}Сводка за сегодня{% endblock %}
+
+{% block content %}
+
+<!-- Верхний ряд: главные метрики -->
+<div class="m-grid m-grid-4">
+    <div class="m-card">
+        <div class="m-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </div>
+        <div class="m-card-label">Флаги Content Guard</div>
+        <div class="m-card-value {% if flags_today > 0 %}danger{% endif %}">{{ flags_today }}</div>
+        <div class="m-card-sub">за сегодня</div>
+    </div>
+    
+    <div class="m-card">
+        <div class="m-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="m-card-label">Жалобы</div>
+        <div class="m-card-value {% if reports_new > 0 %}warning{% endif %}">{{ reports_new }}</div>
+        <div class="m-card-sub">новых</div>
+    </div>
+    
+    <div class="m-card">
+        <div class="m-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="m-card-label">На модерации</div>
+        <div class="m-card-value {% if moderation_pending > 0 %}info{% endif %}">{{ moderation_pending }}</div>
+        <div class="m-card-sub">целей ждут</div>
+    </div>
+    
+    <div class="m-card">
+        <div class="m-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        <div class="m-card-label">Новые юзеры</div>
+        <div class="m-card-value success">{{ new_users_today }}</div>
+        <div class="m-card-sub">за сегодня</div>
+    </div>
+</div>
+
+<!-- Второй ряд: деньги и активность -->
+<div class="m-grid m-grid-4">
+    <div class="m-card">
+        <div class="m-card-label">Донаты сегодня</div>
+        <div class="m-card-value success">{{ "{:,.0f}".format(donations_sum_today).replace(",", " ") }} ₽</div>
+        <div class="m-card-sub">{{ donations_count_today }} переводов</div>
+    </div>
+    
+    <div class="m-card">
+        <div class="m-card-label">Активных целей</div>
+        <div class="m-card-value">{{ active_goals }}</div>
+        <div class="m-card-sub">в ленте</div>
+    </div>
+    
+    <div class="m-card">
+        <div class="m-card-label">Подозрительное</div>
+        <div class="m-card-value {% if suspicious_new > 0 %}warning{% endif %}">{{ suspicious_new }}</div>
+        <div class="m-card-sub">новых сигналов</div>
+    </div>
+    
+    <div class="m-card">
+        <div class="m-card-label">Диалоги</div>
+        <div class="m-card-value {% if dialogs_open > 0 %}info{% endif %}">{{ dialogs_open }}</div>
+        <div class="m-card-sub">открытых</div>
+    </div>
+</div>
+
+<!-- Последние флаги Content Guard -->
+<div class="m-section">
+    <div class="m-section-title">Последние срабатывания фильтра</div>
+    {% if recent_flags %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>Время</th>
+                <th>Пользователь</th>
+                <th>Слово</th>
+                <th>Категория</th>
+                <th>Статус</th>
+                <th>Контекст</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in recent_flags %}
+            <tr>
+                <td class="muted">{{ f.created_at[:16] }}</td>
+                <td>
+                    {% if f.user_id %}
+                        <a href="/_metrics/users/{{ f.user_id }}" style="color: var(--m-sunset-1); text-decoration: none;">ID {{ f.user_id }}</a>
+                    {% else %}
+                        <span class="muted">Аноним</span>
+                    {% endif %}
+                </td>
+                <td><strong>{{ f.found_word }}</strong></td>
+                <td><span class="m-badge muted">{{ f.category }}</span></td>
+                <td>
+                    {% if f.status == 'blocked' %}
+                        <span class="m-badge danger">блок</span>
+                    {% elif f.status == 'flagged' %}
+                        <span class="m-badge warning">флаг</span>
+                    {% endif %}
+                </td>
+                <td class="muted">{{ f.context }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Пока тихо. Фильтр молчит.</div>
+    {% endif %}
+</div>
+
+{% endblock %}
