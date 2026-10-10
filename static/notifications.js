@@ -2,19 +2,24 @@
 // Система уведомлений — общая для всех страниц
 // ============================================
 
+// Очистка старого localStorage (миграция на sessionStorage)
+try { localStorage.removeItem('dismissed_notifs'); } catch (e) {}
+
 function loadState() {
     fetch('/api/state')
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            renderNotifications(data.actions || []);
-            updateDots(data.actions || []);
+            var actions = data.actions || [];
+            renderNotifications(actions);
+            updateDots(filterDismissed(actions));
         })
         .catch(function() {});
 }
 
 function getDismissed() {
     try {
-        return JSON.parse(localStorage.getItem('dismissed_notifs') || '[]');
+        var arr = JSON.parse(sessionStorage.getItem('dismissed_notifs') || '[]');
+        return Array.isArray(arr) ? arr : [];
     } catch (e) { return []; }
 }
 
@@ -23,7 +28,11 @@ function dismissNotification(a) {
     var dismissed = getDismissed();
     if (dismissed.indexOf(key) === -1) {
         dismissed.push(key);
-        localStorage.setItem('dismissed_notifs', JSON.stringify(dismissed));
+        // Ограничиваем до последних 50 записей
+        if (dismissed.length > 50) {
+            dismissed = dismissed.slice(-50);
+        }
+        sessionStorage.setItem('dismissed_notifs', JSON.stringify(dismissed));
     }
 }
 
@@ -55,7 +64,7 @@ function renderNotifications(actions) {
     actions.forEach(function(a) {
         var item = document.createElement('a');
         item.className = 'notif-item ' + (a.type || '');
-        item.href = a.action_url;
+        item.href = a.action_url || '#';
         item.innerHTML =
             '<div class="notif-title">' + escapeHtml(a.title) + '</div>' +
             '<div class="notif-message">' + escapeHtml(a.message) + '</div>';

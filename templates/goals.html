@@ -657,7 +657,7 @@
                         <div class="progress-fill" style="width: {{ (goal.amount_collected / goal.amount_goal * 100) if goal.amount_goal > 0 else 0 }}%"></div>
                     </div>
                     <div class="meta">
-                        <span>до {{ goal.ends_at_formatted or goal.ends_at[:10] }}</span>
+                        <span>до {{ goal.ends_at_formatted or (goal.ends_at[:10] if goal.ends_at else '—') }}</span>
                         <span>
                 {% if goal.author_level == 'novice' %}🌱
                 {% elif goal.author_level == 'member' %}🌿
@@ -665,7 +665,7 @@
                 {% elif goal.author_level == 'pillar' %}💎
                 {% elif goal.author_level == 'hero' %}⭐
                 {% elif goal.author_level == 'legend' %}👑
-                {% endif %}
+                {% else %}👤{% endif %}
                 {{ goal.author_name or 'Аноним' }}
             </span>
                     </div>
@@ -879,6 +879,7 @@
 </div>
 {% endif %}
 
+{% if user %}
 <script>
     var onboardCurrentStep = {{ user.onboarding_step or 0 }};
     var onboardRegionsLoaded = false;
@@ -1020,7 +1021,8 @@
     }
 
     // Открытие/закрытие дропдаунов
-    document.getElementById('dropdownRegionToggle').addEventListener('click', function(e) {
+    var _drt = document.getElementById('dropdownRegionToggle');
+    if (_drt) _drt.addEventListener('click', function(e) {
         e.stopPropagation();
         var dd = document.getElementById('dropdownRegion');
         var wasOpen = dd.classList.contains('open');
@@ -1028,7 +1030,8 @@
         if (!wasOpen) dd.classList.add('open');
     });
 
-    document.getElementById('dropdownCityToggle').addEventListener('click', function(e) {
+    var _dct = document.getElementById('dropdownCityToggle');
+    if (_dct) _dct.addEventListener('click', function(e) {
         e.stopPropagation();
         var dd = document.getElementById('dropdownCity');
         if (dd.classList.contains('disabled')) return;
@@ -1108,6 +1111,7 @@
         showOnboardStep(1);
     }
 </script>
+{% endif %}
 <script src="/static/toast.js"></script>
 <script src="/static/notifications.js"></script>
 </body>
