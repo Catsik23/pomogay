@@ -38,9 +38,9 @@ if not seed2:
     print('Seed 2 создан: 7999999999')
 
 # Seed 3 с готовой целью
-seed3 = db.execute("SELECT id FROM users WHERE phone = '7888888888'").fetchone()
+seed3 = db.execute("SELECT id FROM users WHERE phone = '79888888888'").fetchone()
 if not seed3:
-    db.execute("INSERT INTO users (phone, password_hash) VALUES ('7888888888', ?)", (generate_password_hash('123456'),))
+    db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456'),))
     db.commit()
     seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
     from datetime import datetime, timedelta
@@ -50,7 +50,7 @@ if not seed3:
         (seed3_id, ends)
     )
     db.commit()
-    print('Seed 3 создан: 7888888888 с целью')
+    print('Seed 3 создан: 79888888888 с целью')
 db.close()
 
 def get_current_user():
@@ -817,16 +817,6 @@ def donate(goal_id):
             db.execute("UPDATE users SET total_helped_amount = COALESCE(total_helped_amount, 0) + ? WHERE id = ?", (amount, donor_id))
             db.commit()
 
-        # Автоподтверждение для seed3
-        if goal_data:
-            recipient = db.execute("SELECT phone FROM users WHERE id = ?", (goal_data['user_id'],)).fetchone()
-            if recipient and recipient['phone'] == '7888888888':
-                db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
-                db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (amount, goal_id))
-                db.commit()
-                flash('Подтверждено', 'success')
-                return redirect(url_for('goal_page', goal_id=goal_id))
-
         flash('Перевод ожидает подтверждения', 'success')
     finally:
         db.close()
@@ -882,6 +872,70 @@ def confirm_donation(donation_id):
     flash('Подтверждено', 'success')
     
     return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+
+
+@app.route('/api/confirm/<int:donation_id>', methods=['POST'])
+def api_confirm_donation(donation_id):
+    """AJAX-подтверждение доната. Возвращает JSON."""
+    from flask import jsonify
+    user = get_current_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'Войдите в аккаунт'}), 401
+    
+    db = get_db()
+    donation = db.execute("SELECT * FROM donations WHERE id = ?", (donation_id,)).fetchone()
+    if not donation:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Донат не найден'}), 404
+    
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
+    if goal['user_id'] != user['id']:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Только автор цели может подтверждать'}), 403
+    
+    if donation['status'] != 'donor_confirmed':
+        db.close()
+        return jsonify({'ok': False, 'error': 'Уже обработан'}), 400
+    
+    # Подтверждаем
+    db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
+    db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
+    db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
+    
+    goal_data = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
+    goal_closed = False
+    if goal_data and goal_data['amount_collected'] >= goal_data['amount_goal']:
+        goal_closed = True
+        db.execute("UPDATE goals SET status = 'completed' WHERE id = ?", (donation['goal_id'],))
+        db.execute("UPDATE users SET author_badge = 'Цель закрыта' WHERE id = ?", (goal_data['user_id'],))
+        add_xp(goal_data['user_id'], 'goal_closed')
+        participants = db.execute("SELECT DISTINCT donor_id FROM donations WHERE goal_id = ? AND donor_id IS NOT NULL", (donation['goal_id'],)).fetchall()
+        for p in participants:
+            add_xp(p['donor_id'], 'goal_closed')
+    
+    db.execute("INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_recipient', ?)", (user['id'], '{"donation_id":' + str(donation_id) + '}'))
+    if donation['donor_id']:
+        db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
+    db.commit()
+    add_xp(user['id'], 'confirm')
+    db.commit()
+    add_trust_score(user['id'], 'donation_recipient_confirmed', db)
+    if donation['donor_id']:
+        add_trust_score(donation['donor_id'], 'donation_recipient_confirmed', db)
+    
+    # Обновлённые данные для UI
+    new_amount = db.execute("SELECT amount_collected FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()['amount_collected']
+    db.close()
+    
+    return jsonify({
+        'ok': True,
+        'donation_id': donation_id,
+        'amount': donation['amount_reported'],
+        'goal_id': donation['goal_id'],
+        'goal_amount_collected': new_amount,
+        'goal_closed': goal_closed,
+        'message': 'Подтверждено' + (' — цель закрыта!' if goal_closed else '')
+    })
 
 
 @app.route('/api/guard-check', methods=['POST'])

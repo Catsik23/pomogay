@@ -181,9 +181,7 @@
                     </div>
 
                     {% if mode == 'received' and d.status == 'donor_confirmed' %}
-                    <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
-                        <button type="submit" class="confirm-btn">Подтвердить перевод</button>
-                    </form>
+                    <button type="button" class="confirm-btn" onclick="confirmDonation({{ d.id }}, this)">Подтвердить перевод</button>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -211,5 +209,87 @@
     }
 </script>
 <script src="/static/toast.js"></script>
+
+    <style>
+        .donation-row-removing {
+            animation: donationFadeOut 0.4s ease forwards;
+        }
+        @keyframes donationFadeOut {
+            from { opacity: 1; transform: translateX(0); max-height: 500px; }
+            to { opacity: 0; transform: translateX(20px); max-height: 0; padding: 0; margin: 0; }
+        }
+        .confirm-btn.loading {
+            background: #A8C8B0;
+            pointer-events: none;
+        }
+        .confirm-btn.confirmed {
+            background: #5B9A6B;
+            pointer-events: none;
+        }
+    </style>
+
+    <script>
+        function confirmDonation(donationId, btn) {
+            if (btn.classList.contains('loading') || btn.classList.contains('confirmed')) return;
+            
+            btn.classList.add('loading');
+            btn.textContent = 'Подтверждаем...';
+            
+            fetch('/api/confirm/' + donationId, {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) {
+                    btn.classList.remove('loading');
+                    btn.textContent = 'Подтвердить перевод';
+                    showToast(data.error || 'Ошибка', 'danger');
+                    return;
+                }
+                
+                btn.classList.remove('loading');
+                btn.classList.add('confirmed');
+                btn.textContent = '✓ Подтверждено';
+                
+                showToast(data.message || 'Подтверждено', 'success');
+                
+                // Обновляем состояние счётчика на бургере
+                if (typeof loadState === 'function') {
+                    loadState();
+                }
+                
+                // Плавно скрываем строку
+                const row = btn.closest('.donation-row') || btn.closest('.donation-item') || btn.parentElement.parentElement;
+                if (row) {
+                    row.classList.add('donation-row-removing');
+                    setTimeout(() => {
+                        row.remove();
+                        // Если это была последняя кнопка — обновляем счётчики в статистике
+                        const remaining = document.querySelectorAll('.confirm-btn:not(.confirmed)').length;
+                        if (remaining === 0) {
+                            // Опционально: перезагружаем через 1 сек для обновления статистики
+                            setTimeout(() => location.reload(), 800);
+                        }
+                    }, 400);
+                }
+                
+                // Если цель закрыта — особое уведомление
+                if (data.goal_closed) {
+                    setTimeout(() => {
+                        showToast('🎉 Цель закрыта!', 'success');
+                    }, 600);
+                }
+            })
+            .catch(err => {
+                btn.classList.remove('loading');
+                btn.textContent = 'Подтвердить перевод';
+                showToast('Ошибка сети', 'danger');
+                console.error(err);
+            });
+        }
+    </script>
+
+<script src="/static/notifications.js"></script>
 </body>
 </html>
