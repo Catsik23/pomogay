@@ -1,0 +1,148 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Настройки{% endblock %}
+{% block page_title %}Настройки{% endblock %}
+{% block page_subtitle %}Лимиты, тумблеры, Feature flags{% endblock %}
+
+{% block content %}
+
+<form method="POST" action="/_metrics/settings/save">
+
+<!-- Тумблеры (вкл/выкл) -->
+<div class="m-section">
+    <div class="m-section-title">Тумблеры</div>
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+        {% for key, label in [
+            ('registration_open', 'Открыта регистрация'),
+            ('goals_open', 'Открыто создание целей'),
+            ('notifications_enabled', 'Отправлять уведомления'),
+            ('reminders_enabled', 'Отправлять напоминания'),
+        ] %}
+        <label style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--m-bg-3); border-radius: 10px; cursor: pointer;">
+            <div>
+                <div style="font-size: 14px; font-weight: 600;">{{ label }}</div>
+                <div class="muted" style="font-size: 12px;">{{ settings[key].description if settings[key] else '' }}</div>
+            </div>
+            <input type="checkbox" name="{{ key }}" value="1" {% if settings[key] and settings[key].value == '1' %}checked{% endif %}
+                   style="width: 20px; height: 20px; accent-color: #FF5A3C; cursor: pointer;">
+        </label>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Лимиты -->
+<div class="m-section">
+    <div class="m-section-title">Лимиты</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+        {% for key in ['max_goals_per_user', 'max_goals_per_hour', 'max_reports_per_day', 'max_phone_reveals_per_hour', 'auto_approve_amount', 'auto_hide_reports'] %}
+        <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">{{ settings[key].description if settings[key] else key }}</label>
+            <input type="number" name="{{ key }}" value="{{ settings[key].value if settings[key] else '' }}" min="0"
+                   style="width: 100%; padding: 10px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 14px; font-family: inherit;">
+            <div class="muted" style="font-size: 11px; margin-top: 4px;"><code>{{ key }}</code></div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Кнопка сохранения -->
+<div style="position: sticky; bottom: 20px; margin-top: 20px;">
+    <button type="submit" 
+            style="padding: 14px 32px; background: var(--m-gradient); border: none; border-radius: 10px; color: white; font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; box-shadow: 0 4px 20px rgba(255,90,60,0.3);">
+        Сохранить изменения
+    </button>
+</div>
+
+</form>
+
+<!-- Feature flags -->
+<div class="m-section" style="margin-top: 24px;">
+    <div class="m-section-title">Feature Flags ({{ flags|length }})</div>
+    {% if flags %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>Ключ</th>
+                <th>Описание</th>
+                <th>Статус</th>
+                <th>Обновлён</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in flags %}
+            <tr>
+                <td><code style="color: var(--m-sunset-1); font-size: 12px;">{{ f.flag_key }}</code></td>
+                <td class="muted">{{ f.description or '—' }}</td>
+                <td>
+                    {% if f.enabled %}
+                        <span class="m-badge success">включён</span>
+                    {% else %}
+                        <span class="m-badge muted">выключен</span>
+                    {% endif %}
+                </td>
+                <td class="muted" style="font-size: 12px;">{{ (f.updated_at or '—')[:16] }}</td>
+                <td>
+                    <form method="POST" action="/_metrics/settings/flag/{{ f.id }}/toggle" style="display: inline;">
+                        <button type="submit" style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 6px; color: var(--m-text); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;">
+                            {% if f.enabled %}Выключить{% else %}Включить{% endif %}
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty">Флагов нет.</div>
+    {% endif %}
+</div>
+
+<!-- Content Guard + БД (информация) -->
+<div class="m-section">
+    <div class="m-section-title">Content Guard (информация)</div>
+    {% if cg_loaded %}
+    <div class="m-grid m-grid-4" style="margin-top: 12px;">
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">BLOCK</div>
+            <div class="m-card-value danger" style="font-size: 22px;">{{ cg_stats.block_categories }}</div>
+        </div>
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">FLAG</div>
+            <div class="m-card-value warning" style="font-size: 22px;">{{ cg_stats.flag_categories }}</div>
+        </div>
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">Контекстов</div>
+            <div class="m-card-value info" style="font-size: 22px;">{{ cg_stats.contexts }}</div>
+        </div>
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">Слов/паттернов</div>
+            <div class="m-card-value" style="font-size: 22px;">{{ cg_stats.total_words }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="m-section">
+    <div class="m-section-title">База данных</div>
+    <div class="m-grid m-grid-4" style="margin-top: 12px;">
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">Размер</div>
+            <div class="m-card-value" style="font-size: 20px;">{{ "%.0f"|format(db_size / 1024) }} КБ</div>
+        </div>
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">Юзеров</div>
+            <div class="m-card-value success" style="font-size: 20px;">{{ stats.users }}</div>
+        </div>
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">Целей</div>
+            <div class="m-card-value info" style="font-size: 20px;">{{ stats.goals }}</div>
+        </div>
+        <div class="m-card" style="padding: 14px;">
+            <div class="m-card-label">Донатов</div>
+            <div class="m-card-value" style="font-size: 20px;">{{ stats.donations }}</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

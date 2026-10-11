@@ -115,6 +115,40 @@ def admin_required(f):
     return wrap
 
 
+def get_setting(db, key, default=None):
+    """Получить значение настройки."""
+    row = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row['value'] if row else default
+
+
+def get_setting_int(db, key, default=0):
+    """Получить числовое значение настройки."""
+    val = get_setting(db, key, str(default))
+    try:
+        return int(val)
+    except (ValueError, TypeError):
+        return default
+
+
+def get_setting_bool(db, key, default=False):
+    """Получить булево значение настройки."""
+    val = get_setting(db, key, '1' if default else '0')
+    return val == '1'
+
+
+def set_setting(db, key, value, admin_id=None):
+    """Сохранить значение настройки."""
+    db.execute(
+        "UPDATE settings SET value = ?, updated_at = datetime('now') WHERE key = ?",
+        (str(value), key)
+    )
+    if admin_id:
+        db.execute(
+            "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'update_setting', 'setting', ?, ?)",
+            (admin_id, key, '{"value": "' + str(value).replace('"', '\\"') + '"}')
+        )
+
+
 def get_sidebar_counts(db):
     """Единые счётчики для sidebar админки. Используются во всех модулях."""
     return {
@@ -3010,6 +3044,129 @@ def metrics_logs():
         source=source,
         search=search,
     )
+
+
+@app.route('/_metrics/settings')
+@admin_required
+def metrics_settings():
+    """Настройки системы."""
+    user = get_current_user()
+    db = get_db()
+    
+    # Feature flags
+    flags = db.execute("SELECT * FROM feature_flags ORDER BY flag_key").fetchall()
+    
+    # Content Guard info
+    import os
+    import json
+    cg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'content_guard.json')
+    cg_stats = {'block_categories': 0, 'flag_categories': 0, 'contexts': 0, 'total_words': 0}
+    cg_loaded = False
+    if os.path.exists(cg_path):
+        try:
+            with open(cg_path, 'r', encoding='utf-8') as f:
+                cg = json.load(f)
+            cg_stats['block_categories'] = len(cg.get('block', {}))
+            cg_stats['flag_categories'] = len(cg.get('flag', {}))
+            cg_stats['contexts'] = len(cg.get('contexts', {}))
+            for cat in cg.get('block', {}).values():
+                cg_stats['total_words'] += len(cat.get('words', [])) + len(cat.get('patterns', []))
+            for cat in cg.get('flag', {}).values():
+                cg_stats['total_words'] += len(cat.get('words', [])) + len(cat.get('patterns', []))
+            cg_loaded = True
+        except Exception as e:
+            cg_loaded = False
+    
+    # Системная информация
+    import sqlite3
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'pomogay.db')
+    db_size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
+    
+    # Счётчики записей в основных таблицах
+    stats = {
+        'users': db.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+        'goals': db.execute("SELECT COUNT(*) FROM goals").fetchone()[0],
+        'donations': db.execute("SELECT COUNT(*) FROM donations").fetchone()[0],
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log").fetchone()[0],
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs").fetchone()[0],
+    }
+    
+    # Настройки из БД
+    settings_rows = db.execute("SELECT * FROM settings ORDER BY key").fetchall()
+    settings = {}
+    for r in settings_rows:
+        settings[r['key']] = {'value': r['value'], 'description': r['description'], 'updated_at': r['updated_at']}
+    
+    counts = get_sidebar_counts(db)
+    db.close()
+    
+    return render_template('_metrics/settings.html',
+        user=user,
+        active='settings',
+        counts=counts,
+        flags=flags,
+        cg_stats=cg_stats,
+        cg_loaded=cg_loaded,
+        db_size=db_size,
+        stats=stats,
+        settings=settings,
+    )
+
+
+@app.route('/_metrics/settings/save', methods=['POST'])
+@admin_required
+def metrics_settings_save():
+    """Сохранить настройки из формы."""
+    admin = get_current_user()
+    db = get_db()
+    
+    # Все ключи из settings
+    rows = db.execute("SELECT key FROM settings").fetchall()
+    updated = 0
+    for r in rows:
+        key = r['key']
+        # Boolean через чекбоксы — если не пришёл, значит выключено
+        if key in ('notifications_enabled', 'reminders_enabled', 'registration_open', 'goals_open'):
+            new_value = '1' if request.form.get(key) == '1' else '0'
+        else:
+            new_value = request.form.get(key, '').strip()
+            if not new_value:
+                continue
+        
+        old_val = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()['value']
+        if old_val != new_value:
+            set_setting(db, key, new_value, admin['id'])
+            updated += 1
+    
+    db.commit()
+    db.close()
+    flash(f'Сохранено изменений: {updated}', 'success')
+    return redirect(url_for('metrics_settings'))
+
+
+@app.route('/_metrics/settings/flag/<int:flag_id>/toggle', methods=['POST'])
+@admin_required
+def metrics_settings_toggle_flag(flag_id):
+    """Переключить feature flag."""
+    admin = get_current_user()
+    db = get_db()
+    flag = db.execute("SELECT * FROM feature_flags WHERE id = ?", (flag_id,)).fetchone()
+    if not flag:
+        db.close()
+        flash('Флаг не найден.', 'danger')
+        return redirect(url_for('metrics_settings'))
+    
+    new_value = 0 if flag['enabled'] else 1
+    db.execute("UPDATE feature_flags SET enabled = ?, updated_at = datetime('now') WHERE id = ?", (new_value, flag_id))
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'toggle_flag', 'feature_flag', ?, ?)",
+        (admin['id'], str(flag_id), '{"key": "' + flag['flag_key'] + '", "new": ' + str(new_value) + '}')
+    )
+    db.commit()
+    db.close()
+    flash(f'Флаг {flag["flag_key"]} переключён.', 'success')
+    return redirect(url_for('metrics_settings'))
 
 
 @app.route('/health')

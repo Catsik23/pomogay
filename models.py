@@ -165,8 +165,37 @@ def init_db():
         FOREIGN KEY (dialog_id) REFERENCES admin_dialogs(id)
     )""")
     
+    # ============================================
+    # Таблица настроек (key-value)
+    # ============================================
+    c.execute("""CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        description TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
+    )""")
+    
+    # Дефолтные значения
+    defaults = [
+        ('max_goals_per_user', '3', 'Максимум активных целей на пользователя'),
+        ('max_goals_per_hour', '3', 'Максимум новых целей в час (антифрод)'),
+        ('max_reports_per_day', '5', 'Максимум жалоб в сутки от одного пользователя'),
+        ('max_phone_reveals_per_hour', '3', 'Максимум показов номера в час с одного IP'),
+        ('auto_approve_amount', '5000', 'Автоодобрение целей до этой суммы (₽)'),
+        ('auto_hide_reports', '3', 'Автоскрытие цели после N жалоб'),
+        ('notifications_enabled', '1', 'Отправлять уведомления'),
+        ('reminders_enabled', '1', 'Отправлять напоминания'),
+        ('registration_open', '1', 'Открыта регистрация'),
+        ('goals_open', '1', 'Открыто создание целей'),
+    ]
+    for key, value, desc in defaults:
+        c.execute(
+            "INSERT OR IGNORE INTO settings (key, value, description) VALUES (?, ?, ?)",
+            (key, value, desc)
+        )
+    
     conn.commit()
     conn.close()
     # Миграция после создания таблиц
     migrate_db()
-    print("База данных готова. Все 16 таблиц созданы.")
+    print("База данных готова. Все 17 таблиц созданы.")
