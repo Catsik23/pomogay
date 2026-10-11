@@ -1,0 +1,73 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Логи{% endblock %}
+{% block page_title %}Логи событий{% endblock %}
+{% block page_subtitle %}{{ events|length }} событий{% endblock %}
+
+{% block content %}
+
+<!-- Фильтры -->
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+            <a href="?period=1h&source={{ source }}" class="m-badge {% if period == '1h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">1 час</a>
+            <a href="?period=24h&source={{ source }}" class="m-badge {% if period == '24h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">24 часа</a>
+            <a href="?period=7d&source={{ source }}" class="m-badge {% if period == '7d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">7 дней</a>
+            <a href="?period=30d&source={{ source }}" class="m-badge {% if period == '30d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">30 дней</a>
+            <a href="?period=all&source={{ source }}" class="m-badge {% if period == 'all' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Всё</a>
+        </div>
+        
+        <select name="source" onchange="this.form.submit()" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
+            <option value="all" {% if source == 'all' %}selected{% endif %}>Все источники</option>
+            <option value="actions" {% if source == 'actions' %}selected{% endif %}>Действия</option>
+            <option value="flags" {% if source == 'flags' %}selected{% endif %}>Флаги CG</option>
+            <option value="donations" {% if source == 'donations' %}selected{% endif %}>Донаты</option>
+            <option value="goals" {% if source == 'goals' %}selected{% endif %}>Цели</option>
+            <option value="reports" {% if source == 'reports' %}selected{% endif %}>Жалобы</option>
+        </select>
+    </form>
+</div>
+
+<!-- Лента -->
+<div class="m-section">
+    {% if events %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th style="width: 130px;">Время</th>
+                <th style="width: 140px;">Пользователь</th>
+                <th>Событие</th>
+                <th>Детали</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in events %}
+            <tr>
+                <td class="muted" style="white-space: nowrap; font-size: 12px;">{{ e.time[:16] }}</td>
+                <td>
+                    {% if e.user_id %}
+                        <a href="/_metrics/users/{{ e.user_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-size: 12px;">
+                            {{ e.user_label }}
+                        </a>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span style="margin-right: 6px;">{{ e.icon }}</span>
+                    <span style="font-size: 13px; font-weight: 500;">{{ e.label }}</span>
+                </td>
+                <td class="muted" style="font-size: 12px; max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ e.data }}">{{ e.data }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty" style="padding: 60px 20px;">
+        <div style="font-size: 40px; margin-bottom: 12px;">📭</div>
+        <div style="font-size: 15px;">Нет событий за этот период.</div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

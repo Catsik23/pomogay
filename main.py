@@ -114,6 +114,28 @@ def admin_required(f):
         return f(*args, **kwargs)
     return wrap
 
+
+def get_sidebar_counts(db):
+    """Единые счётчики для sidebar админки. Используются во всех модулях."""
+    return {
+        'flags': db.execute(
+            "SELECT COUNT(*) FROM content_guard_log WHERE created_at > datetime('now', '-24 hours')"
+        ).fetchone()[0],
+        'reports': db.execute(
+            "SELECT COUNT(*) FROM reports WHERE created_at > datetime('now', '-24 hours')"
+        ).fetchone()[0],
+        'moderation': db.execute(
+            "SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'"
+        ).fetchone()[0],
+        'suspicious': db.execute(
+            "SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'"
+        ).fetchone()[0],
+        'dialogs': db.execute(
+            "SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0"
+        ).fetchone()[0],
+    }
+
+
 def validate_phone(phone):
     phone = phone.strip()
     # Убираем всё, кроме цифр
@@ -1762,13 +1784,7 @@ def metrics_dashboard():
     ).fetchall()
     
     # Для sidebar — счётчики
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = ?", (today,)).fetchone()[0],
-        'reports': reports_new,
-        'moderation': moderation_pending,
-        'suspicious': suspicious_new,
-        'dialogs': dialogs_open,
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -1832,13 +1848,7 @@ def metrics_flags():
         'flagged': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE status = 'flagged'").fetchone()[0],
     }
     
-    counts = {
-        'flags': counts_status['blocked'] + counts_status['flagged'],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -1897,13 +1907,7 @@ def metrics_users():
     counts_flagged = db.execute("SELECT COUNT(DISTINCT user_id) FROM content_guard_log WHERE user_id IS NOT NULL").fetchone()[0]
     counts_active = db.execute("SELECT COUNT(DISTINCT donor_id) FROM donations WHERE donor_id IS NOT NULL").fetchone()[0]
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -1995,13 +1999,7 @@ def metrics_user_detail(user_id):
         (user_id,)
     ).fetchone()[0]
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2109,13 +2107,7 @@ def metrics_goals():
     counts_completed = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'completed'").fetchone()[0]
     counts_hidden = db.execute("SELECT COUNT(*) FROM goals WHERE status = 'hidden'").fetchone()[0]
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2196,13 +2188,7 @@ def metrics_goal_detail(goal_id):
     elif g['photo_url']:
         photos = [g['photo_url']]
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2308,13 +2294,7 @@ def metrics_reports():
         )
     """).fetchone()[0]
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': counts_today,
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2366,13 +2346,7 @@ def metrics_dialogs():
     counts_closed = db.execute("SELECT COUNT(*) FROM admin_dialogs WHERE status = 'closed'").fetchone()[0]
     counts_unread = db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0]
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': counts_unread,
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2423,13 +2397,7 @@ def metrics_dialog_detail(dialog_id):
     )
     db.commit()
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2542,13 +2510,7 @@ def metrics_dialog_new():
     if user_id:
         u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     db.close()
     
     return render_template('_metrics/dialog_new.html',
@@ -2720,13 +2682,7 @@ def metrics_moderation():
         ORDER BY g.moderated_at DESC LIMIT 20
     """).fetchall()
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': len(pending),
-        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2838,13 +2794,7 @@ def metrics_suspicious():
     # Типы
     types = db.execute("SELECT DISTINCT activity_type FROM suspicious_activity ORDER BY activity_type").fetchall()
     
-    counts = {
-        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
-        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
-        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
-        'suspicious': counts_new,
-        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
-    }
+    counts = get_sidebar_counts(db)
     
     db.close()
     
@@ -2900,6 +2850,166 @@ def metrics_suspicious_review(activity_id):
     db.close()
     flash('Взято в работу.', 'info')
     return redirect(url_for('metrics_suspicious'))
+
+
+@app.route('/_metrics/logs')
+@admin_required
+def metrics_logs():
+    """Объединённая лента событий."""
+    user = get_current_user()
+    db = get_db()
+    
+    # Фильтры
+    period = request.args.get('period', '24h')  # 1h, 24h, 7d, 30d, all
+    source = request.args.get('source', 'all')  # all, actions, flags, donations, goals, reports
+    search = request.args.get('search', '').strip()
+    flagged = request.args.get('flagged', '0') == '1'
+    
+    period_map = {
+        '1h': '-1 hour',
+        '24h': '-24 hours',
+        '7d': '-7 days',
+        '30d': '-30 days',
+    }
+    
+    time_filter = period_map.get(period)
+    
+    events = []
+    
+    # Словарь человеческих названий событий
+    event_labels = {
+        'login_attempt': ('🔐', 'Вход в аккаунт'),
+        'registration': ('🎉', 'Регистрация'),
+        'transfer_confirmed_donor': ('💸', 'Донатор сообщил о переводе'),
+        'transfer_confirmed_recipient': ('✅', 'Получатель подтвердил перевод'),
+        'goal_created': ('🎯', 'Создание цели'),
+        'goal_approved': ('✓', 'Цель одобрена'),
+        'goal_rejected': ('✗', 'Цель отклонена'),
+        'report_created': ('⚠️', 'Жалоба на цель'),
+        'dialog_message': ('💬', 'Сообщение в диалоге'),
+    }
+    
+    # 1. Analytics events (входы, действия)
+    if source in ('all', 'actions'):
+        q = "SELECT id, user_id, event_type as type, event_data as data, created_at FROM analytics_events WHERE 1=1"
+        params = []
+        if time_filter:
+            q += " AND created_at > datetime('now', ?)"
+            params.append(time_filter)
+        q += " ORDER BY id DESC LIMIT 100"
+        for r in db.execute(q, params).fetchall():
+            icon, label = event_labels.get(r['type'], ('🔵', r['type']))
+            events.append({
+                'time': r['created_at'],
+                'source': 'analytics',
+                'icon': icon,
+                'label': label,
+                'user_id': r['user_id'],
+                'data': r['data'],
+            })
+    
+    # 2. Content Guard flags
+    if source in ('all', 'flags'):
+        q = "SELECT id, user_id, found_word, category, status, original_text, created_at FROM content_guard_log WHERE 1=1"
+        params = []
+        if time_filter:
+            q += " AND created_at > datetime('now', ?)"
+            params.append(time_filter)
+        q += " ORDER BY id DESC LIMIT 100"
+        for r in db.execute(q, params).fetchall():
+            events.append({
+                'time': r['created_at'],
+                'source': 'flag',
+                'icon': '🚩',
+                'label': f"FLAG: {r['found_word']} ({r['category']})",
+                'user_id': r['user_id'],
+                'data': r['original_text'][:100] if r['original_text'] else '',
+            })
+    
+    # 3. Донаты
+    if source in ('all', 'donations'):
+        q = "SELECT id, donor_id as user_id, amount_reported, status, donor_confirmed_at as created_at FROM donations WHERE 1=1"
+        params = []
+        if time_filter:
+            q += " AND donor_confirmed_at > datetime('now', ?)"
+            params.append(time_filter)
+        q += " ORDER BY id DESC LIMIT 100"
+        for r in db.execute(q, params).fetchall():
+            events.append({
+                'time': r['created_at'],
+                'source': 'donation',
+                'icon': '💰',
+                'label': f"Донат {r['amount_reported']:.0f} ₽",
+                'user_id': r['user_id'],
+                'data': f"status: {r['status']}",
+            })
+    
+    # 4. Создание целей
+    if source in ('all', 'goals'):
+        q = "SELECT id, user_id, title, type, status, created_at FROM goals WHERE 1=1"
+        params = []
+        if time_filter:
+            q += " AND created_at > datetime('now', ?)"
+            params.append(time_filter)
+        q += " ORDER BY id DESC LIMIT 100"
+        for r in db.execute(q, params).fetchall():
+            events.append({
+                'time': r['created_at'],
+                'source': 'goal',
+                'icon': '🎯',
+                'label': f"Цель: {r['title'][:60]}",
+                'user_id': r['user_id'],
+                'data': f"type: {r['type']}, status: {r['status']}",
+            })
+    
+    # 5. Жалобы
+    if source in ('all', 'reports'):
+        q = "SELECT id, reporter_id as user_id, goal_id, reason, created_at FROM reports WHERE 1=1"
+        params = []
+        if time_filter:
+            q += " AND created_at > datetime('now', ?)"
+            params.append(time_filter)
+        q += " ORDER BY id DESC LIMIT 100"
+        for r in db.execute(q, params).fetchall():
+            events.append({
+                'time': r['created_at'],
+                'source': 'report',
+                'icon': '⚠️',
+                'label': f"Жалоба на цель #{r['goal_id']}",
+                'user_id': r['user_id'],
+                'data': r['reason'],
+            })
+    
+    # Сортируем по времени
+    events.sort(key=lambda x: x['time'], reverse=True)
+    events = events[:300]
+    
+    # Обогащаем данными юзера
+    user_ids = set(e['user_id'] for e in events if e['user_id'])
+    users_map = {}
+    if user_ids:
+        placeholders = ','.join('?' * len(user_ids))
+        rows = db.execute(f"SELECT id, phone, name FROM users WHERE id IN ({placeholders})", list(user_ids)).fetchall()
+        for r in rows:
+            users_map[r['id']] = {'phone': r['phone'], 'name': r['name']}
+    
+    for e in events:
+        u = users_map.get(e['user_id'])
+        e['user_label'] = (u['name'] or u['phone']) if u else '—'
+    
+    counts = get_sidebar_counts(db)
+    
+    db.close()
+    
+    return render_template('_metrics/logs.html',
+        user=user,
+        active='logs',
+        counts=counts,
+        events=events,
+        period=period,
+        source=source,
+        search=search,
+    )
 
 
 @app.route('/health')
