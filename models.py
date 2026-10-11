@@ -56,6 +56,19 @@ def migrate_db():
             cur.execute("ALTER TABLE donations ADD COLUMN ip_address TEXT")
         except sqlite3.OperationalError:
             pass
+    # goals: moderation_comment, moderated_at, moderated_by
+    cur.execute("PRAGMA table_info(goals)")
+    goal_cols = [row[1] for row in cur.fetchall()]
+    for col_name, col_def in {
+        'moderation_comment': 'TEXT',
+        'moderated_at': 'TEXT',
+        'moderated_by': 'INTEGER',
+    }.items():
+        if col_name not in goal_cols:
+            try:
+                cur.execute(f"ALTER TABLE goals ADD COLUMN {col_name} {col_def}")
+            except sqlite3.OperationalError:
+                pass
     # photos в goals — JSON-массив путей к фото
     cur.execute("PRAGMA table_info(goals)")
     goal_cols = [row[1] for row in cur.fetchall()]

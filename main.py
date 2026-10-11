@@ -2673,6 +2673,235 @@ def api_dialogs_check():
     })
 
 
+@app.route('/_metrics/moderation')
+@admin_required
+def metrics_moderation():
+    """Очередь модерации — pending цели."""
+    user = get_current_user()
+    db = get_db()
+    
+    pending_rows = db.execute("""
+        SELECT g.*, 
+            COALESCE(u.name, u.phone) as author_name,
+            u.phone as author_phone,
+            u.id as author_id,
+            u.trust_score as author_trust,
+            u.identity_verified as author_verified,
+            (SELECT COUNT(*) FROM content_guard_log WHERE user_id = g.user_id) as author_flags
+        FROM goals g
+        JOIN users u ON g.user_id = u.id
+        WHERE g.moderation_status = 'pending'
+        ORDER BY g.id DESC
+    """).fetchall()
+    
+    # Парсим photos в Python
+    import json as _json
+    pending = []
+    for row in pending_rows:
+        d = dict(row)
+        photos = []
+        if d.get('photos'):
+            try:
+                photos = _json.loads(d['photos'])
+            except:
+                pass
+        if not photos and d.get('photo_url'):
+            photos = [d['photo_url']]
+        d['photos_list'] = photos
+        pending.append(d)
+    
+    # История модерации (последние 20)
+    history = db.execute("""
+        SELECT g.id, g.title, g.moderation_status, g.moderation_comment, g.moderated_at,
+               COALESCE(u.name, u.phone) as author_name
+        FROM goals g
+        JOIN users u ON g.user_id = u.id
+        WHERE g.moderation_status IN ('approved', 'rejected')
+        ORDER BY g.moderated_at DESC LIMIT 20
+    """).fetchall()
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': len(pending),
+        'suspicious': db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0],
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
+    }
+    
+    db.close()
+    
+    return render_template('_metrics/moderation.html',
+        user=user,
+        active='moderation',
+        counts=counts,
+        pending=pending,
+        history=history,
+    )
+
+
+@app.route('/_metrics/moderation/<int:goal_id>/approve', methods=['POST'])
+@admin_required
+def metrics_moderation_approve(goal_id):
+    """Одобрить цель."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute(
+        "UPDATE goals SET moderation_status = 'approved', moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
+        (admin['id'], goal_id)
+    )
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'approve_goal', 'goal', ?, NULL)",
+        (admin['id'], str(goal_id))
+    )
+    # Уведомление автору
+    goal = db.execute("SELECT user_id, title FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if goal:
+        db.execute(
+            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_approved', 'Цель одобрена', 'Цель одобрена и появится в ленте.', '/goal/" + str(goal_id) + "')",
+            (goal['user_id'],)
+        )
+    db.commit()
+    db.close()
+    flash('Цель одобрена.', 'success')
+    return redirect(url_for('metrics_moderation'))
+
+
+@app.route('/_metrics/moderation/<int:goal_id>/reject', methods=['POST'])
+@admin_required
+def metrics_moderation_reject(goal_id):
+    """Отклонить цель с комментарием."""
+    admin = get_current_user()
+    comment = request.form.get('comment', '').strip()
+    if not comment:
+        flash('Укажите причину отклонения.', 'danger')
+        return redirect(url_for('metrics_moderation'))
+    
+    db = get_db()
+    db.execute(
+        "UPDATE goals SET moderation_status = 'rejected', moderation_comment = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
+        (comment, admin['id'], goal_id)
+    )
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'reject_goal', 'goal', ?, ?)",
+        (admin['id'], str(goal_id), '{"comment": "' + comment.replace('"', '\\"') + '"}')
+    )
+    # Уведомление автору
+    goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if goal:
+        db.execute(
+            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_rejected', 'Цель отклонена', ?, '/goal/" + str(goal_id) + "')",
+            (goal['user_id'], 'Причина: ' + comment)
+        )
+    db.commit()
+    db.close()
+    flash('Цель отклонена.', 'success')
+    return redirect(url_for('metrics_moderation'))
+
+
+@app.route('/_metrics/suspicious')
+@admin_required
+def metrics_suspicious():
+    """Список подозрительной активности."""
+    user = get_current_user()
+    db = get_db()
+    
+    status_filter = request.args.get('status', 'new')
+    type_filter = request.args.get('type', 'all')
+    
+    query = """
+        SELECT s.*, 
+            COALESCE(u.name, u.phone) as user_name,
+            u.phone as user_phone,
+            u.is_banned as user_banned
+        FROM suspicious_activity s
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if status_filter != 'all':
+        query += " AND s.status = ?"
+        params.append(status_filter)
+    
+    if type_filter != 'all':
+        query += " AND s.activity_type = ?"
+        params.append(type_filter)
+    
+    query += " ORDER BY s.id DESC LIMIT 200"
+    activities = db.execute(query, params).fetchall()
+    
+    # Счётчики
+    counts_new = db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0]
+    counts_reviewed = db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'reviewed'").fetchone()[0]
+    counts_resolved = db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'resolved'").fetchone()[0]
+    
+    # Типы
+    types = db.execute("SELECT DISTINCT activity_type FROM suspicious_activity ORDER BY activity_type").fetchall()
+    
+    counts = {
+        'flags': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = date('now')").fetchone()[0],
+        'reports': db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0],
+        'moderation': db.execute("SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'").fetchone()[0],
+        'suspicious': counts_new,
+        'dialogs': db.execute("SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0").fetchone()[0],
+    }
+    
+    db.close()
+    
+    # Человекопонятные названия
+    type_names = {
+        'mass_goals': 'Много целей за 24ч',
+        'mass_registration': 'Массовые регистрации с IP',
+        'many_flags': 'Много флагов Content Guard',
+        'no_confirm_48h': 'Не подтверждает донаты 48ч+',
+        'many_reports': 'Много жалоб на юзера',
+    }
+    
+    return render_template('_metrics/suspicious.html',
+        user=user,
+        active='suspicious',
+        counts=counts,
+        activities=activities,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        types=[t['activity_type'] for t in types],
+        type_names=type_names,
+        counts_new=counts_new,
+        counts_reviewed=counts_reviewed,
+        counts_resolved=counts_resolved,
+    )
+
+
+@app.route('/_metrics/suspicious/<int:activity_id>/resolve', methods=['POST'])
+@admin_required
+def metrics_suspicious_resolve(activity_id):
+    """Пометить как resolved (ложное или обработанное)."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute("UPDATE suspicious_activity SET status = 'resolved' WHERE id = ?", (activity_id,))
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resolve_suspicious', 'suspicious', ?, NULL)",
+        (admin['id'], str(activity_id))
+    )
+    db.commit()
+    db.close()
+    flash('Помечено как обработанное.', 'success')
+    return redirect(url_for('metrics_suspicious'))
+
+
+@app.route('/_metrics/suspicious/<int:activity_id>/review', methods=['POST'])
+@admin_required
+def metrics_suspicious_review(activity_id):
+    """Пометить как reviewed (взято в работу)."""
+    admin = get_current_user()
+    db = get_db()
+    db.execute("UPDATE suspicious_activity SET status = 'reviewed' WHERE id = ?", (activity_id,))
+    db.commit()
+    db.close()
+    flash('Взято в работу.', 'info')
+    return redirect(url_for('metrics_suspicious'))
+
+
 @app.route('/health')
 def health():
     return 'OK'

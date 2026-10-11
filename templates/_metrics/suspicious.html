@@ -1,0 +1,99 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Подозрительная активность{% endblock %}
+{% block page_title %}Подозрительная активность{% endblock %}
+{% block page_subtitle %}{{ counts_new }} новых · {{ counts_reviewed }} в работе · {{ counts_resolved }} обработано{% endblock %}
+
+{% block content %}
+
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+            <a href="?status=new" class="m-badge {% if status_filter == 'new' %}danger{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Новые ({{ counts_new }})</a>
+            <a href="?status=reviewed" class="m-badge {% if status_filter == 'reviewed' %}warning{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">В работе ({{ counts_reviewed }})</a>
+            <a href="?status=resolved" class="m-badge {% if status_filter == 'resolved' %}success{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Обработано ({{ counts_resolved }})</a>
+            <a href="?status=all" class="m-badge {% if status_filter == 'all' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Все</a>
+        </div>
+        
+        <select name="type" onchange="this.form.submit()" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
+            <option value="all">Все типы</option>
+            {% for t in types %}
+            <option value="{{ t }}" {% if type_filter == t %}selected{% endif %}>{{ type_names.get(t, t) }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="m-section">
+    {% if activities %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>Когда</th>
+                <th>Тип</th>
+                <th>Кто</th>
+                <th>Детали</th>
+                <th>Статус</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in activities %}
+            <tr>
+                <td class="muted" style="white-space: nowrap;">{{ a.created_at[:16] }}</td>
+                <td>
+                    <span class="m-badge {% if a.activity_type == 'no_confirm_48h' %}warning{% elif a.activity_type == 'mass_registration' %}danger{% elif a.activity_type == 'many_flags' %}danger{% else %}info{% endif %}">
+                        {{ type_names.get(a.activity_type, a.activity_type) }}
+                    </span>
+                </td>
+                <td>
+                    {% if a.user_id %}
+                        <a href="/_metrics/users/{{ a.user_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-weight: 600;">
+                            {{ a.user_name or ('ID ' + a.user_id|string) }}
+                        </a>
+                        {% if a.user_banned %}<span class="m-badge danger" style="margin-left: 4px;">забанен</span>{% endif %}
+                        <div class="muted" style="font-size: 11px;">{{ a.user_phone or '' }}</div>
+                    {% elif a.ip_address %}
+                        <code style="color: var(--m-warning); font-size: 12px;">{{ a.ip_address }}</code>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td class="muted" style="font-size: 12px; max-width: 300px;">
+                    {% if a.details %}{{ a.details[:100] }}{% if a.details|length > 100 %}...{% endif %}{% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if a.status == 'new' %}<span class="m-badge danger">новое</span>
+                    {% elif a.status == 'reviewed' %}<span class="m-badge warning">в работе</span>
+                    {% else %}<span class="m-badge success">обработано</span>{% endif %}
+                </td>
+                <td style="white-space: nowrap;">
+                    {% if a.status == 'new' %}
+                    <form method="POST" action="/_metrics/suspicious/{{ a.id }}/review" style="display: inline;">
+                        <button type="submit" style="padding: 4px 10px; background: rgba(229,167,60,0.15); border: 1px solid var(--m-warning); border-radius: 6px; color: var(--m-warning); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;">В работу</button>
+                    </form>
+                    {% endif %}
+                    {% if a.status != 'resolved' %}
+                    <form method="POST" action="/_metrics/suspicious/{{ a.id }}/resolve" style="display: inline;">
+                        <button type="submit" style="padding: 4px 10px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 6px; color: var(--m-success); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;">Закрыть</button>
+                    </form>
+                    {% endif %}
+                    {% if a.user_id and not a.user_banned %}
+                    <form method="POST" action="/_metrics/users/{{ a.user_id }}/ban" style="display: inline;">
+                        <button type="submit" onclick="return confirm('Забанить?')" style="padding: 4px 10px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 6px; color: var(--m-danger); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;">Бан</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty" style="padding: 60px 20px;">
+        <div style="font-size: 40px; margin-bottom: 12px;">✓</div>
+        <div style="font-size: 15px;">Все чисто. Аномалий нет.</div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
