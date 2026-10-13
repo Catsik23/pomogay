@@ -197,6 +197,30 @@ def init_db():
             (key, value, desc)
         )
     
+    # ============================================
+    # Журнал событий платформы (platform_events)
+    # ============================================
+    c.execute("""CREATE TABLE IF NOT EXISTS platform_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT NOT NULL,
+        event_version INTEGER DEFAULT 1,
+        actor_user_id INTEGER NULL,
+        target_user_id INTEGER NULL,
+        goal_id INTEGER NULL,
+        donation_id INTEGER NULL,
+        report_id INTEGER NULL,
+        source TEXT NOT NULL,
+        severity TEXT DEFAULT 'info',
+        payload TEXT NULL,
+        correlation_id TEXT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+    )""")
+    
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pe_time ON platform_events(created_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pe_type_time ON platform_events(event_type, created_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pe_actor ON platform_events(actor_user_id, created_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_pe_goal ON platform_events(goal_id, created_at DESC)")
+    
     conn.commit()
     conn.close()
     # Миграция после создания таблиц

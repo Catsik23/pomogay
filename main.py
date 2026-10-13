@@ -170,6 +170,56 @@ def check_csrf():
     return bool(token) and bool(expected) and _secrets.compare_digest(token, expected)
 
 
+def record_event(event_type, db=None, *, actor_user_id=None, target_user_id=None,
+                 goal_id=None, donation_id=None, report_id=None,
+                 source='user', severity='info', payload=None, correlation_id=None):
+    """
+    Единая точка записи событий платформы.
+    Если db не передан — открывает своё соединение.
+    payload — dict, сериализуется в JSON.
+    """
+    import json as _json
+    
+    own_db = False
+    if db is None:
+        db = get_db()
+        own_db = True
+    
+    try:
+        payload_json = None
+        if payload is not None:
+            try:
+                payload_json = _json.dumps(payload, ensure_ascii=False)
+            except (TypeError, ValueError):
+                payload_json = _json.dumps({'error': 'payload serialization failed'})
+        
+        db.execute("""
+            INSERT INTO platform_events 
+            (event_type, actor_user_id, target_user_id, goal_id, donation_id, report_id,
+             source, severity, payload, correlation_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            event_type,
+            actor_user_id,
+            target_user_id,
+            goal_id,
+            donation_id,
+            report_id,
+            source,
+            severity,
+            payload_json,
+            correlation_id,
+        ))
+        
+        if own_db:
+            db.commit()
+    except Exception as e:
+        print(f'[record_event] Ошибка записи {event_type}: {e}')
+    finally:
+        if own_db:
+            db.close()
+
+
 def get_sidebar_counts(db):
     """Единые счётчики для sidebar админки. Используются во всех модулях."""
     return {
@@ -187,6 +237,9 @@ def get_sidebar_counts(db):
         ).fetchone()[0],
         'dialogs': db.execute(
             "SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0"
+        ).fetchone()[0],
+        'events': db.execute(
+            "SELECT COUNT(*) FROM platform_events WHERE created_at > datetime('now', '-24 hours')"
         ).fetchone()[0],
     }
 
@@ -2330,6 +2383,56 @@ def metrics_goal_detail(goal_id):
         ORDER BY id DESC LIMIT 20
     """, (g['user_id'],)).fetchall()
     
+    # История модерации — из admin_actions (решения админов)
+    moderation_history_rows = db.execute("""
+        SELECT aa.*, COALESCE(u.name, u.phone) as admin_name
+        FROM admin_actions aa
+        LEFT JOIN users u ON aa.admin_id = u.id
+        WHERE aa.target_type = 'goal' AND aa.target_id = ?
+        ORDER BY aa.id DESC
+    """, (str(goal_id),)).fetchall()
+    
+    # История событий — из platform_events (действия автора и системы)
+    platform_events_rows = db.execute("""
+        SELECT pe.*, COALESCE(u.name, u.phone) as actor_name
+        FROM platform_events pe
+        LEFT JOIN users u ON pe.actor_user_id = u.id
+        WHERE pe.goal_id = ? AND pe.event_type IN ('goal_resubmitted', 'goal_created', 'goal_published')
+        ORDER BY pe.id DESC
+    """, (goal_id,)).fetchall()
+    
+    import json as _json
+    moderation_history = []
+    
+    for h in moderation_history_rows:
+        hd = dict(h)
+        det = {}
+        if hd.get('details'):
+            try:
+                det = _json.loads(hd['details'])
+            except:
+                det = {}
+        hd['parsed_categories'] = det.get('categories', [])
+        hd['parsed_comment'] = det.get('comment', '')
+        hd['event_kind'] = 'admin_action'
+        moderation_history.append(hd)
+    
+    for pe in platform_events_rows:
+        pd = dict(pe)
+        det = {}
+        if pd.get('payload'):
+            try:
+                det = _json.loads(pd['payload'])
+            except:
+                det = {}
+        pd['parsed_categories'] = []
+        pd['parsed_comment'] = ''
+        pd['event_kind'] = 'platform_event'
+        moderation_history.append(pd)
+    
+    # Сортируем по дате — новые сверху
+    moderation_history.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    
     # Парсим фото
     photos = []
     if g['photos']:
@@ -2354,6 +2457,7 @@ def metrics_goal_detail(goal_id):
         reports=reports,
         flags=flags,
         photos=photos,
+        moderation_history=moderation_history,
     )
 
 
@@ -3384,71 +3488,6 @@ def metrics_settings_toggle_flag(flag_id):
     return redirect(url_for('metrics_settings'))
 
 
-@app.route('/api/goal/<int:goal_id>/resubmit', methods=['POST'])
-@login_required
-def api_goal_resubmit(goal_id):
-    """Повторная отправка цели на модерацию после доработки."""
-    from flask import jsonify
-    user = get_current_user()
-    db = get_db()
-    
-    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
-    if not goal:
-        db.close()
-        return jsonify({'ok': False, 'error': 'Цель не найдена'}), 404
-    
-    if goal['user_id'] != user['id']:
-        db.close()
-        return jsonify({'ok': False, 'error': 'Только автор может отправить повторно'}), 403
-    
-    if goal['status'] != 'failed':
-        db.close()
-        return jsonify({'ok': False, 'error': 'Цель не в статусе отклонённой'}), 400
-    
-    if goal['moderation_status'] == 'pending':
-        db.close()
-        return jsonify({'ok': False, 'error': 'Цель уже на модерации'}), 400
-    
-    new_count = (goal['resubmission_count'] or 0) + 1
-    
-    db.execute("""
-        UPDATE goals 
-        SET status = 'draft', 
-            moderation_status = 'pending',
-            resubmission_count = ?,
-            is_resubmission = 1,
-            moderated_at = NULL,
-            moderated_by = NULL
-        WHERE id = ?
-    """, (new_count, goal_id))
-    
-    # Логируем в admin_actions (для истории)
-    import json as _json
-    db.execute(
-        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resubmit_goal', 'goal', ?, ?)",
-        (user['id'], str(goal_id), _json.dumps({
-            'resubmission_count': new_count,
-        }, ensure_ascii=False))
-    )
-    
-    # Уведомление автору
-    db.execute(
-        "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_resubmitted', 'Цель отправлена на повторную проверку', ?, '/goal/" + str(goal_id) + "')",
-        (user['id'], 'Мы проверим её в ближайшее время.')
-    )
-    
-    db.commit()
-    db.close()
-    
-    return jsonify({
-        'ok': True,
-        'resubmission_count': new_count,
-        'message': 'Цель отправлена на повторную проверку'
-    })
-
-
-
-
 @app.route('/goal/<int:goal_id>/edit', methods=['GET', 'POST'])
 @login_required
 def goal_edit(goal_id):
@@ -3545,11 +3584,17 @@ def goal_edit(goal_id):
             WHERE id = ?
         """, (title, desc, amt, ends, new_count, goal_id))
         
-        db.execute(
-            "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resubmit_goal', 'goal', ?, ?)",
-            (user['id'], str(goal_id), _json.dumps({
+        # Событие в platform_events (действие автора)
+        record_event(
+            'goal_resubmitted',
+            db=db,
+            actor_user_id=user['id'],
+            goal_id=goal_id,
+            source='user',
+            payload={
                 'resubmission_count': new_count,
-            }, ensure_ascii=False))
+                'title': title,
+            }
         )
         
         db.execute(
@@ -3573,6 +3618,101 @@ def goal_edit(goal_id):
         description=goal['description'] or '',
         amount=goal['amount_goal'],
         days=None,
+    )
+
+
+@app.route('/_metrics/events')
+@admin_required
+def metrics_events():
+    """Журнал событий платформы (platform_events)."""
+    user = get_current_user()
+    db = get_db()
+    
+    # Фильтры
+    period = request.args.get('period', '24h')
+    event_type_filter = request.args.get('type', 'all')
+    source_filter = request.args.get('source', 'all')
+    search = request.args.get('search', '').strip()
+    
+    period_map = {
+        '1h': '-1 hour',
+        '24h': '-24 hours',
+        '7d': '-7 days',
+        '30d': '-30 days',
+    }
+    time_filter = period_map.get(period)
+    
+    query = """
+        SELECT pe.*, 
+            COALESCE(au.name, au.phone) as actor_name,
+            COALESCE(tu.name, tu.phone) as target_name,
+            g.title as goal_title,
+            d.amount_reported as donation_amount
+        FROM platform_events pe
+        LEFT JOIN users au ON pe.actor_user_id = au.id
+        LEFT JOIN users tu ON pe.target_user_id = tu.id
+        LEFT JOIN goals g ON pe.goal_id = g.id
+        LEFT JOIN donations d ON pe.donation_id = d.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if time_filter:
+        query += " AND pe.created_at > datetime('now', ?)"
+        params.append(time_filter)
+    
+    if event_type_filter != 'all':
+        query += " AND pe.event_type = ?"
+        params.append(event_type_filter)
+    
+    if source_filter != 'all':
+        query += " AND pe.source = ?"
+        params.append(source_filter)
+    
+    if search:
+        query += " AND (CAST(pe.id AS TEXT) = ? OR CAST(pe.actor_user_id AS TEXT) = ? OR CAST(pe.goal_id AS TEXT) = ?)"
+        params.extend([search, search, search])
+    
+    query += " ORDER BY pe.id DESC LIMIT 200"
+    events = db.execute(query, params).fetchall()
+    
+    # Счётчики для фильтра по типам
+    event_types = db.execute("""
+        SELECT event_type, COUNT(*) as cnt
+        FROM platform_events
+        WHERE created_at > datetime('now', '-7 days')
+        GROUP BY event_type
+        ORDER BY cnt DESC
+    """).fetchall()
+    
+    # Счётчики источников
+    sources = db.execute("""
+        SELECT source, COUNT(*) as cnt
+        FROM platform_events
+        WHERE created_at > datetime('now', '-24 hours')
+        GROUP BY source
+    """).fetchall()
+    
+    # Общее количество
+    total_24h = db.execute(
+        "SELECT COUNT(*) FROM platform_events WHERE created_at > datetime('now', '-24 hours')"
+    ).fetchone()[0]
+    
+    counts = get_sidebar_counts(db)
+    db.close()
+    
+    return render_template('_metrics/events.html',
+        user=user,
+        active='events',
+        counts=counts,
+        events=events,
+        period=period,
+        event_type_filter=event_type_filter,
+        source_filter=source_filter,
+        search=search,
+        event_types=event_types,
+        sources=sources,
+        total_24h=total_24h,
     )
 
 

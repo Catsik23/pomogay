@@ -1,0 +1,110 @@
+{% extends "_metrics/base.html" %}
+
+{% block title %}Журнал событий{% endblock %}
+{% block page_title %}Журнал событий{% endblock %}
+{% block page_subtitle %}{{ total_24h }} событий за 24 часа · {{ events|length }} показано{% endblock %}
+
+{% block content %}
+
+{% set type_names = {
+    'goal_resubmitted': ('Повторная отправка', 'warning'),
+    'goal_created': ('Создание цели', 'info'),
+    'goal_published': ('Цель опубликована', 'success'),
+    'donation_declared': ('Донатор заявил о переводе', 'info'),
+    'donation_confirmed': ('Получатель подтвердил', 'success'),
+    'user_registered': ('Регистрация', 'info'),
+    'report_created': ('Жалоба', 'warning'),
+    'user_banned': ('Бан пользователя', 'danger'),
+} %}
+
+<!-- Фильтры -->
+<div class="m-section" style="margin-bottom: 16px;">
+    <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; gap: 6px;">
+            <a href="?period=1h&type={{ event_type_filter }}&source={{ source_filter }}" class="m-badge {% if period == '1h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">1 час</a>
+            <a href="?period=24h&type={{ event_type_filter }}&source={{ source_filter }}" class="m-badge {% if period == '24h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">24 часа</a>
+            <a href="?period=7d&type={{ event_type_filter }}&source={{ source_filter }}" class="m-badge {% if period == '7d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">7 дней</a>
+            <a href="?period=30d&type={{ event_type_filter }}&source={{ source_filter }}" class="m-badge {% if period == '30d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">30 дней</a>
+        </div>
+        
+        <select name="type" onchange="this.form.submit()" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
+            <option value="all">Все типы</option>
+            {% for et in event_types %}
+            <option value="{{ et.event_type }}" {% if event_type_filter == et.event_type %}selected{% endif %}>
+                {{ type_names.get(et.event_type, (et.event_type, ''))[0] }} ({{ et.cnt }})
+            </option>
+            {% endfor %}
+        </select>
+        
+        <select name="source" onchange="this.form.submit()" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
+            <option value="all">Все источники</option>
+            <option value="user" {% if source_filter == 'user' %}selected{% endif %}>Пользователь</option>
+            <option value="admin" {% if source_filter == 'admin' %}selected{% endif %}>Админ</option>
+            <option value="system" {% if source_filter == 'system' %}selected{% endif %}>Система</option>
+            <option value="cron" {% if source_filter == 'cron' %}selected{% endif %}>Cron</option>
+        </select>
+        
+        <input type="text" name="search" value="{{ search }}" placeholder="ID события / юзера / цели"
+               style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; flex: 1; min-width: 180px;">
+        
+        <button type="submit" style="padding: 6px 16px; background: var(--m-gradient); border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">Найти</button>
+    </form>
+</div>
+
+<!-- Таблица -->
+<div class="m-section">
+    {% if events %}
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th style="width: 140px;">Время</th>
+                <th style="width: 180px;">Событие</th>
+                <th style="width: 180px;">Кто</th>
+                <th>Цель / Донат</th>
+                <th style="width: 100px;">Источник</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in events %}
+            <tr>
+                <td class="muted" style="white-space: nowrap; font-size: 12px;">{{ e.created_at[:16] }}</td>
+                <td>
+                    {% set tn = type_names.get(e.event_type, (e.event_type, 'muted')) %}
+                    <span class="m-badge {{ tn[1] }}">{{ tn[0] }}</span>
+                </td>
+                <td>
+                    {% if e.actor_user_id %}
+                        <a href="/_metrics/users/{{ e.actor_user_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-size: 13px;">
+                            {{ e.actor_name or ('ID ' + e.actor_user_id|string) }}
+                        </a>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if e.goal_id %}
+                        <a href="/_metrics/goals/{{ e.goal_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-size: 13px;">
+                            #{{ e.goal_id }} · {{ e.goal_title[:50] if e.goal_title else '—' }}{% if e.goal_title and e.goal_title|length > 50 %}...{% endif %}
+                        </a>
+                    {% elif e.donation_id %}
+                        <span class="muted">Донат #{{ e.donation_id }} · {{ e.donation_amount }} ₽</span>
+                    {% else %}
+                        <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="m-badge muted">{{ e.source }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="m-empty" style="padding: 60px 20px;">
+        <div style="font-size: 40px; margin-bottom: 12px;">📭</div>
+        <div style="font-size: 15px;">Нет событий по этим фильтрам.</div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

@@ -180,6 +180,80 @@
 
 
 
+<!-- История модерации -->
+{% if moderation_history %}
+<div class="m-section">
+    <div class="m-section-title">История модерации ({{ moderation_history|length }})</div>
+    <table class="m-table">
+        <thead>
+            <tr>
+                <th>Когда</th>
+                <th>Админ</th>
+                <th>Действие</th>
+                <th>Детали</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set action_names = {
+                'approve_goal': 'Одобрена',
+                'reject_goal': 'Отклонена',
+                'hide_goal': 'Скрыта',
+                'restore_goal': 'Восстановлена',
+                'resubmit_goal': 'Повторная отправка'
+            } %}
+            {% set cat_names = {
+                'no_photo': 'Нет фото',
+                'bad_description': 'Плохое описание',
+                'fake_docs': 'Фейковые документы',
+                'incomplete': 'Не хватает данных',
+                'suspicious': 'Подозрительная цель',
+                'rules': 'Нарушение правил',
+                'spam': 'Спам',
+                'fraud': 'Мошенничество',
+                'fake_content': 'Фейковый контент',
+                'duplicate': 'Дубликат',
+                'reports': 'По жалобам',
+                'other': 'Другое'
+            } %}
+            {% for h in moderation_history %}
+            <tr>
+                <td class="muted" style="white-space: nowrap;">{{ h.created_at[:16] }}</td>
+                <td>
+                    {% if h.action_type == 'resubmit_goal' %}
+                        <span class="muted">Автор цели</span>
+                    {% else %}
+                        {{ h.admin_name or '—' }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if h.action_type == 'approve_goal' %}<span class="m-badge success">Одобрена</span>
+                    {% elif h.action_type == 'reject_goal' %}<span class="m-badge danger">Отклонена</span>
+                    {% elif h.action_type == 'hide_goal' %}<span class="m-badge danger">Скрыта</span>
+                    {% elif h.action_type == 'restore_goal' %}<span class="m-badge success">Восстановлена</span>
+                    {% elif h.action_type == 'resubmit_goal' %}<span class="m-badge warning">Повторная отправка</span>
+                    {% else %}<span class="m-badge muted">{{ h.action_type }}</span>{% endif %}
+                </td>
+                <td>
+                    {% if h.parsed_categories %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px;">
+                        {% for cat in h.parsed_categories %}
+                        <span class="m-badge muted" style="font-size: 10px;">{{ cat_names.get(cat, cat) }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if h.parsed_comment %}
+                    <div class="muted" style="font-size: 12px; max-width: 400px;">
+                        «{{ h.parsed_comment }}»
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 <!-- Модалка скрытия цели -->
 <div id="hideModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
     <div style="background: var(--m-bg-2); border: 1px solid var(--m-border); border-radius: 14px; padding: 24px; max-width: 500px; width: 100%;">
