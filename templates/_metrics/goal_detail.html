@@ -252,9 +252,12 @@ function toggleHideCategory(btn) {
     });
     document.getElementById('hideCategoriesInput').value = selected.join(',');
 }
-document.getElementById('hideModal').addEventListener('click', function(e) {
-    if (e.target === this) closeHideModal();
-});
+var _hideModal = document.getElementById('hideModal');
+if (_hideModal) {
+    _hideModal.addEventListener('click', function(e) {
+        if (e.target === this) closeHideModal();
+    });
+}
 document.addEventListener('DOMContentLoaded', function() {
     var hideForm = document.querySelector('#hideModal form');
     if (hideForm) {

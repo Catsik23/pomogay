@@ -268,9 +268,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-document.getElementById('banModal').addEventListener('click', function(e) {
-    if (e.target === this) closeBanModal();
-});
+var _banModal = document.getElementById('banModal');
+if (_banModal) {
+    _banModal.addEventListener('click', function(e) {
+        if (e.target === this) closeBanModal();
+    });
+}
 </script>
 
 <!-- Модалка разбана -->
@@ -345,9 +348,12 @@ function toggleUnbanCategory(btn) {
     });
     document.getElementById('unbanCategoriesInput').value = selected.join(',');
 }
-document.getElementById('unbanModal').addEventListener('click', function(e) {
-    if (e.target === this) closeUnbanModal();
-});
+var _unbanModal = document.getElementById('unbanModal');
+if (_unbanModal) {
+    _unbanModal.addEventListener('click', function(e) {
+        if (e.target === this) closeUnbanModal();
+    });
+}
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.querySelector('#unbanModal form');
     if (form) {

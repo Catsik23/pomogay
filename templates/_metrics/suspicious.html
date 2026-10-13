@@ -170,9 +170,12 @@ function toggleResolveCategory(btn) {
     });
     document.getElementById('resolveCategoriesInput').value = selected.join(',');
 }
-document.getElementById('resolveModal').addEventListener('click', function(e) {
-    if (e.target === this) closeResolveModal();
-});
+var _resolveModal = document.getElementById('resolveModal');
+if (_resolveModal) {
+    _resolveModal.addEventListener('click', function(e) {
+        if (e.target === this) closeResolveModal();
+    });
+}
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('resolveForm');
     if (form) {

@@ -57,6 +57,45 @@
         </div>
         {% endif %}
         
+        <!-- Предыдущие отказы (аккордеон) -->
+        <!-- DEBUG: prev_rejections={{ g.prev_rejections|length if g.prev_rejections else 0 }}, type={{ g.prev_rejections.__class__.__name__ if g.prev_rejections else 'none' }} -->
+        {% if g.prev_rejections %}
+        <div class="prev-rejections" style="margin-bottom: 12px;">
+            <button type="button" class="prev-rej-toggle" data-goal-id="{{ g.id }}" onclick="togglePrevRejections({{ g.id }})">
+                <span class="prev-rej-arrow">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </span>
+                <span>Предыдущие отказы ({{ g.prev_rejections|length }})</span>
+            </button>
+            <div class="prev-rej-body" id="prevRejBody-{{ g.id }}">
+                {% set cat_names = {
+                    'no_photo': 'Нет фото',
+                    'bad_description': 'Плохое описание',
+                    'fake_docs': 'Фейковые документы',
+                    'incomplete': 'Не хватает данных',
+                    'suspicious': 'Подозрительная цель',
+                    'rules': 'Нарушение правил',
+                    'other': 'Другое'
+                } %}
+                {% for pr in g.prev_rejections %}
+                <div class="prev-rej-item">
+                    <div class="prev-rej-date">{{ pr.created_at[:16] }}</div>
+                    {% if pr.categories %}
+                    <div class="prev-rej-cats">
+                        {% for cat in pr.categories %}
+                        <span class="prev-rej-cat">{{ cat_names.get(cat, cat) }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    {% if pr.comment %}
+                    <div class="prev-rej-comment">«{{ pr.comment }}»</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
         <!-- Действия -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <form method="POST" action="/_metrics/moderation/{{ g.id }}/approve" style="display: inline;">
@@ -70,7 +109,7 @@
                     style="padding: 10px 20px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
                 Отклонить
             </button>
-            <a href="/goal/{{ g.id }}" target="_blank" 
+            <a href="/goal/{{ g.id }}" target="_blank" rel="noopener noreferrer" 
                style="padding: 10px 20px; background: var(--m-bg-2); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text-2); text-decoration: none; font-size: 13px; font-weight: 600;">
                 Открыть на сайте
             </a>
@@ -165,6 +204,13 @@
 </div>
 
 <script>
+function togglePrevRejections(goalId) {
+    var toggle = document.querySelector('.prev-rej-toggle[data-goal-id="' + goalId + '"]');
+    var body = document.getElementById('prevRejBody-' + goalId);
+    if (!toggle || !body) return;
+    toggle.classList.toggle('open');
+    body.classList.toggle('open');
+}
 function openRejectModal(goalId, goalTitle) {
     document.getElementById('rejectForm').action = '/_metrics/moderation/' + goalId + '/reject';
     document.getElementById('rejectGoalTitle').textContent = '#' + goalId + ' · ' + goalTitle;
@@ -174,15 +220,18 @@ function openRejectModal(goalId, goalTitle) {
     }, 50);
 }
 function closeRejectModal() {
-    document.getElementById('rejectModal').style.display = 'none';
+    var modal = document.getElementById('rejectModal');
+    if (modal) modal.style.display = 'none';
     document.querySelectorAll('.reject-cat-btn').forEach(function(btn) {
         btn.style.background = 'var(--m-bg-3)';
         btn.style.color = 'var(--m-text-2)';
         btn.style.borderColor = 'var(--m-border-2)';
         btn.dataset.selected = '0';
     });
-    document.getElementById('rejectCategoriesInput').value = '';
-    document.getElementById('rejectCommentInput').value = '';
+    var catInput = document.getElementById('rejectCategoriesInput');
+    if (catInput) catInput.value = '';
+    var commentInput = document.getElementById('rejectCommentInput');
+    if (commentInput) commentInput.value = '';
 }
 function toggleRejectCategory(btn) {
     var isSelected = btn.dataset.selected === '1';
@@ -203,9 +252,12 @@ function toggleRejectCategory(btn) {
     });
     document.getElementById('rejectCategoriesInput').value = selected.join(',');
 }
-document.getElementById('rejectModal').addEventListener('click', function(e) {
-    if (e.target === this) closeRejectModal();
-});
+var _rejectModal = document.getElementById('rejectModal');
+if (_rejectModal) {
+    _rejectModal.addEventListener('click', function(e) {
+        if (e.target === this) closeRejectModal();
+    });
+}
 document.addEventListener('DOMContentLoaded', function() {
     var form = document.getElementById('rejectForm');
     if (form) {

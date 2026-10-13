@@ -1088,9 +1088,29 @@ def api_confirm_donation(donation_id):
 
 @app.route('/api/guard-check', methods=['POST'])
 def api_guard_check():
-    """AJAX-проверка текста через Content Guard."""
+    """AJAX-проверка текста через Content Guard с rate limit."""
     from flask import jsonify
     from content_guard import check as cg_check
+    
+    # Rate limit: не более 30 запросов в минуту с одного IP
+    ip = request.remote_addr or 'unknown'
+    rl_db = get_db()
+    recent = rl_db.execute(
+        "SELECT COUNT(*) FROM analytics_events WHERE event_type = 'guard_check' AND event_data LIKE ? AND created_at > datetime('now', '-1 minute')",
+        (f'%\"ip\":\"{ip}\"%',)
+    ).fetchone()[0]
+    
+    if recent >= 30:
+        rl_db.close()
+        return jsonify({'status': 'rate_limited', 'error': 'Слишком много запросов. Подождите минуту.'}), 429
+    
+    rl_db.execute(
+        "INSERT INTO analytics_events (event_type, event_data) VALUES ('guard_check', ?)",
+        ('{"ip":"' + ip + '"}',)
+    )
+    rl_db.commit()
+    rl_db.close()
+    
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
     context = data.get('context', 'goal_description')
@@ -2836,6 +2856,26 @@ def metrics_moderation():
         if not photos and d.get('photo_url'):
             photos = [d['photo_url']]
         d['photos_list'] = photos
+        
+        # История предыдущих отказов (из admin_actions)
+        prev_rejections = db.execute("""
+            SELECT details, created_at FROM admin_actions
+            WHERE action_type = 'reject_goal' AND target_type = 'goal' AND target_id = ?
+            ORDER BY id DESC
+        """, (str(d['id']),)).fetchall()
+        
+        d['prev_rejections'] = []
+        for pr in prev_rejections:
+            try:
+                det = _json.loads(pr['details'])
+                d['prev_rejections'].append({
+                    'categories': det.get('categories', []),
+                    'comment': det.get('comment', ''),
+                    'created_at': pr['created_at']
+                })
+            except:
+                pass
+        
         pending.append(d)
     
     # История модерации (последние 20)
@@ -3500,7 +3540,8 @@ def goal_edit(goal_id):
             SET title = ?, description = ?, amount_goal = ?, ends_at = ?,
                 status = 'draft', moderation_status = 'pending',
                 resubmission_count = ?, is_resubmission = 1,
-                moderated_at = NULL, moderated_by = NULL
+                moderated_at = NULL, moderated_by = NULL,
+                moderation_comment = NULL, rejection_categories = NULL
             WHERE id = ?
         """, (title, desc, amt, ends, new_count, goal_id))
         
