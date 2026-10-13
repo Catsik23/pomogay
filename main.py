@@ -3012,13 +3012,35 @@ def metrics_suspicious():
 @app.route('/_metrics/suspicious/<int:activity_id>/resolve', methods=['POST'])
 @admin_required
 def metrics_suspicious_resolve(activity_id):
-    """Пометить как resolved (ложное или обработанное)."""
+    """Закрыть подозрительную активность с категорией."""
+    import json as _json
     admin = get_current_user()
+    categories_raw = (request.form.get('categories') or '').strip()
+    comment = (request.form.get('comment') or '').strip()
+    
+    if not categories_raw:
+        flash('Выберите категорию закрытия.', 'danger')
+        return redirect(url_for('metrics_suspicious'))
+    
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    
     db = get_db()
+    old = db.execute("SELECT status FROM suspicious_activity WHERE id = ?", (activity_id,)).fetchone()
+    if not old:
+        db.close()
+        from flask import abort
+        abort(404)
+    
     db.execute("UPDATE suspicious_activity SET status = 'resolved' WHERE id = ?", (activity_id,))
+    details = _json.dumps({
+        'categories': categories,
+        'comment': comment,
+        'old_value': old['status'],
+        'new_value': 'resolved'
+    }, ensure_ascii=False)
     db.execute(
-        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resolve_suspicious', 'suspicious', ?, NULL)",
-        (admin['id'], str(activity_id))
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resolve_suspicious', 'suspicious', ?, ?)",
+        (admin['id'], str(activity_id), details)
     )
     db.commit()
     db.close()
