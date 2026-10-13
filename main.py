@@ -104,13 +104,16 @@ def login_required(f):
     return wrap
 
 def admin_required(f):
-    """Доступ только для is_admin=1. Для остальных — 404 (маскировка)."""
+    """Доступ только для is_admin=1 + CSRF на POST. Для остальных — 404."""
     @wraps(f)
     def wrap(*args, **kwargs):
         user = get_current_user()
         if not user or not user['is_admin']:
             from flask import abort
             abort(404)
+        if request.method == 'POST' and not check_csrf():
+            from flask import abort
+            abort(403)
         return f(*args, **kwargs)
     return wrap
 
@@ -147,6 +150,24 @@ def set_setting(db, key, value, admin_id=None):
             "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'update_setting', 'setting', ?, ?)",
             (admin_id, key, '{"value": "' + str(value).replace('"', '\\"') + '"}')
         )
+
+
+import secrets as _secrets
+
+def get_csrf_token():
+    """Возвращает CSRF-токен текущей сессии, генерирует если нет."""
+    if 'csrf_token' not in session:
+        session['csrf_token'] = _secrets.token_urlsafe(32)
+    return session['csrf_token']
+
+
+def check_csrf():
+    """Проверяет CSRF-токен для POST-запросов. Возвращает True если ок."""
+    if request.method != 'POST':
+        return True
+    token = request.form.get('csrf_token') or request.headers.get('X-CSRFToken')
+    expected = session.get('csrf_token')
+    return bool(token) and bool(expected) and _secrets.compare_digest(token, expected)
 
 
 def get_sidebar_counts(db):
@@ -565,14 +586,24 @@ def create_goal(goal_type):
         if not user:
             flash('Ошибка: пользователь не найден. Войдите заново.', 'danger')
             return redirect(url_for('login'))
+        # Автоодобрение для админа, модерация для всех остальных
+        moderation_status = 'approved' if user['is_admin'] else 'pending'
+        goal_status = 'active' if user['is_admin'] else 'draft'
+        
         db.execute(
-            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, photos, moderation_status) VALUES (?,?,?,?,?,0,?,'active',?,?,'approved')",
-            (user['id'], goal_type, title, desc, amt, ends, photo_url, photos_json)
+            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, photo_url, photos, moderation_status) VALUES (?,?,?,?,?,0,?,?,?,?,?)",
+            (user['id'], goal_type, title, desc, amt, ends, goal_status, photo_url, photos_json, moderation_status)
         )
         db.commit()
         gid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         db.close()
-        flash('Цель создана', 'success')
+        
+        if user['is_admin']:
+            flash('Цель создана', 'success')
+        else:
+            flash('Цель отправлена на модерацию. Мы проверим её в ближайшее время.', 'info')
+        
+        return redirect(url_for('goal_page', goal_id=gid))
     
 
 
@@ -587,6 +618,26 @@ def goal_page(goal_id):
         db.close()
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
+    
+    # Проверка видимости: черновики и отклонённые видят только автор и админ
+    if goal['status'] in ('draft', 'failed'):
+        current_user = get_current_user()
+        is_author = current_user and current_user['id'] == goal['user_id']
+        is_admin = current_user and current_user['is_admin']
+        if not (is_author or is_admin):
+            db.close()
+            from flask import abort
+            abort(404)
+    
+    # Скрытые цели не показываем никому, кроме админа
+    if goal['status'] == 'hidden':
+        current_user = get_current_user()
+        is_admin = current_user and current_user['is_admin']
+        if not is_admin:
+            db.close()
+            from flask import abort
+            abort(404)
+    
     # Парсим photos — JSON-массив путей
     import json as _json
     photos_list = []
@@ -597,6 +648,15 @@ def goal_page(goal_id):
             photos_list = []
     if not photos_list and goal['photo_url']:
         photos_list = [goal['photo_url']]
+    
+    # Парсим rejection_categories для баннера
+    rejection_cats = []
+    if goal.get('rejection_categories') if isinstance(goal, dict) else goal['rejection_categories']:
+        try:
+            rejection_cats = _json.loads(goal['rejection_categories'])
+        except Exception:
+            rejection_cats = []
+    
     author = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
     donations = db.execute(
         """SELECT d.*, 
@@ -643,7 +703,7 @@ def goal_page(goal_id):
         ).fetchone() is not None
         rdb.close()
     
-    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list, is_liked=is_liked)
+    return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list, is_liked=is_liked, rejection_cats=rejection_cats)
 
 @app.route('/report/<int:goal_id>', methods=['POST'])
 @login_required
@@ -2057,8 +2117,18 @@ def metrics_user_detail(user_id):
 @app.route('/_metrics/users/<int:user_id>/ban', methods=['POST'])
 @admin_required
 def metrics_user_ban(user_id):
-    """Забанить пользователя."""
+    """Забанить пользователя с категориями и комментарием."""
+    import json as _json
     admin = get_current_user()
+    categories_raw = (request.form.get('categories') or '').strip()
+    comment = (request.form.get('comment') or '').strip()
+    
+    if not categories_raw:
+        flash('Выберите минимум одну категорию.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    
     db = get_db()
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
@@ -2069,10 +2139,17 @@ def metrics_user_ban(user_id):
         db.close()
         flash('Нельзя забанить админа.', 'danger')
         return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
     db.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (user_id,))
+    details = _json.dumps({
+        'categories': categories,
+        'comment': comment,
+        'old_value': 'active',
+        'new_value': 'banned'
+    }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'ban_user', 'user', ?, ?)",
-        (admin['id'], str(user_id), '{"reason": "manual"}')
+        (admin['id'], str(user_id), details)
     )
     db.commit()
     db.close()
@@ -2083,13 +2160,35 @@ def metrics_user_ban(user_id):
 @app.route('/_metrics/users/<int:user_id>/unban', methods=['POST'])
 @admin_required
 def metrics_user_unban(user_id):
-    """Разбанить пользователя."""
+    """Разбанить пользователя с причиной."""
+    import json as _json
     admin = get_current_user()
+    categories_raw = (request.form.get('categories') or '').strip()
+    comment = (request.form.get('comment') or '').strip()
+    
+    if not categories_raw:
+        flash('Выберите минимум одну причину разбана.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    
     db = get_db()
+    u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not u:
+        db.close()
+        from flask import abort
+        abort(404)
+    
     db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
+    details = _json.dumps({
+        'categories': categories,
+        'comment': comment,
+        'old_value': 'banned',
+        'new_value': 'active'
+    }, ensure_ascii=False)
     db.execute(
-        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'unban_user', 'user', ?, NULL)",
-        (admin['id'], str(user_id))
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'unban_user', 'user', ?, ?)",
+        (admin['id'], str(user_id), details)
     )
     db.commit()
     db.close()
@@ -2241,13 +2340,35 @@ def metrics_goal_detail(goal_id):
 @app.route('/_metrics/goals/<int:goal_id>/hide', methods=['POST'])
 @admin_required
 def metrics_goal_hide(goal_id):
-    """Скрыть цель."""
+    """Скрыть цель с категориями и комментарием."""
+    import json as _json
     admin = get_current_user()
+    categories_raw = (request.form.get('categories') or '').strip()
+    comment = (request.form.get('comment') or '').strip()
+    
+    if not categories_raw:
+        flash('Выберите минимум одну категорию.', 'danger')
+        return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
+    
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    
     db = get_db()
+    old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not old_status:
+        db.close()
+        from flask import abort
+        abort(404)
+    
     db.execute("UPDATE goals SET status = 'hidden' WHERE id = ?", (goal_id,))
+    details = _json.dumps({
+        'categories': categories,
+        'comment': comment,
+        'old_value': old_status['status'],
+        'new_value': 'hidden'
+    }, ensure_ascii=False)
     db.execute(
-        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'hide_goal', 'goal', ?, NULL)",
-        (admin['id'], str(goal_id))
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'hide_goal', 'goal', ?, ?)",
+        (admin['id'], str(goal_id), details)
     )
     db.commit()
     db.close()
@@ -2259,12 +2380,23 @@ def metrics_goal_hide(goal_id):
 @admin_required
 def metrics_goal_restore(goal_id):
     """Восстановить цель."""
+    import json as _json
     admin = get_current_user()
     db = get_db()
+    old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not old_status:
+        db.close()
+        from flask import abort
+        abort(404)
+    
     db.execute("UPDATE goals SET status = 'active' WHERE id = ?", (goal_id,))
+    details = _json.dumps({
+        'old_value': old_status['status'],
+        'new_value': 'active'
+    }, ensure_ascii=False)
     db.execute(
-        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'restore_goal', 'goal', ?, NULL)",
-        (admin['id'], str(goal_id))
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'restore_goal', 'goal', ?, ?)",
+        (admin['id'], str(goal_id), details)
     )
     db.commit()
     db.close()
@@ -2709,6 +2841,7 @@ def metrics_moderation():
     # История модерации (последние 20)
     history = db.execute("""
         SELECT g.id, g.title, g.moderation_status, g.moderation_comment, g.moderated_at,
+               g.is_resubmission, g.resubmission_count,
                COALESCE(u.name, u.phone) as author_name
         FROM goals g
         JOIN users u ON g.user_id = u.id
@@ -2736,7 +2869,7 @@ def metrics_moderation_approve(goal_id):
     admin = get_current_user()
     db = get_db()
     db.execute(
-        "UPDATE goals SET moderation_status = 'approved', moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
+        "UPDATE goals SET moderation_status = 'approved', status = 'active', moderation_comment = NULL, rejection_categories = NULL, moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
         (admin['id'], goal_id)
     )
     db.execute(
@@ -2759,21 +2892,41 @@ def metrics_moderation_approve(goal_id):
 @app.route('/_metrics/moderation/<int:goal_id>/reject', methods=['POST'])
 @admin_required
 def metrics_moderation_reject(goal_id):
-    """Отклонить цель с комментарием."""
+    """Отклонить цель с категориями и комментарием."""
+    import json as _json
     admin = get_current_user()
-    comment = request.form.get('comment', '').strip()
+    categories_raw = (request.form.get('categories') or '').strip()
+    comment = (request.form.get('comment') or '').strip()
+    
+    if not categories_raw:
+        flash('Выберите минимум одну категорию.', 'danger')
+        return redirect(url_for('metrics_moderation'))
     if not comment:
-        flash('Укажите причину отклонения.', 'danger')
+        flash('Укажите комментарий для автора.', 'danger')
         return redirect(url_for('metrics_moderation'))
     
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    
     db = get_db()
+    old_status = db.execute("SELECT moderation_status FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not old_status:
+        db.close()
+        from flask import abort
+        abort(404)
+    
     db.execute(
-        "UPDATE goals SET moderation_status = 'rejected', moderation_comment = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
-        (comment, admin['id'], goal_id)
+        "UPDATE goals SET moderation_status = 'rejected', status = 'failed', moderation_comment = ?, rejection_categories = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
+        (comment, _json.dumps(categories, ensure_ascii=False), admin['id'], goal_id)
     )
+    details = _json.dumps({
+        'categories': categories,
+        'comment': comment,
+        'old_value': old_status['moderation_status'],
+        'new_value': 'rejected'
+    }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'reject_goal', 'goal', ?, ?)",
-        (admin['id'], str(goal_id), '{"comment": "' + comment.replace('"', '\\"') + '"}')
+        (admin['id'], str(goal_id), details)
     )
     # Уведомление автору
     goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
@@ -3169,6 +3322,197 @@ def metrics_settings_toggle_flag(flag_id):
     return redirect(url_for('metrics_settings'))
 
 
+@app.route('/api/goal/<int:goal_id>/resubmit', methods=['POST'])
+@login_required
+def api_goal_resubmit(goal_id):
+    """Повторная отправка цели на модерацию после доработки."""
+    from flask import jsonify
+    user = get_current_user()
+    db = get_db()
+    
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Цель не найдена'}), 404
+    
+    if goal['user_id'] != user['id']:
+        db.close()
+        return jsonify({'ok': False, 'error': 'Только автор может отправить повторно'}), 403
+    
+    if goal['status'] != 'failed':
+        db.close()
+        return jsonify({'ok': False, 'error': 'Цель не в статусе отклонённой'}), 400
+    
+    if goal['moderation_status'] == 'pending':
+        db.close()
+        return jsonify({'ok': False, 'error': 'Цель уже на модерации'}), 400
+    
+    new_count = (goal['resubmission_count'] or 0) + 1
+    
+    db.execute("""
+        UPDATE goals 
+        SET status = 'draft', 
+            moderation_status = 'pending',
+            resubmission_count = ?,
+            is_resubmission = 1,
+            moderated_at = NULL,
+            moderated_by = NULL
+        WHERE id = ?
+    """, (new_count, goal_id))
+    
+    # Логируем в admin_actions (для истории)
+    import json as _json
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resubmit_goal', 'goal', ?, ?)",
+        (user['id'], str(goal_id), _json.dumps({
+            'resubmission_count': new_count,
+        }, ensure_ascii=False))
+    )
+    
+    # Уведомление автору
+    db.execute(
+        "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_resubmitted', 'Цель отправлена на повторную проверку', ?, '/goal/" + str(goal_id) + "')",
+        (user['id'], 'Мы проверим её в ближайшее время.')
+    )
+    
+    db.commit()
+    db.close()
+    
+    return jsonify({
+        'ok': True,
+        'resubmission_count': new_count,
+        'message': 'Цель отправлена на повторную проверку'
+    })
+
+
+
+
+@app.route('/goal/<int:goal_id>/edit', methods=['GET', 'POST'])
+@login_required
+def goal_edit(goal_id):
+    """Редактирование отклонённой цели."""
+    user = get_current_user()
+    db = get_db()
+    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    
+    if not goal:
+        db.close()
+        flash('Цель не найдена.', 'danger')
+        return redirect(url_for('goals_list'))
+    
+    if goal['user_id'] != user['id']:
+        db.close()
+        from flask import abort
+        abort(404)
+    
+    if goal['status'] not in ('failed', 'draft'):
+        db.close()
+        flash('Эту цель нельзя редактировать.', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    import json as _json
+    photos_list = []
+    if goal['photos']:
+        try:
+            photos_list = _json.loads(goal['photos'])
+        except Exception:
+            photos_list = []
+    if not photos_list and goal['photo_url']:
+        photos_list = [goal['photo_url']]
+    
+    rejection_cats = []
+    if goal['rejection_categories']:
+        try:
+            rejection_cats = _json.loads(goal['rejection_categories'])
+        except Exception:
+            rejection_cats = []
+    
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        desc = request.form.get('description', '').strip()
+        amt_str = request.form.get('amount', '').strip()
+        days_str = request.form.get('days', '').strip()
+        
+        if not title or len(title) > 140:
+            flash('Название обязательно (до 140 символов).', 'danger')
+            return render_template('create_goal.html', 
+                goal_type=goal['type'], mode='edit', goal=goal, 
+                photos_list=photos_list, rejection_cats=rejection_cats)
+        
+        try:
+            amt = float(amt_str)
+        except (ValueError, TypeError):
+            flash('Некорректная сумма.', 'danger')
+            return render_template('create_goal.html', 
+                goal_type=goal['type'], mode='edit', goal=goal,
+                photos_list=photos_list, rejection_cats=rejection_cats)
+        
+        try:
+            days = int(days_str) if days_str else 7
+        except (ValueError, TypeError):
+            days = 7
+        
+        from content_guard import check as cg_check, is_filter_enabled
+        if is_filter_enabled(db):
+            r_title = cg_check(title, 'goal_title')
+            log_guard(r_title, title, 'goal_title', 'edit_goal')
+            if r_title['status'] == 'blocked':
+                flash('Цель не прошла проверку: ' + r_title.get('message', ''), 'danger')
+                return render_template('create_goal.html', 
+                    goal_type=goal['type'], mode='edit', goal=goal,
+                    photos_list=photos_list, rejection_cats=rejection_cats)
+            
+            r_desc = cg_check(desc, 'goal_description')
+            log_guard(r_desc, desc, 'goal_description', 'edit_goal')
+            if r_desc['status'] == 'blocked':
+                flash('Цель не прошла проверку: ' + r_desc.get('message', ''), 'danger')
+                return render_template('create_goal.html', 
+                    goal_type=goal['type'], mode='edit', goal=goal,
+                    photos_list=photos_list, rejection_cats=rejection_cats)
+        
+        ends = (datetime.now() + timedelta(days=days)).isoformat()
+        new_count = (goal['resubmission_count'] or 0) + 1
+        
+        db.execute("""
+            UPDATE goals 
+            SET title = ?, description = ?, amount_goal = ?, ends_at = ?,
+                status = 'draft', moderation_status = 'pending',
+                resubmission_count = ?, is_resubmission = 1,
+                moderated_at = NULL, moderated_by = NULL
+            WHERE id = ?
+        """, (title, desc, amt, ends, new_count, goal_id))
+        
+        db.execute(
+            "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resubmit_goal', 'goal', ?, ?)",
+            (user['id'], str(goal_id), _json.dumps({
+                'resubmission_count': new_count,
+            }, ensure_ascii=False))
+        )
+        
+        db.execute(
+            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_resubmitted', 'Цель отправлена на повторную проверку', ?, '/goal/" + str(goal_id) + "')",
+            (user['id'], 'Мы проверим её в ближайшее время.')
+        )
+        
+        db.commit()
+        db.close()
+        flash('Цель отправлена на повторную проверку.', 'success')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    db.close()
+    return render_template('create_goal.html',
+        goal_type=goal['type'],
+        mode='edit',
+        goal=goal,
+        photos_list=photos_list,
+        rejection_cats=rejection_cats,
+        title=goal['title'],
+        description=goal['description'] or '',
+        amount=goal['amount_goal'],
+        days=None,
+    )
+
+
 @app.route('/health')
 def health():
     return 'OK'
@@ -3177,6 +3521,7 @@ def health():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+app.jinja_env.globals['get_csrf_token'] = get_csrf_token
 app.jinja_env.globals['get_level_progress'] = get_level_progress
 app.jinja_env.globals['get_level_name'] = get_level_name
 

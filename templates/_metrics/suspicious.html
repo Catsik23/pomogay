@@ -70,16 +70,19 @@
                 <td style="white-space: nowrap;">
                     {% if a.status == 'new' %}
                     <form method="POST" action="/_metrics/suspicious/{{ a.id }}/review" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                         <button type="submit" style="padding: 4px 10px; background: rgba(229,167,60,0.15); border: 1px solid var(--m-warning); border-radius: 6px; color: var(--m-warning); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;">В работу</button>
                     </form>
                     {% endif %}
                     {% if a.status != 'resolved' %}
                     <form method="POST" action="/_metrics/suspicious/{{ a.id }}/resolve" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                         <button type="submit" style="padding: 4px 10px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 6px; color: var(--m-success); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;">Закрыть</button>
                     </form>
                     {% endif %}
                     {% if a.user_id and not a.user_banned %}
                     <form method="POST" action="/_metrics/users/{{ a.user_id }}/ban" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                         <button type="submit" onclick="return confirm('Забанить?')" style="padding: 4px 10px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 6px; color: var(--m-danger); font-size: 11px; font-weight: 600; font-family: inherit; cursor: pointer;">Бан</button>
                     </form>
                     {% endif %}

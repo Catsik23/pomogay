@@ -13,6 +13,7 @@
     </a>
     {% if d.status == 'open' %}
     <form method="POST" action="/_metrics/dialogs/{{ d.id }}/close" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
         <button type="submit" onclick="return confirm('Закрыть диалог?')" 
                 style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
             Закрыть диалог

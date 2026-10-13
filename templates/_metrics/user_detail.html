@@ -1,6 +1,7 @@
 {% extends "_metrics/base.html" %}
 
-{% block title %}#{{ u.id }} — {{ u.name or u.phone }}{% endblock %}
+{% block title %}#{{ u.id }} — {{ u.name or u.phone }}
+{% endblock %}
 {% block page_title %}#{{ u.id }} · {{ u.name or 'Аноним' }}{% endblock %}
 {% block page_subtitle %}{{ u.phone }} · Trust {{ u.trust_score or 0 }}{% endblock %}
 
@@ -13,19 +14,15 @@
         Написать
     </a>
     {% if not u.is_banned %}
-    <form method="POST" action="/_metrics/users/{{ u.id }}/ban" style="display: inline;">
-        <button type="submit" onclick="return confirm('Забанить?')" 
-                style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
-            Забанить
-        </button>
-    </form>
+    <button type="button" onclick="openBanModal()" 
+            style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+        Забанить
+    </button>
     {% else %}
-    <form method="POST" action="/_metrics/users/{{ u.id }}/unban" style="display: inline;">
-        <button type="submit" 
-                style="padding: 8px 16px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
-            Разбанить
-        </button>
-    </form>
+    <button type="button" onclick="openUnbanModal()" 
+            style="padding: 8px 16px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+        Разбанить
+    </button>
     {% endif %}
 </div>
 
@@ -174,5 +171,195 @@
     <div class="m-empty">Нет диалогов.</div>
     {% endif %}
 </div>
+
+
+
+<!-- Модалка бана -->
+<div id="banModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--m-bg-2); border: 1px solid var(--m-border); border-radius: 14px; padding: 24px; max-width: 500px; width: 100%;">
+        <div style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">Забанить пользователя?</div>
+        <div class="muted" style="font-size: 13px; margin-bottom: 16px;">
+            #{{ u.id }} · {{ u.name or 'Аноним' }} · {{ u.phone }}
+        </div>
+        <form method="POST" action="/_metrics/users/{{ u.id }}/ban">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Категории нарушения (минимум одна)</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                {% for cat_key, cat_label in [('spam', 'Спам'), ('fraud', 'Мошенничество'), ('insults', 'Оскорбления'), ('fake_goal', 'Фейковая цель'), ('bypass', 'Обход блокировки'), ('suspicious', 'Подозрительная активность'), ('other', 'Другое')] %}
+                <button type="button" class="ban-cat-btn" data-cat="{{ cat_key }}" onclick="toggleBanCategory(this)"
+                        style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 20px; color: var(--m-text-2); font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s;">
+                    {{ cat_label }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="categories" id="banCategoriesInput">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Комментарий (необязательно)</label>
+            <textarea name="comment" rows="2" placeholder="Дополнительные детали для себя..."
+                      style="width: 100%; padding: 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 16px;"></textarea>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" onclick="closeBanModal()"
+                        style="padding: 10px 20px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text-2); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+                    Отмена
+                </button>
+                <button type="submit"
+                        style="padding: 10px 20px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">
+                    Забанить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openBanModal() {
+    document.getElementById('banModal').style.display = 'flex';
+    setTimeout(function() {
+        document.querySelector('#banModal textarea').focus();
+    }, 50);
+}
+function closeBanModal() {
+    document.getElementById('banModal').style.display = 'none';
+    // Сброс категорий при закрытии
+    document.querySelectorAll('.ban-cat-btn').forEach(function(btn) {
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+        btn.dataset.selected = '0';
+    });
+    document.getElementById('banCategoriesInput').value = '';
+}
+
+function toggleBanCategory(btn) {
+    var isSelected = btn.dataset.selected === '1';
+    if (isSelected) {
+        btn.dataset.selected = '0';
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+    } else {
+        btn.dataset.selected = '1';
+        btn.style.background = 'rgba(229,115,115,0.2)';
+        btn.style.color = 'var(--m-danger)';
+        btn.style.borderColor = 'var(--m-danger)';
+    }
+    updateBanCategoriesInput();
+}
+
+function updateBanCategoriesInput() {
+    var selected = [];
+    document.querySelectorAll('.ban-cat-btn[data-selected="1"]').forEach(function(btn) {
+        selected.push(btn.dataset.cat);
+    });
+    document.getElementById('banCategoriesInput').value = selected.join(',');
+}
+
+// Валидация при отправке формы бана
+document.addEventListener('DOMContentLoaded', function() {
+    var banForm = document.querySelector('#banModal form');
+    if (banForm) {
+        banForm.addEventListener('submit', function(e) {
+            var selected = document.getElementById('banCategoriesInput').value;
+            if (!selected) {
+                e.preventDefault();
+                alert('Выберите минимум одну категорию нарушения');
+                return false;
+            }
+        });
+    }
+});
+document.getElementById('banModal').addEventListener('click', function(e) {
+    if (e.target === this) closeBanModal();
+});
+</script>
+
+<!-- Модалка разбана -->
+<div id="unbanModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--m-bg-2); border: 1px solid var(--m-border); border-radius: 14px; padding: 24px; max-width: 500px; width: 100%;">
+        <div style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">Разбанить пользователя?</div>
+        <div class="muted" style="font-size: 13px; margin-bottom: 16px;">
+            #{{ u.id }} · {{ u.name or 'Аноним' }} · {{ u.phone }}
+        </div>
+        <form method="POST" action="/_metrics/users/{{ u.id }}/unban">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Причина разбана (минимум одна)</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                {% for cat_key, cat_label in [('appeal', 'Апелляция'), ('mistake', 'Ошибка модерации'), ('expired', 'Срок истёк'), ('warning', 'Предупреждение вместо бана'), ('other', 'Другое')] %}
+                <button type="button" class="unban-cat-btn" data-cat="{{ cat_key }}" onclick="toggleUnbanCategory(this)"
+                        style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 20px; color: var(--m-text-2); font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s;">
+                    {{ cat_label }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="categories" id="unbanCategoriesInput">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Комментарий (необязательно)</label>
+            <textarea name="comment" rows="2" placeholder="Дополнительные детали..."
+                      style="width: 100%; padding: 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 16px;"></textarea>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" onclick="closeUnbanModal()"
+                        style="padding: 10px 20px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text-2); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+                    Отмена
+                </button>
+                <button type="submit"
+                        style="padding: 10px 20px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">
+                    Разбанить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openUnbanModal() {
+    document.getElementById('unbanModal').style.display = 'flex';
+}
+function closeUnbanModal() {
+    document.getElementById('unbanModal').style.display = 'none';
+    document.querySelectorAll('.unban-cat-btn').forEach(function(btn) {
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+        btn.dataset.selected = '0';
+    });
+    document.getElementById('unbanCategoriesInput').value = '';
+}
+function toggleUnbanCategory(btn) {
+    var isSelected = btn.dataset.selected === '1';
+    if (isSelected) {
+        btn.dataset.selected = '0';
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+    } else {
+        btn.dataset.selected = '1';
+        btn.style.background = 'rgba(76,175,125,0.2)';
+        btn.style.color = 'var(--m-success)';
+        btn.style.borderColor = 'var(--m-success)';
+    }
+    var selected = [];
+    document.querySelectorAll('.unban-cat-btn[data-selected="1"]').forEach(function(b) {
+        selected.push(b.dataset.cat);
+    });
+    document.getElementById('unbanCategoriesInput').value = selected.join(',');
+}
+document.getElementById('unbanModal').addEventListener('click', function(e) {
+    if (e.target === this) closeUnbanModal();
+});
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.querySelector('#unbanModal form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!document.getElementById('unbanCategoriesInput').value) {
+                e.preventDefault();
+                alert('Выберите минимум одну причину');
+                return false;
+            }
+        });
+    }
+});
+</script>
 
 {% endblock %}

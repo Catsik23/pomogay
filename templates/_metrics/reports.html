@@ -43,6 +43,7 @@
                 <td>
                     {% if gr.goal_status == 'active' %}
                     <form method="POST" action="/_metrics/goals/{{ gr.goal_id }}/hide" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                         <button type="submit" onclick="return confirm('Скрыть цель?')" 
                                 style="padding: 4px 10px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 6px; color: var(--m-danger); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;">
                             Скрыть

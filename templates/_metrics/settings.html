@@ -7,6 +7,7 @@
 {% block content %}
 
 <form method="POST" action="/_metrics/settings/save">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
 
 <!-- Тумблеры (вкл/выкл) -->
 <div class="m-section">
@@ -84,6 +85,7 @@
                 <td class="muted" style="font-size: 12px;">{{ (f.updated_at or '—')[:16] }}</td>
                 <td>
                     <form method="POST" action="/_metrics/settings/flag/{{ f.id }}/toggle" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                         <button type="submit" style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 6px; color: var(--m-text); font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer;">
                             {% if f.enabled %}Выключить{% else %}Включить{% endif %}
                         </button>

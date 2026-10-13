@@ -384,6 +384,101 @@
             transform: scale(0.97);
             box-shadow: 0 0 0 3px rgba(255,90,60,0.25), 0 8px 24px rgba(255,90,60,0.15);
         }
+
+        /* Режим редактирования */
+        .btn-cta:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .btn-cta:disabled:active {
+            transform: none;
+        }
+        .edit-hint {
+            margin-top: 10px;
+            padding: 12px 16px;
+            background: #FFF5F2;
+            border-left: 3px solid #FF5A3C;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #8C7A6B;
+            line-height: 1.5;
+        }
+        .edit-hint.ready {
+            background: #F0F9F1;
+            border-left-color: #5B9A6B;
+            color: #5B9A6B;
+            font-weight: 600;
+        }
+
+
+        /* Плашка причины отказа */
+        .reject-info {
+            margin: 16px 0;
+            padding: 16px 18px;
+            background: #FFFFFF;
+            border-radius: 14px;
+            border-left: 4px solid #E57373;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .reject-info-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #C62828;
+            margin-bottom: 10px;
+        }
+        .reject-info-cats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .reject-info-cat {
+            padding: 3px 10px;
+            background: #FFF5F5;
+            border-radius: 10px;
+            color: #C62828;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .reject-info-comment {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #2D2D2D;
+        }
+
+
+        /* Подсветка поля, требующего доработки */
+        .field-attention {
+            position: relative;
+        }
+        .field-attention::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #E57373;
+            border-radius: 2px;
+        }
+        .field-wrap.field-attention textarea,
+        .field-wrap.field-attention input {
+            border-color: #E57373;
+        }
+        .field-attention.photos-grid {
+            padding: 12px;
+            border: 1.5px dashed #E57373;
+            border-radius: 12px;
+            background: #FFF9F9;
+        }
+        .field-attention.photos-grid::before {
+            display: none;
+        }
+
     </style>
 </head>
 <body>
@@ -394,7 +489,7 @@
                     <button class="goal-back" onclick="history.back()" aria-label="Назад">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
-                    <h1>Создать цель</h1>
+                    <h1>{% if mode == 'edit' %}Доработать цель{% else %}Создать цель{% endif %}</h1>
                 </div>
                 <div class="goal-type">
                     {% if goal_type == 'super_blitz' %}Супер-блиц — до 5 000 ₽ на 1 день{% else %}Блиц — до 50 000 ₽ на 1–7 дней{% endif %}
@@ -410,6 +505,32 @@
         </div>
 
         <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":{{ category|tojson }},"text":{{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
+
+        {% if mode == 'edit' and goal.moderation_comment %}
+        <div class="reject-info">
+            <div class="reject-info-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <span>Причина отказа</span>
+            </div>
+            {% if rejection_cats %}
+            {% set cat_names = {
+                'no_photo': 'Нет фото',
+                'bad_description': 'Плохое описание',
+                'fake_docs': 'Фейковые документы',
+                'incomplete': 'Не хватает данных',
+                'suspicious': 'Подозрительная цель',
+                'rules': 'Нарушение правил',
+                'other': 'Другое'
+            } %}
+            <div class="reject-info-cats">
+                {% for cat in rejection_cats %}
+                <span class="reject-info-cat">{{ cat_names.get(cat, cat) }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="reject-info-comment">{{ goal.moderation_comment }}</div>
+        </div>
+        {% endif %}
 
         <form method="POST" enctype="multipart/form-data">
             <label>Название цели *</label>
@@ -442,9 +563,9 @@
                 </div>
             </div>
 
-            <label>Описание</label>
+            <label {% if rejection_cats and ('bad_description' in rejection_cats or 'incomplete' in rejection_cats or 'rules' in rejection_cats) %}style="color: #C62828;"{% endif %}>Описание{% if rejection_cats and ('bad_description' in rejection_cats or 'incomplete' in rejection_cats or 'rules' in rejection_cats) %} <span style="font-size: 12px; font-weight: 400;">— требуется доработка</span>{% endif %}</label>
             <div class="field-error" id="descError"></div>
-            <div class="field-wrap">
+            <div class="field-wrap {% if rejection_cats and ('bad_description' in rejection_cats or 'incomplete' in rejection_cats or 'rules' in rejection_cats) %}field-attention{% endif %}">
                 <div class="field-overlay" id="descOverlay"></div>
                 <textarea name="description" id="descField" maxlength="1000" placeholder="">{{ description or '' }}</textarea>
             </div>
@@ -464,14 +585,23 @@
                 {% endif %}
             </div>
 
-            <label>Фото и документы (до 20)</label>
-            <div class="photos-grid" id="photosGrid"></div>
+            <label {% if rejection_cats and ('no_photo' in rejection_cats or 'fake_docs' in rejection_cats or 'incomplete' in rejection_cats) %}style="color: #C62828;"{% endif %}>Фото и документы (до 20){% if rejection_cats and ('no_photo' in rejection_cats or 'fake_docs' in rejection_cats or 'incomplete' in rejection_cats) %} <span style="font-size: 12px; font-weight: 400;">— требуется доработка</span>{% endif %}</label>
+            <div class="photos-grid {% if rejection_cats and ('no_photo' in rejection_cats or 'fake_docs' in rejection_cats or 'incomplete' in rejection_cats) %}field-attention{% endif %}" id="photosGrid"></div>
             <input type="file" name="photos" id="photosInput" accept="image/*" multiple>
             <div class="hint">Фото, чеки, справки, скрины — всё повышает доверие</div>
 
+            {% if mode == 'edit' %}
+            <button type="submit" class="btn-cta" id="submitBtn" disabled>Отправить повторно</button>
+            <div class="edit-hint" id="editHint">Внесите изменения, чтобы отправить цель повторно</div>
+            {% else %}
             <button type="submit" class="btn-cta">Создать цель</button>
+            {% endif %}
         </form>
+        {% if mode == 'edit' %}
+        <a class="btn-outline-glow" href="/goal/{{ goal.id }}" style="margin-top:12px;">Вернуться к цели</a>
+        {% else %}
         <a class="btn-outline-glow" href="/goals/choose" style="margin-top:12px;">Выбрать другой тип</a>
+        {% endif %}
     </div>
 
     <script>
@@ -479,6 +609,18 @@
             document.getElementById('rulesTrigger').classList.toggle('open');
             document.getElementById('rulesBody').classList.toggle('open');
         }
+        
+        {% if mode == 'edit' %}
+        // В режиме редактирования — правила раскрыты сразу
+        document.addEventListener('DOMContentLoaded', function() {
+            var trigger = document.getElementById('rulesTrigger');
+            var body = document.getElementById('rulesBody');
+            if (trigger && body) {
+                trigger.classList.add('open');
+                body.classList.add('open');
+            }
+        });
+        {% endif %}
 
         // Overlay-подсветка для input и textarea
         function updateOverlay(overlayId, text, pos) {
@@ -670,5 +812,53 @@
         {% endif %}
     </script>
 <script src="/static/toast.js"></script>
+
+{% if mode == 'edit' %}
+<script>
+(function() {
+    var initial = {
+        title: document.getElementById('titleField').value,
+        description: document.getElementById('descField') ? document.getElementById('descField').value : '',
+        amount: document.querySelector('input[name="amount"]') ? document.querySelector('input[name="amount"]').value : ''
+    };
+    
+    var submitBtn = document.getElementById('submitBtn');
+    var hint = document.getElementById('editHint');
+    
+    function checkChanges() {
+        var current = {
+            title: document.getElementById('titleField').value,
+            description: document.getElementById('descField') ? document.getElementById('descField').value : '',
+            amount: document.querySelector('input[name="amount"]') ? document.querySelector('input[name="amount"]').value : ''
+        };
+        
+        var changed = 
+            current.title !== initial.title ||
+            current.description !== initial.description ||
+            current.amount !== initial.amount;
+        
+        if (changed) {
+            submitBtn.disabled = false;
+            hint.textContent = 'Готово к отправке — цель уйдёт на модерацию';
+            hint.classList.add('ready');
+        } else {
+            submitBtn.disabled = true;
+            hint.textContent = 'Внесите изменения, чтобы отправить цель повторно';
+            hint.classList.remove('ready');
+        }
+    }
+    
+    // Слушаем изменения
+    document.getElementById('titleField').addEventListener('input', checkChanges);
+    if (document.getElementById('descField')) {
+        document.getElementById('descField').addEventListener('input', checkChanges);
+    }
+    var amountField = document.querySelector('input[name="amount"]');
+    if (amountField) {
+        amountField.addEventListener('input', checkChanges);
+    }
+})();
+</script>
+{% endif %}
 </body>
 </html>

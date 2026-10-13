@@ -8,6 +8,7 @@
 
 <div class="m-section">
     <form method="POST" style="display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
         
         {% if not u %}
         <div>

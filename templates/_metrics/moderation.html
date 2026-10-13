@@ -15,8 +15,13 @@
         <!-- Заголовок -->
         <div style="display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 12px;">
             <div style="flex: 1;">
-                <div style="font-size: 17px; font-weight: 700; margin-bottom: 4px;">
+                <div style="font-size: 17px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <a href="/_metrics/goals/{{ g.id }}" style="color: var(--m-sunset-1); text-decoration: none;">#{{ g.id }} · {{ g.title }}</a>
+                    {% if g.is_resubmission %}
+                    <span class="m-badge warning" title="Цель уже отклонялась и была отправлена повторно">
+                        {% if g.resubmission_count == 1 %}Повторная публикация{% else %}Повторная ({{ g.resubmission_count }}-й раз){% endif %}
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="muted" style="font-size: 13px;">
                     {{ g.type }} · 
@@ -55,12 +60,13 @@
         <!-- Действия -->
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <form method="POST" action="/_metrics/moderation/{{ g.id }}/approve" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                 <button type="submit" 
                         style="padding: 10px 20px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
                     Одобрить
                 </button>
             </form>
-            <button type="button" onclick="showReject({{ g.id }})" 
+            <button type="button" onclick="openRejectModal({{ g.id }}, '{{ g.title|e }}')" 
                     style="padding: 10px 20px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
                 Отклонить
             </button>
@@ -69,22 +75,6 @@
                 Открыть на сайте
             </a>
         </div>
-        
-        <!-- Форма отклонения (скрыта) -->
-        <form method="POST" action="/_metrics/moderation/{{ g.id }}/reject" id="rejectForm-{{ g.id }}" style="display: none; margin-top: 12px;">
-            <textarea name="comment" required placeholder="Причина отклонения..." rows="3"
-                      style="width: 100%; padding: 12px; background: var(--m-bg); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
-            <div style="display: flex; gap: 8px; margin-top: 8px;">
-                <button type="submit" 
-                        style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
-                    Подтвердить отклонение
-                </button>
-                <button type="button" onclick="hideReject({{ g.id }})"
-                        style="padding: 8px 16px; background: var(--m-bg-2); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text-2); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
-                    Отмена
-                </button>
-            </div>
-        </form>
     </div>
     {% endfor %}
 </div>
@@ -115,7 +105,12 @@
             {% for h in history %}
             <tr>
                 <td class="muted" style="white-space: nowrap;">{{ h.moderated_at[:16] if h.moderated_at else '—' }}</td>
-                <td><a href="/_metrics/goals/{{ h.id }}" style="color: var(--m-sunset-1); text-decoration: none;">#{{ h.id }} · {{ h.title[:40] }}{% if h.title|length > 40 %}...{% endif %}</a></td>
+                <td>
+                    <a href="/_metrics/goals/{{ h.id }}" style="color: var(--m-sunset-1); text-decoration: none;">#{{ h.id }} · {{ h.title[:40] }}{% if h.title|length > 40 %}...{% endif %}</a>
+                    {% if h.is_resubmission %}
+                    <span class="m-badge muted" style="margin-left: 6px;">{{ h.resubmission_count }}-й раз</span>
+                    {% endif %}
+                </td>
                 <td class="muted">{{ h.author_name }}</td>
                 <td>
                     {% if h.moderation_status == 'approved' %}<span class="m-badge success">одобрена</span>
@@ -129,13 +124,100 @@
 </div>
 {% endif %}
 
+
+
+
+<!-- Модалка отклонения -->
+<div id="rejectModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--m-bg-2); border: 1px solid var(--m-border); border-radius: 14px; padding: 24px; max-width: 500px; width: 100%;">
+        <div style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">Отклонить цель?</div>
+        <div class="muted" style="font-size: 13px; margin-bottom: 16px;" id="rejectGoalTitle"></div>
+        <form method="POST" id="rejectForm" action="">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Категории (минимум одна)</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                {% for cat_key, cat_label in [('no_photo', 'Нет фото'), ('bad_description', 'Плохое описание'), ('fake_docs', 'Фейковые документы'), ('incomplete', 'Не хватает данных'), ('suspicious', 'Подозрительная цель'), ('rules', 'Нарушение правил'), ('other', 'Другое')] %}
+                <button type="button" class="reject-cat-btn" data-cat="{{ cat_key }}" onclick="toggleRejectCategory(this)"
+                        style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 20px; color: var(--m-text-2); font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s;">
+                    {{ cat_label }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="categories" id="rejectCategoriesInput">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Комментарий для автора (обязательно)</label>
+            <textarea name="comment" id="rejectCommentInput" required rows="3" placeholder="Что нужно исправить или почему цель отклонена..."
+                      style="width: 100%; padding: 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 16px;"></textarea>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" onclick="closeRejectModal()"
+                        style="padding: 10px 20px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text-2); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+                    Отмена
+                </button>
+                <button type="submit"
+                        style="padding: 10px 20px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">
+                    Отклонить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-function showReject(goalId) {
-    document.getElementById('rejectForm-' + goalId).style.display = 'block';
+function openRejectModal(goalId, goalTitle) {
+    document.getElementById('rejectForm').action = '/_metrics/moderation/' + goalId + '/reject';
+    document.getElementById('rejectGoalTitle').textContent = '#' + goalId + ' · ' + goalTitle;
+    document.getElementById('rejectModal').style.display = 'flex';
+    setTimeout(function() {
+        document.getElementById('rejectCommentInput').focus();
+    }, 50);
 }
-function hideReject(goalId) {
-    document.getElementById('rejectForm-' + goalId).style.display = 'none';
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+    document.querySelectorAll('.reject-cat-btn').forEach(function(btn) {
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+        btn.dataset.selected = '0';
+    });
+    document.getElementById('rejectCategoriesInput').value = '';
+    document.getElementById('rejectCommentInput').value = '';
 }
+function toggleRejectCategory(btn) {
+    var isSelected = btn.dataset.selected === '1';
+    if (isSelected) {
+        btn.dataset.selected = '0';
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+    } else {
+        btn.dataset.selected = '1';
+        btn.style.background = 'rgba(229,115,115,0.2)';
+        btn.style.color = 'var(--m-danger)';
+        btn.style.borderColor = 'var(--m-danger)';
+    }
+    var selected = [];
+    document.querySelectorAll('.reject-cat-btn[data-selected="1"]').forEach(function(b) {
+        selected.push(b.dataset.cat);
+    });
+    document.getElementById('rejectCategoriesInput').value = selected.join(',');
+}
+document.getElementById('rejectModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRejectModal();
+});
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.getElementById('rejectForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            if (!document.getElementById('rejectCategoriesInput').value) {
+                e.preventDefault();
+                alert('Выберите минимум одну категорию');
+                return false;
+            }
+        });
+    }
+});
 </script>
 
 {% endblock %}

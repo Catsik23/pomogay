@@ -1,6 +1,7 @@
 {% extends "_metrics/base.html" %}
 
-{% block title %}#{{ g.id }} — {{ g.title }}{% endblock %}
+{% block title %}#{{ g.id }} — {{ g.title }}
+{% endblock %}
 {% block page_title %}#{{ g.id }} · {{ g.title }}{% endblock %}
 {% block page_subtitle %}
 {{ g.type }} · 
@@ -16,14 +17,13 @@
         Открыть на сайте
     </a>
     {% if g.status == 'active' %}
-    <form method="POST" action="/_metrics/goals/{{ g.id }}/hide" style="display: inline;">
-        <button type="submit" onclick="return confirm('Скрыть цель?')" 
-                style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
-            Скрыть
-        </button>
-    </form>
+    <button type="button" onclick="openHideModal()" 
+            style="padding: 8px 16px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+        Скрыть
+    </button>
     {% elif g.status == 'hidden' %}
     <form method="POST" action="/_metrics/goals/{{ g.id }}/restore" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
         <button type="submit" 
                 style="padding: 8px 16px; background: rgba(76,175,125,0.15); border: 1px solid var(--m-success); border-radius: 8px; color: var(--m-success); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
             Восстановить
@@ -177,5 +177,96 @@
     </table>
 </div>
 {% endif %}
+
+
+
+<!-- Модалка скрытия цели -->
+<div id="hideModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--m-bg-2); border: 1px solid var(--m-border); border-radius: 14px; padding: 24px; max-width: 500px; width: 100%;">
+        <div style="font-size: 17px; font-weight: 700; margin-bottom: 6px;">Скрыть цель?</div>
+        <div class="muted" style="font-size: 13px; margin-bottom: 16px;">
+            #{{ g.id }} · {{ g.title }}
+        </div>
+        <form method="POST" action="/_metrics/goals/{{ g.id }}/hide">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Категории (минимум одна)</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+                {% for cat_key, cat_label in [('spam', 'Спам'), ('fraud', 'Мошенничество'), ('fake_content', 'Фейковый контент'), ('duplicate', 'Дубликат'), ('reports', 'По жалобам'), ('rules', 'Нарушение правил'), ('other', 'Другое')] %}
+                <button type="button" class="hide-cat-btn" data-cat="{{ cat_key }}" onclick="toggleHideCategory(this)"
+                        style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 20px; color: var(--m-text-2); font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer; transition: all 0.15s;">
+                    {{ cat_label }}
+                </button>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="categories" id="hideCategoriesInput">
+            
+            <label style="display: block; font-size: 12px; color: var(--m-text-2); margin-bottom: 6px; font-weight: 600;">Комментарий (необязательно)</label>
+            <textarea name="comment" rows="2" placeholder="Дополнительные детали..."
+                      style="width: 100%; padding: 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 14px; font-family: inherit; resize: vertical; margin-bottom: 16px;"></textarea>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" onclick="closeHideModal()"
+                        style="padding: 10px 20px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 8px; color: var(--m-text-2); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;">
+                    Отмена
+                </button>
+                <button type="submit"
+                        style="padding: 10px 20px; background: rgba(229,115,115,0.15); border: 1px solid var(--m-danger); border-radius: 8px; color: var(--m-danger); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer;">
+                    Скрыть
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openHideModal() {
+    document.getElementById('hideModal').style.display = 'flex';
+}
+function closeHideModal() {
+    document.getElementById('hideModal').style.display = 'none';
+    document.querySelectorAll('.hide-cat-btn').forEach(function(btn) {
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+        btn.dataset.selected = '0';
+    });
+    document.getElementById('hideCategoriesInput').value = '';
+}
+function toggleHideCategory(btn) {
+    var isSelected = btn.dataset.selected === '1';
+    if (isSelected) {
+        btn.dataset.selected = '0';
+        btn.style.background = 'var(--m-bg-3)';
+        btn.style.color = 'var(--m-text-2)';
+        btn.style.borderColor = 'var(--m-border-2)';
+    } else {
+        btn.dataset.selected = '1';
+        btn.style.background = 'rgba(229,115,115,0.2)';
+        btn.style.color = 'var(--m-danger)';
+        btn.style.borderColor = 'var(--m-danger)';
+    }
+    var selected = [];
+    document.querySelectorAll('.hide-cat-btn[data-selected="1"]').forEach(function(b) {
+        selected.push(b.dataset.cat);
+    });
+    document.getElementById('hideCategoriesInput').value = selected.join(',');
+}
+document.getElementById('hideModal').addEventListener('click', function(e) {
+    if (e.target === this) closeHideModal();
+});
+document.addEventListener('DOMContentLoaded', function() {
+    var hideForm = document.querySelector('#hideModal form');
+    if (hideForm) {
+        hideForm.addEventListener('submit', function(e) {
+            if (!document.getElementById('hideCategoriesInput').value) {
+                e.preventDefault();
+                alert('Выберите минимум одну категорию');
+                return false;
+            }
+        });
+    }
+});
+</script>
 
 {% endblock %}
