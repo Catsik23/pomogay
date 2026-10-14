@@ -15,7 +15,9 @@ MAX_FILE_SIZE = 50 * 1024 * 1024
 TARGET_PHOTO_SIZE = 500 * 1024
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'pomogay-dev-secret-change-in-production')
+app.secret_key = os.environ.get('SECRET_KEY')
+if not app.secret_key:
+    raise RuntimeError('SECRET_KEY environment variable is not set. Server cannot start without it.')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -23,35 +25,36 @@ init_db()
 
 
 
-# Принудительно создаём seed-пользователя при каждом запуске
-db = get_db()
-seed = db.execute("SELECT id FROM users WHERE phone = '79885260358'").fetchone()
-if not seed:
-    db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456'),))
-    db.commit()
-    print('Seed 1 создан: 79885260358')
+# Seed-пользователи создаются ТОЛЬКО при SEED_USERS=1 (для разработки)
+if os.environ.get('SEED_USERS') == '1':
+    db = get_db()
+    seed = db.execute("SELECT id FROM users WHERE phone = '79885260358'").fetchone()
+    if not seed:
+        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456'),))
+        db.commit()
+        print('Seed 1 создан: 79885260358')
 
-seed2 = db.execute("SELECT id FROM users WHERE phone = '7999999999'").fetchone()
-if not seed2:
-    db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456'),))
-    db.commit()
-    print('Seed 2 создан: 7999999999')
+    seed2 = db.execute("SELECT id FROM users WHERE phone = '7999999999'").fetchone()
+    if not seed2:
+        db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456'),))
+        db.commit()
+        print('Seed 2 создан: 7999999999')
 
-# Seed 3 с готовой целью
-seed3 = db.execute("SELECT id FROM users WHERE phone = '79888888888'").fetchone()
-if not seed3:
-    db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456'),))
-    db.commit()
-    seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-    from datetime import datetime, timedelta
-    ends = (datetime.now() + timedelta(days=7)).isoformat()
-    db.execute(
-        "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, moderation_status) VALUES (?, 'blitz', 'на ноутбук', 'для работы', 25000, 0, ?, 'active', 'approved')",
-        (seed3_id, ends)
-    )
-    db.commit()
-    print('Seed 3 создан: 79888888888 с целью')
-db.close()
+    # Seed 3 с готовой целью
+    seed3 = db.execute("SELECT id FROM users WHERE phone = '79888888888'").fetchone()
+    if not seed3:
+        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456'),))
+        db.commit()
+        seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        from datetime import datetime, timedelta
+        ends = (datetime.now() + timedelta(days=7)).isoformat()
+        db.execute(
+            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, moderation_status) VALUES (?, 'blitz', 'на ноутбук', 'для работы', 25000, 0, ?, 'active', 'approved')",
+            (seed3_id, ends)
+        )
+        db.commit()
+        print('Seed 3 создан: 79888888888 с целью')
+    db.close()
 
 def get_current_user():
     if 'user_id' in session:
@@ -220,27 +223,27 @@ def record_event(event_type, db=None, *, actor_user_id=None, target_user_id=None
             db.close()
 
 
+def _safe_count(db, query, params=None):
+    """Безопасный COUNT — возвращает 0 если таблица или колонка отсутствует."""
+    try:
+        if params:
+            row = db.execute(query, params).fetchone()
+        else:
+            row = db.execute(query).fetchone()
+        return row[0] if row else 0
+    except Exception:
+        return 0
+
+
 def get_sidebar_counts(db):
-    """Единые счётчики для sidebar админки. Используются во всех модулях."""
+    """Единые счётчики для sidebar админки. Устойчивы к отсутствию таблиц."""
     return {
-        'flags': db.execute(
-            "SELECT COUNT(*) FROM content_guard_log WHERE created_at > datetime('now', '-24 hours')"
-        ).fetchone()[0],
-        'reports': db.execute(
-            "SELECT COUNT(*) FROM reports WHERE created_at > datetime('now', '-24 hours')"
-        ).fetchone()[0],
-        'moderation': db.execute(
-            "SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'"
-        ).fetchone()[0],
-        'suspicious': db.execute(
-            "SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'"
-        ).fetchone()[0],
-        'dialogs': db.execute(
-            "SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0"
-        ).fetchone()[0],
-        'events': db.execute(
-            "SELECT COUNT(*) FROM platform_events WHERE created_at > datetime('now', '-24 hours')"
-        ).fetchone()[0],
+        'flags': _safe_count(db, "SELECT COUNT(*) FROM content_guard_log WHERE created_at > datetime('now', '-24 hours')"),
+        'reports': _safe_count(db, "SELECT COUNT(*) FROM reports WHERE created_at > datetime('now', '-24 hours')"),
+        'moderation': _safe_count(db, "SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'"),
+        'suspicious': _safe_count(db, "SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'"),
+        'dialogs': _safe_count(db, "SELECT COUNT(*) FROM admin_dialog_messages WHERE sender_type = 'user' AND is_read = 0"),
+        'events': _safe_count(db, "SELECT COUNT(*) FROM platform_events WHERE created_at > datetime('now', '-24 hours')"),
     }
 
 
@@ -258,7 +261,7 @@ def validate_phone(phone):
 
 def is_rate_limited(phone):
     db = get_db()
-    ago = time.time() - 900
+    ago = int(time.time() - 900)
     c = db.execute("SELECT COUNT(*) FROM analytics_events WHERE event_type='login_attempt' AND event_data LIKE ? AND created_at > datetime(?, 'unixepoch')", (f'%{phone}%', ago)).fetchone()[0]
     db.close()
     return c >= 5
@@ -353,6 +356,16 @@ def register():
             # trust_score = 50 из DEFAULT, ставим правильный уровень
             db.execute("UPDATE users SET trust_level = 'member' WHERE id = ?", (user['id'],))
             db.commit()
+            
+            # Событие в platform_events
+            record_event(
+                'user_registered',
+                db=db,
+                actor_user_id=user['id'],
+                source='user',
+                payload={'phone': clean, 'name': name or None}
+            )
+            db.commit()
         db.close()
         return redirect(url_for('goals_list'))
     return render_template('register.html')
@@ -394,9 +407,58 @@ def delete_account():
     user = get_current_user()
     if user:
         db = get_db()
-        db.execute("DELETE FROM donations WHERE donor_id = ? OR goal_id IN (SELECT id FROM goals WHERE user_id = ?)", (user['id'], user['id']))
-        db.execute("DELETE FROM goals WHERE user_id = ?", (user['id'],))
-        db.execute("DELETE FROM users WHERE id = ?", (user['id'],))
+        uid = user['id']
+        
+        # ID целей пользователя (для удаления связанных)
+        goal_ids = [r['id'] for r in db.execute("SELECT id FROM goals WHERE user_id = ?", (uid,)).fetchall()]
+        
+        if goal_ids:
+            placeholders = ','.join('?' * len(goal_ids))
+            
+            # Донаты (мои + в мои цели)
+            db.execute(f"DELETE FROM donations WHERE donor_id = ? OR goal_id IN ({placeholders})", (uid, *goal_ids))
+            # Жалобы на мои цели
+            db.execute(f"DELETE FROM reports WHERE goal_id IN ({placeholders})", goal_ids)
+            # Уведомления по моим целям
+            db.execute(f"DELETE FROM notifications_log WHERE goal_id IN ({placeholders})", goal_ids)
+            # Отложенные донаты по моим целям
+            db.execute(f"DELETE FROM deferred_donations WHERE goal_id IN ({placeholders})", goal_ids)
+            # События по моим целям
+            db.execute(f"DELETE FROM platform_events WHERE goal_id IN ({placeholders})", goal_ids)
+            # Мои цели
+            db.execute("DELETE FROM goals WHERE user_id = ?", (uid,))
+        
+        # Донаты, где я — донатор (если ещё не удалены)
+        db.execute("DELETE FROM donations WHERE donor_id = ?", (uid,))
+        # Мои жалобы (где я жалобщик)
+        db.execute("DELETE FROM reports WHERE reporter_id = ?", (uid,))
+        # Мои лайки
+        db.execute("DELETE FROM likes WHERE user_id = ?", (uid,))
+        # Мои напоминания
+        db.execute("DELETE FROM deferred_donations WHERE user_id = ?", (uid,))
+        # Мои уведомления
+        db.execute("DELETE FROM notifications WHERE user_id = ?", (uid,))
+        db.execute("DELETE FROM notifications_log WHERE user_id = ?", (uid,))
+        # Мои события
+        db.execute("DELETE FROM platform_events WHERE actor_user_id = ?", (uid,))
+        # Мои аналитические события
+        db.execute("DELETE FROM analytics_events WHERE user_id = ?", (uid,))
+        # Мои действия в админке
+        db.execute("DELETE FROM admin_actions WHERE admin_id = ?", (uid,))
+        # Мои диалоги
+        dialog_ids = [r['id'] for r in db.execute("SELECT id FROM admin_dialogs WHERE user_id = ?", (uid,)).fetchall()]
+        if dialog_ids:
+            dplaceholders = ','.join('?' * len(dialog_ids))
+            db.execute(f"DELETE FROM admin_dialog_messages WHERE dialog_id IN ({dplaceholders})", dialog_ids)
+            db.execute("DELETE FROM admin_dialogs WHERE user_id = ?", (uid,))
+        # Мои сигналы CG
+        db.execute("DELETE FROM content_guard_log WHERE user_id = ?", (uid,))
+        # Мои suspicious activity
+        db.execute("DELETE FROM suspicious_activity WHERE user_id = ?", (uid,))
+        
+        # Сам пользователь
+        db.execute("DELETE FROM users WHERE id = ?", (uid,))
+        
         db.commit()
         db.close()
     session.clear()
@@ -649,6 +711,22 @@ def create_goal(goal_type):
         )
         db.commit()
         gid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        
+        # Событие в platform_events
+        record_event(
+            'goal_created',
+            db=db,
+            actor_user_id=user['id'],
+            goal_id=gid,
+            source='user',
+            payload={
+                'type': goal_type,
+                'title': title,
+                'amount': amt,
+                'is_admin_auto': bool(user['is_admin']),
+            }
+        )
+        db.commit()
         db.close()
         
         if user['is_admin']:
@@ -656,10 +734,6 @@ def create_goal(goal_type):
         else:
             flash('Цель отправлена на модерацию. Мы проверим её в ближайшее время.', 'info')
         
-        return redirect(url_for('goal_page', goal_id=gid))
-    
-
-
         return redirect(url_for('goal_page', goal_id=gid))
     return render_template('create_goal.html', goal_type=goal_type)
 
@@ -704,7 +778,7 @@ def goal_page(goal_id):
     
     # Парсим rejection_categories для баннера
     rejection_cats = []
-    if goal.get('rejection_categories') if isinstance(goal, dict) else goal['rejection_categories']:
+    if goal['rejection_categories']:
         try:
             rejection_cats = _json.loads(goal['rejection_categories'])
         except Exception:
@@ -984,6 +1058,21 @@ def donate(goal_id):
         )
         db.commit()
         donation_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+        
+        # Событие в platform_events
+        record_event(
+            'donation_declared',
+            db=db,
+            actor_user_id=donor_id,
+            goal_id=goal_id,
+            donation_id=donation_id,
+            source='user',
+            payload={
+                'amount': amount,
+                'is_anonymous': bool(is_anonymous),
+                'has_warm_word': bool(warm_word),
+            }
+        )
 
         db.execute(
             "INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_donor', ?)",
