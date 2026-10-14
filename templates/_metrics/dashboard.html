@@ -90,7 +90,7 @@
         <tbody>
             {% for f in recent_flags %}
             <tr>
-                <td class="muted">{{ f.created_at[:16] }}</td>
+                <td class="muted">{{ f.created_at | date_ru }}</td>
                 <td>
                     {% if f.user_id %}
                         <a href="/_metrics/users/{{ f.user_id }}" style="color: var(--m-sunset-1); text-decoration: none;">ID {{ f.user_id }}</a>

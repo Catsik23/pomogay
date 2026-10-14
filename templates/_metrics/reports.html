@@ -76,7 +76,7 @@
         <tbody>
             {% for r in reports %}
             <tr>
-                <td class="muted" style="white-space: nowrap;">{{ r.created_at[:16] }}</td>
+                <td class="muted" style="white-space: nowrap;">{{ r.created_at | date_ru }}</td>
                 <td>
                     <a href="/_metrics/goals/{{ r.goal_id }}" style="color: var(--m-sunset-1); text-decoration: none;">
                         #{{ r.goal_id }} · {{ r.goal_title[:40] }}{% if r.goal_title|length > 40 %}...{% endif %}

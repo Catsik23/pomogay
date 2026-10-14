@@ -82,7 +82,7 @@
                         <span class="m-badge muted">выключен</span>
                     {% endif %}
                 </td>
-                <td class="muted" style="font-size: 12px;">{{ (f.updated_at or '—')[:16] }}</td>
+                <td class="muted" style="font-size: 12px;">{{ f.updated_at | date_ru }}</td>
                 <td>
                     <form method="POST" action="/_metrics/settings/flag/{{ f.id }}/toggle" style="display: inline;">
         <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">

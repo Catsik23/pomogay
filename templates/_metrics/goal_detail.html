@@ -72,7 +72,7 @@
             </td>
         </tr>
         <tr><td style="color: var(--m-text-2);">Trust автора</td><td>{{ g.author_trust or 0 }}</td></tr>
-        <tr><td style="color: var(--m-text-2);">Создана</td><td>{{ g.created_at[:16] }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Создана</td><td>{{ g.created_at | date_ru }}</td></tr>
         <tr><td style="color: var(--m-text-2);">Модерация</td><td>{{ g.moderation_status or '—' }}</td></tr>
     </table>
 </div>
@@ -108,7 +108,7 @@
         <tbody>
             {% for d in donations %}
             <tr>
-                <td class="muted">{{ d.donor_confirmed_at[:16] if d.donor_confirmed_at else '—' }}</td>
+                <td class="muted">{{ d.donor_confirmed_at | date_ru }}</td>
                 <td>
                     {% if d.donor_user_id %}
                         <a href="/_metrics/users/{{ d.donor_user_id }}" style="color: var(--m-sunset-1); text-decoration: none;">{{ d.donor_name }}</a>
@@ -142,7 +142,7 @@
         <tbody>
             {% for r in reports %}
             <tr>
-                <td class="muted">{{ r.created_at[:16] }}</td>
+                <td class="muted">{{ r.created_at | date_ru }}</td>
                 <td>
                     {% if r.reporter_user_id %}
                         <a href="/_metrics/users/{{ r.reporter_user_id }}" style="color: var(--m-sunset-1); text-decoration: none;">{{ r.reporter_name }}</a>
@@ -166,7 +166,7 @@
         <tbody>
             {% for f in flags %}
             <tr>
-                <td class="muted">{{ f.created_at[:16] }}</td>
+                <td class="muted">{{ f.created_at | date_ru }}</td>
                 <td><strong>{{ f.found_word }}</strong></td>
                 <td><span class="m-badge muted">{{ f.category }}</span></td>
                 <td>{% if f.status == 'blocked' %}<span class="m-badge danger">блок</span>{% else %}<span class="m-badge warning">флаг</span>{% endif %}</td>
@@ -217,7 +217,7 @@
             } %}
             {% for h in moderation_history %}
             <tr>
-                <td class="muted" style="white-space: nowrap;">{{ h.created_at[:16] }}</td>
+                <td class="muted" style="white-space: nowrap;">{{ h.created_at | date_ru }}</td>
                 <td>
                     {% if h.action_type == 'resubmit_goal' %}
                         <span class="muted">Автор цели</span>

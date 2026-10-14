@@ -43,7 +43,7 @@
         <tbody>
             {% for e in events %}
             <tr>
-                <td class="muted" style="white-space: nowrap; font-size: 12px;">{{ e.time[:16] }}</td>
+                <td class="muted" style="white-space: nowrap; font-size: 12px;">{{ e.time | date_ru }}</td>
                 <td>
                     {% if e.user_id %}
                         <a href="/_metrics/users/{{ e.user_id }}" style="color: var(--m-sunset-1); text-decoration: none; font-size: 12px;">

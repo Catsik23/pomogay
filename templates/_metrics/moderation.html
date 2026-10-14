@@ -79,7 +79,7 @@
                 } %}
                 {% for pr in g.prev_rejections %}
                 <div class="prev-rej-item">
-                    <div class="prev-rej-date">{{ pr.created_at[:16] }}</div>
+                    <div class="prev-rej-date">{{ pr.created_at | date_ru }}</div>
                     {% if pr.categories %}
                     <div class="prev-rej-cats">
                         {% for cat in pr.categories %}
@@ -143,7 +143,7 @@
         <tbody>
             {% for h in history %}
             <tr>
-                <td class="muted" style="white-space: nowrap;">{{ h.moderated_at[:16] if h.moderated_at else '—' }}</td>
+                <td class="muted" style="white-space: nowrap;">{{ h.moderated_at | date_ru }}</td>
                 <td>
                     <a href="/_metrics/goals/{{ h.id }}" style="color: var(--m-sunset-1); text-decoration: none;">#{{ h.id }} · {{ h.title[:40] }}{% if h.title|length > 40 %}...{% endif %}</a>
                     {% if h.is_resubmission %}

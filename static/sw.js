@@ -1,4 +1,4 @@
-const CACHE = "pomogay-v6";
+const CACHE = "pomogay-v7";
 const ASSETS = [
     "/static/style.css",
     "/static/icon-192.png",

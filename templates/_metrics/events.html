@@ -67,7 +67,7 @@
         <tbody>
             {% for e in events %}
             <tr>
-                <td class="muted" style="white-space: nowrap; font-size: 12px;">{{ e.created_at[:16] }}</td>
+                <td class="muted" style="white-space: nowrap; font-size: 12px;">{{ e.created_at | date_ru }}</td>
                 <td>
                     {% set tn = type_names.get(e.event_type, (e.event_type, 'muted')) %}
                     <span class="m-badge {{ tn[1] }}">{{ tn[0] }}</span>

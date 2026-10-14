@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import init_db, get_db
+from models import init_db, get_db, close_db
 from trust_engine import add_trust_score, get_trust_perks, can_create_goal
 from functools import wraps
 
@@ -15,6 +15,7 @@ MAX_FILE_SIZE = 50 * 1024 * 1024
 TARGET_PHOTO_SIZE = 500 * 1024
 
 app = Flask(__name__)
+app.teardown_appcontext(close_db)
 app.secret_key = os.environ.get('SECRET_KEY')
 if not app.secret_key:
     raise RuntimeError('SECRET_KEY environment variable is not set. Server cannot start without it.')
@@ -64,8 +65,6 @@ def get_current_user():
             return user
         except:
             return None
-        finally:
-            db.close()
     return None
 
 def log_guard(result, text, context, user_action):
@@ -92,7 +91,6 @@ def log_guard(result, text, context, user_action):
             result.get('position', [None, None])[1] if result.get('position') else None,
         ))
         db.commit()
-        db.close()
     except Exception as e:
         print(f'[content_guard_log] Ошибка: {e}')
 
@@ -742,7 +740,6 @@ def goal_page(goal_id):
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     
@@ -752,7 +749,6 @@ def goal_page(goal_id):
         is_author = current_user and current_user['id'] == goal['user_id']
         is_admin = current_user and current_user['is_admin']
         if not (is_author or is_admin):
-            db.close()
             from flask import abort
             abort(404)
     
@@ -761,7 +757,6 @@ def goal_page(goal_id):
         current_user = get_current_user()
         is_admin = current_user and current_user['is_admin']
         if not is_admin:
-            db.close()
             from flask import abort
             abort(404)
     
@@ -798,7 +793,6 @@ def goal_page(goal_id):
     ).fetchall()
     donor_count = db.execute("SELECT COUNT(DISTINCT donor_id) FROM donations WHERE goal_id = ? AND status IN ('recipient_confirmed','completed')", (goal_id,)).fetchone()[0]
     last_donation = db.execute("SELECT MAX(donor_confirmed_at) FROM donations WHERE goal_id = ?", (goal_id,)).fetchone()[0]
-    db.close()
     pct = int((goal['amount_collected'] / goal['amount_goal']) * 100) if goal['amount_goal'] > 0 else 0
     # Форматируем дату
     months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
@@ -818,7 +812,6 @@ def goal_page(goal_id):
             "SELECT id FROM likes WHERE user_id = ? AND goal_id = ?",
             (user['id'], goal_id)
         ).fetchone() is not None
-        ldb.close()
     
     # Проверяем, жаловался ли уже пользователь
     already_reported = False
@@ -828,7 +821,6 @@ def goal_page(goal_id):
             'SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ?',
             (goal_id, user['id'])
         ).fetchone() is not None
-        rdb.close()
     
     return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list, is_liked=is_liked, rejection_cats=rejection_cats)
 
@@ -844,7 +836,6 @@ def report_goal(goal_id):
     db = get_db()
     goal = db.execute('SELECT * FROM goals WHERE id = ?', (goal_id,)).fetchone()
     if not goal:
-        db.close()
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     if goal['user_id'] == user['id']:
@@ -3586,7 +3577,6 @@ def goal_edit(goal_id):
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     
     if not goal:
-        db.close()
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     
@@ -3854,6 +3844,34 @@ def format_date(date_str):
 app.jinja_env.filters['level_emoji'] = level_emoji
 app.jinja_env.filters['level_name'] = level_name
 app.jinja_env.filters['format_date'] = format_date
+
+
+def format_date_ru(date_str, with_time=True):
+    """Формат даты: 13.10.2026 19:07 или 13.10.2026"""
+    if not date_str:
+        return '—'
+    try:
+        s = str(date_str)
+        # Есть ли время
+        if ' ' in s:
+            date_part, time_part = s.split(' ', 1)
+            y, m, d = date_part.split('-')
+            time_part = time_part[:5]  # HH:MM
+            if with_time:
+                return f'{d}.{m}.{y} {time_part}'
+            return f'{d}.{m}.{y}'
+        else:
+            # Только дата
+            parts = s[:10].split('-')
+            if len(parts) == 3:
+                y, m, d = parts
+                return f'{d}.{m}.{y}'
+    except Exception:
+        pass
+    return str(date_str)[:16]
+
+
+app.jinja_env.filters['date_ru'] = format_date_ru
 
 # Trust Score helpers
 from trust_engine import get_trust_level_name as _tln, get_trust_progress as _ttp, get_trust_segments as _tsg

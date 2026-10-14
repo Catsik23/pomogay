@@ -60,7 +60,7 @@
         <tr><td style="color: var(--m-text-2);">Дата рождения</td><td>{{ u.birth_date or '—' }}</td></tr>
         <tr><td style="color: var(--m-text-2);">Анкета заполнена</td><td>{% if u.profile_completed %}✅ да{% else %}❌ нет{% endif %}</td></tr>
         <tr><td style="color: var(--m-text-2);">Личность проверена</td><td>{% if u.identity_verified %}✅ да{% else %}❌ нет{% endif %}</td></tr>
-        <tr><td style="color: var(--m-text-2);">Регистрация</td><td>{{ u.created_at[:16] }}</td></tr>
+        <tr><td style="color: var(--m-text-2);">Регистрация</td><td>{{ u.created_at | date_ru }}</td></tr>
         <tr><td style="color: var(--m-text-2);">IP при регистрации</td><td>{{ u.ip_registered or '—' }}</td></tr>
         <tr><td style="color: var(--m-text-2);">Серия дней</td><td>{{ u.streak_days or 0 }}</td></tr>
         <tr><td style="color: var(--m-text-2);">Статус</td><td>
@@ -135,7 +135,7 @@
         <tbody>
             {% for f in flags %}
             <tr>
-                <td class="muted">{{ f.created_at[:16] }}</td>
+                <td class="muted">{{ f.created_at | date_ru }}</td>
                 <td><strong>{{ f.found_word }}</strong></td>
                 <td><span class="m-badge muted">{{ f.category }}</span></td>
                 <td>
@@ -162,7 +162,7 @@
                 <td>#{{ d.id }}</td>
                 <td>{{ d.subject or '—' }}</td>
                 <td>{% if d.status == 'open' %}<span class="m-badge warning">открыт</span>{% else %}<span class="m-badge muted">закрыт</span>{% endif %}</td>
-                <td class="muted">{{ d.created_at[:16] }}</td>
+                <td class="muted">{{ d.created_at | date_ru }}</td>
             </tr>
             {% endfor %}
         </tbody>

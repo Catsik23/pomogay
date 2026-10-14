@@ -37,7 +37,7 @@
             <div style="max-width: 70%; padding: 12px 16px; border-radius: 14px; 
                         {% if m.sender_type == 'admin' %}background: linear-gradient(160deg, #FF5A3C, #E85D75); color: white;{% else %}background: var(--m-bg-3); color: var(--m-text); border: 1px solid var(--m-border-2);{% endif %}">
                 <div style="font-size: 11px; opacity: 0.7; margin-bottom: 4px;">
-                    {% if m.sender_type == 'admin' %}Админ{% else %}{{ d.user_name }}{% endif %} · {{ m.created_at[:16] }}
+                    {% if m.sender_type == 'admin' %}Админ{% else %}{{ d.user_name }}{% endif %} · {{ m.created_at | date_ru }}
                 </div>
                 <div style="font-size: 14px; line-height: 1.5; white-space: pre-wrap;">{{ m.message }}</div>
             </div>
@@ -61,7 +61,7 @@
     <div class="muted" style="font-size: 11px; margin-top: 6px;">Ctrl+Enter — отправить</div>
     {% else %}
     <div style="margin-top: 16px; padding: 16px; background: var(--m-bg-3); border-radius: 10px; text-align: center; color: var(--m-text-2); font-size: 13px;">
-        Диалог закрыт {{ d.closed_at[:16] if d.closed_at else '' }}
+        Диалог закрыт {{ d.closed_at | date_ru }}
     </div>
     {% endif %}
 </div>

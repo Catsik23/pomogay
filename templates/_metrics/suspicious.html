@@ -40,7 +40,7 @@
         <tbody>
             {% for a in activities %}
             <tr>
-                <td class="muted" style="white-space: nowrap;">{{ a.created_at[:16] }}</td>
+                <td class="muted" style="white-space: nowrap;">{{ a.created_at | date_ru }}</td>
                 <td>
                     <span class="m-badge {% if a.activity_type == 'no_confirm_48h' %}warning{% elif a.activity_type == 'mass_registration' %}danger{% elif a.activity_type == 'many_flags' %}danger{% else %}info{% endif %}">
                         {{ type_names.get(a.activity_type, a.activity_type) }}

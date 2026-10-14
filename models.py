@@ -3,14 +3,44 @@ import sqlite3, os
 
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'pomogay.db')
 
-def get_db():
-    conn = sqlite3.connect(DATABASE, timeout=10)
+
+def _create_connection():
+    """Создаёт новое соединение с нужными PRAGMA."""
+    conn = sqlite3.connect(DATABASE, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def get_db():
+    """
+    Возвращает соединение с БД.
+    - В рамках HTTP-запроса: одно соединение на запрос (через flask.g).
+    - Вне контекста (init_db, cron): новое соединение.
+    """
+    try:
+        from flask import g
+        if not hasattr(g, '_database'):
+            g._database = _create_connection()
+        return g._database
+    except (ImportError, RuntimeError):
+        # Вне Flask-контекста — прямое соединение
+        return _create_connection()
+
+
+def close_db(error=None):
+    """Закрывает соединение в конце HTTP-запроса. Вызывается через teardown_appcontext."""
+    try:
+        from flask import g
+        db = getattr(g, '_database', None)
+        if db is not None:
+            db.close()
+            g._database = None
+    except (ImportError, RuntimeError):
+        pass
 
 
 def migrate_db():
