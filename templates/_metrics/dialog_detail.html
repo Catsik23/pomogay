@@ -49,7 +49,12 @@
     </div>
     
     {% if d.status == 'open' %}
-    <div style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--m-border); padding-top: 16px;">
+    <div style="display: flex; gap: 8px; margin-top: 16px; border-top: 1px solid var(--m-border); padding-top: 16px; align-items: flex-end;">
+        <button type="button" onclick="reloadMessages()" title="Обновить чат"
+                style="padding: 12px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border-2); border-radius: 10px; color: var(--m-text-2); font-size: 16px; cursor: pointer; align-self: flex-end;"
+                id="refreshBtn">
+            ↻
+        </button>
         <textarea id="messageInput" placeholder="Написать сообщение..." rows="2"
                   style="flex: 1; padding: 12px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 10px; color: var(--m-text); font-size: 14px; font-family: inherit; resize: vertical; min-height: 50px;"
                   onkeydown="if(event.ctrlKey && event.key==='Enter'){sendMessage();event.preventDefault();}"></textarea>
@@ -58,7 +63,7 @@
             Отправить
         </button>
     </div>
-    <div class="muted" style="font-size: 11px; margin-top: 6px;">Ctrl+Enter — отправить</div>
+    <div class="muted" style="font-size: 11px; margin-top: 6px;">Ctrl+Enter — отправить · Автообновление каждые 5 сек</div>
     {% else %}
     <div style="margin-top: 16px; padding: 16px; background: var(--m-bg-3); border-radius: 10px; text-align: center; color: var(--m-text-2); font-size: 13px;">
         Диалог закрыт {{ d.closed_at | date_ru }}
@@ -67,18 +72,88 @@
 </div>
 
 <script>
+var DIALOG_ID = {{ d.id }};
+var CSRF_TOKEN = "{{ get_csrf_token() }}";
+
 // Скролл вниз при загрузке
 var chatEl = document.getElementById('chatMessages');
 if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+
+// Обновление сообщений без перезагрузки страницы
+function reloadMessages() {
+    var btn = document.getElementById('refreshBtn');
+    if (btn) btn.style.opacity = '0.5';
+    
+    fetch('/_metrics/dialogs/' + DIALOG_ID + '/messages')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.ok) return;
+            var container = document.getElementById('chatMessages');
+            var wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+            
+            container.innerHTML = '';
+            if (!data.messages || data.messages.length === 0) {
+                container.innerHTML = '<div class="m-empty">Сообщений пока нет.</div>';
+            } else {
+                data.messages.forEach(function(m) {
+                    var wrap = document.createElement('div');
+                    wrap.style.display = 'flex';
+                    wrap.style.justifyContent = m.sender_type === 'admin' ? 'flex-end' : 'flex-start';
+                    
+                    var bubble = document.createElement('div');
+                    bubble.style.maxWidth = '70%';
+                    bubble.style.padding = '12px 16px';
+                    bubble.style.borderRadius = '14px';
+                    if (m.sender_type === 'admin') {
+                        bubble.style.background = 'linear-gradient(160deg, #FF5A3C, #E85D75)';
+                        bubble.style.color = 'white';
+                    } else {
+                        bubble.style.background = 'var(--m-bg-3)';
+                        bubble.style.color = 'var(--m-text)';
+                        bubble.style.border = '1px solid var(--m-border-2)';
+                    }
+                    
+                    var meta = document.createElement('div');
+                    meta.style.fontSize = '11px';
+                    meta.style.opacity = '0.7';
+                    meta.style.marginBottom = '4px';
+                    meta.textContent = (m.sender_type === 'admin' ? 'Админ' : data.user_name) + ' · ' + m.created_at_formatted;
+                    
+                    var text = document.createElement('div');
+                    text.style.fontSize = '14px';
+                    text.style.lineHeight = '1.5';
+                    text.style.whiteSpace = 'pre-wrap';
+                    text.textContent = m.message;
+                    
+                    bubble.appendChild(meta);
+                    bubble.appendChild(text);
+                    wrap.appendChild(bubble);
+                    container.appendChild(wrap);
+                });
+            }
+            
+            if (wasAtBottom) {
+                container.scrollTop = container.scrollHeight;
+            }
+            
+            if (btn) btn.style.opacity = '1';
+        })
+        .catch(function() {
+            if (btn) btn.style.opacity = '1';
+        });
+}
 
 function sendMessage() {
     var input = document.getElementById('messageInput');
     var text = input.value.trim();
     if (!text) return;
     
-    fetch('/_metrics/dialogs/{{ d.id }}/send', {
+    fetch('/_metrics/dialogs/' + DIALOG_ID + '/send', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': CSRF_TOKEN
+        },
         body: JSON.stringify({message: text})
     })
     .then(function(r) { return r.json(); })
@@ -87,10 +162,18 @@ function sendMessage() {
             alert(data.error || 'Ошибка');
             return;
         }
-        location.reload();
+        input.value = '';
+        reloadMessages();
     })
     .catch(function() { alert('Ошибка сети'); });
 }
+
+// Автообновление каждые 5 сек
+setInterval(function() {
+    if (document.visibilityState === 'visible') {
+        reloadMessages();
+    }
+}, 5000);
 </script>
 
 {% endblock %}

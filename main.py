@@ -261,7 +261,6 @@ def is_rate_limited(phone):
     db = get_db()
     ago = int(time.time() - 900)
     c = db.execute("SELECT COUNT(*) FROM analytics_events WHERE event_type='login_attempt' AND event_data LIKE ? AND created_at > datetime(?, 'unixepoch')", (f'%{phone}%', ago)).fetchone()[0]
-    db.close()
     return c >= 5
 
 def allowed_file(filename):
@@ -306,7 +305,7 @@ def index():
         except:
             g['ends_at_formatted'] = g['ends_at'][:10]
         goals_list.append(g)
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return render_template('index.html', goals=goals_list)
 
 @app.route('/register', methods=['GET','POST'])
@@ -342,7 +341,7 @@ def register():
         db = get_db()
         if db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone():
             flash('Этот номер уже зарегистрирован.', 'danger')
-            db.close()
+            pass  # db.close() убран (flask.g teardown)
             return render_template('register.html')
         db.execute("INSERT INTO users (phone, password_hash, name) VALUES (?,?,?)", (clean, generate_password_hash(pw), name if name else None))
         db.commit()
@@ -364,7 +363,7 @@ def register():
                 payload={'phone': clean, 'name': name or None}
             )
             db.commit()
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return redirect(url_for('goals_list'))
     return render_template('register.html')
 
@@ -384,7 +383,7 @@ def login():
         db.execute("INSERT INTO analytics_events (event_type, event_data) VALUES ('login_attempt',?)", (f'{{"phone":"{clean}"}}',))
         db.commit()
         user = db.execute("SELECT * FROM users WHERE phone = ?", (clean,)).fetchone()
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         if user and check_password_hash(user['password_hash'], pw):
             session['user_id'] = user['id']
             flash('Вы вошли!', 'success')
@@ -458,7 +457,7 @@ def delete_account():
         db.execute("DELETE FROM users WHERE id = ?", (uid,))
         
         db.commit()
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
     session.clear()
     flash('Аккаунт удалён.', 'info')
     return redirect(url_for('index'))
@@ -519,7 +518,7 @@ def profile():
         ORDER BY l.created_at DESC
     """, (user['id'],)).fetchall()
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return render_template('profile.html',
         user=user,
         goals=goals,
@@ -551,7 +550,7 @@ def profile_received():
     """, (user['id'],)).fetchall()
     total = len(donations)
     approved = sum(1 for d in donations if d['status'] in ('recipient_confirmed', 'completed'))
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return render_template('profile_donations.html',
         mode='received',
         donations=donations,
@@ -579,7 +578,7 @@ def profile_sent():
     """, (user['id'],)).fetchall()
     total = len(donations)
     approved = sum(1 for d in donations if d['status'] in ('recipient_confirmed', 'completed'))
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return render_template('profile_donations.html',
         mode='sent',
         donations=donations,
@@ -616,7 +615,7 @@ def create_goal(goal_type):
         from content_guard import check as cg_check, is_filter_enabled
         db_check = get_db()
         if is_filter_enabled(db_check):
-            db_check.close()
+            pass  # db.close() убран (flask.g teardown)
             r_title = cg_check(title, 'goal_title')
             log_guard(r_title, title, 'goal_title', 'create_goal')
             if r_title['status'] == 'blocked':
@@ -639,7 +638,7 @@ def create_goal(goal_type):
             if r_title['status'] == 'flagged' or r_desc['status'] == 'flagged':
                 flash('Цель отправлена на модерацию. Мы проверим её вручную.', 'warning')
         else:
-            db_check.close()
+            pass  # db.close() убран (flask.g teardown)
         if not title or len(title) > 140:
             flash('Название обязательно (до 140 символов).', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
@@ -685,7 +684,7 @@ def create_goal(goal_type):
         if not can_create_goal(user, db, goal_type=goal_type):
             from trust_engine import can_create_goal_reason
             reason = can_create_goal_reason(user)
-            db.close()
+            pass  # db.close() убран (flask.g teardown)
             if reason == 'need_profile':
                 flash('Блицы закрыты. Заполните анкету.', 'warning')
                 return redirect(url_for('profile'))
@@ -725,7 +724,7 @@ def create_goal(goal_type):
             }
         )
         db.commit()
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         
         if user['is_admin']:
             flash('Цель создана', 'success')
@@ -839,7 +838,7 @@ def report_goal(goal_id):
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     if goal['user_id'] == user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Нельзя жаловаться на свою цель.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
@@ -848,7 +847,7 @@ def report_goal(goal_id):
         (goal_id, user['id'])
     ).fetchone()
     if existing:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Вы уже жаловались на эту цель.', 'info')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
@@ -879,11 +878,11 @@ def report_goal(goal_id):
         reporters = db.execute('SELECT DISTINCT reporter_id FROM reports WHERE goal_id = ?', (goal_id,)).fetchall()
         for r in reporters:
             add_trust_score(r['reporter_id'], 'report_valid', db)
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Цель скрыта после нескольких жалоб. Администратор проверит её.', 'info')
         return redirect(url_for('goals_list'))
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Жалоба отправлена. Спасибо за бдительность.', 'success')
     return redirect(url_for('goal_page', goal_id=goal_id))
 
@@ -906,7 +905,7 @@ def goals_list():
             g['ends_at_formatted'] = g['ends_at'][:10]
         goals.append(g)
 
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     user = get_current_user()
     return render_template('goals.html', goals=goals, user=user)
 
@@ -935,7 +934,7 @@ def clear_all():
     db.execute("DELETE FROM goals")
     db.execute("DELETE FROM users")
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     session.clear()
     return 'База очищена. <a href="/register">Зарегистрироваться</a>'
 
@@ -1006,7 +1005,7 @@ def add_xp(user_id, action, amount=0):
     else:
         db.execute("UPDATE users SET streak_days = 1, last_action_date = ? WHERE id = ?", (today, user_id))
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return xp
 
 def get_level_progress(user):
@@ -1099,8 +1098,8 @@ def donate(goal_id):
             db.commit()
 
         flash('Перевод ожидает подтверждения', 'success')
-    finally:
-        db.close()
+    except Exception as e:
+        print(f"[error] {e}")
 
     return redirect(url_for('goal_page', goal_id=goal_id))
 
@@ -1113,16 +1112,16 @@ def confirm_donation(donation_id):
     db = get_db()
     donation = db.execute("SELECT * FROM donations WHERE id = ?", (donation_id,)).fetchone()
     if not donation:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Донат не найден.', 'danger')
         return redirect(url_for('goals_list'))
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
     if goal['user_id'] != user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Только автор цели может подтверждать переводы.', 'danger')
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     if donation['status'] != 'donor_confirmed':
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Уже обработан', 'info')
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
@@ -1149,7 +1148,7 @@ def confirm_donation(donation_id):
     add_trust_score(user['id'], 'donation_recipient_confirmed', db)
     if donation['donor_id']:
         add_trust_score(donation['donor_id'], 'donation_recipient_confirmed', db)
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Подтверждено', 'success')
     
     return redirect(url_for('goal_page', goal_id=donation['goal_id']))
@@ -1166,16 +1165,16 @@ def api_confirm_donation(donation_id):
     db = get_db()
     donation = db.execute("SELECT * FROM donations WHERE id = ?", (donation_id,)).fetchone()
     if not donation:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Донат не найден'}), 404
     
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
     if goal['user_id'] != user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Только автор цели может подтверждать'}), 403
     
     if donation['status'] != 'donor_confirmed':
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Уже обработан'}), 400
     
     # Подтверждаем
@@ -1206,7 +1205,7 @@ def api_confirm_donation(donation_id):
     
     # Обновлённые данные для UI
     new_amount = db.execute("SELECT amount_collected FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()['amount_collected']
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return jsonify({
         'ok': True,
@@ -1234,7 +1233,7 @@ def api_guard_check():
     ).fetchone()[0]
     
     if recent >= 30:
-        rl_db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'status': 'rate_limited', 'error': 'Слишком много запросов. Подождите минуту.'}), 429
     
     rl_db.execute(
@@ -1242,7 +1241,7 @@ def api_guard_check():
         ('{"ip":"' + ip + '"}',)
     )
     rl_db.commit()
-    rl_db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
@@ -1273,10 +1272,10 @@ def api_photos_update(goal_id):
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1338,7 +1337,7 @@ def api_photos_update(goal_id):
         (photos_json, photo_url, goal_id)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'photos': final})
 
 
@@ -1353,10 +1352,10 @@ def api_photos_upload(goal_id):
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     current_photos = _json.loads(goal['photos']) if goal['photos'] else []
@@ -1390,7 +1389,7 @@ def api_photos_upload(goal_id):
         (photos_json, photo_url, goal_id)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'added': added, 'photos': final})
 
 
@@ -1405,24 +1404,24 @@ def api_update_description(goal_id):
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     data = request.get_json(silent=True) or {}
     new_desc = (data.get('description') or '').strip()
 
     if len(new_desc) > 1000:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Максимум 1000 символов'}), 400
 
     # Content Guard
     r = cg_check(new_desc, 'goal_description')
     log_guard(r, new_desc, 'goal_description', 'edit_description')
     if r['status'] == 'blocked':
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({
             'error': r.get('message', 'Текст не прошёл проверку'),
             'position': r.get('position'),
@@ -1430,7 +1429,7 @@ def api_update_description(goal_id):
 
     db.execute("UPDATE goals SET description = ? WHERE id = ?", (new_desc if new_desc else None, goal_id))
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'description': new_desc})
 
 
@@ -1447,14 +1446,14 @@ def api_goal_like(goal_id):
     db = get_db()
     goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Цель не найдена'}), 404
     try:
         db.execute("INSERT INTO likes (user_id, goal_id) VALUES (?, ?)", (user['id'], goal_id))
         db.commit()
     except Exception:
         pass
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'liked': True})
 
 
@@ -1466,7 +1465,7 @@ def api_goal_unlike(goal_id):
     db = get_db()
     db.execute("DELETE FROM likes WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'liked': False})
 
 
@@ -1508,7 +1507,7 @@ def api_regions():
     regions = db.execute(
         "SELECT DISTINCT region_code, region_name FROM cities ORDER BY region_name"
     ).fetchall()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify([{'code': r['region_code'], 'name': r['region_name']} for r in regions])
 
 
@@ -1524,7 +1523,7 @@ def api_cities():
         "SELECT city_name FROM cities WHERE region_code = ? ORDER BY city_name",
         (region_code,)
     ).fetchall()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify([c['city_name'] for c in cities])
 
 
@@ -1573,7 +1572,7 @@ def api_onboarding_step():
             )
 
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'step': step})
 
 
@@ -1613,10 +1612,10 @@ def api_report_photo():
     db = get_db()
     goal = db.execute("SELECT id, user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] == user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Нельзя жаловаться на свою цель'}), 403
 
     # Проверяем, не жаловался ли уже
@@ -1625,7 +1624,7 @@ def api_report_photo():
         (goal_id, user['id'], photo_index)
     ).fetchone()
     if existing:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Вы уже жаловались на это фото'}), 400
 
     db.execute(
@@ -1633,7 +1632,7 @@ def api_report_photo():
         (goal_id, user['id'], reason, photo_index)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True})
 
 
@@ -1655,7 +1654,7 @@ def api_deferred_set():
     db = get_db()
     goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Цель не найдена'}), 404
 
     now = datetime.now()
@@ -1673,10 +1672,10 @@ def api_deferred_set():
                 days = 365
             remind_at = (now + timedelta(days=days)).isoformat()
         except (ValueError, TypeError):
-            db.close()
+            pass  # db.close() убран (flask.g teardown)
             return jsonify({'error': 'Неверное количество дней'}), 400
     else:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'error': 'Неверный тип напоминания'}), 400
 
     # Удаляем старое напоминание для этой цели
@@ -1688,7 +1687,7 @@ def api_deferred_set():
         (user['id'], goal_id, remind_at, frequency)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True, 'remind_at': remind_at, 'frequency': frequency})
 
 
@@ -1707,7 +1706,7 @@ def api_deferred_cancel():
     db = get_db()
     db.execute("DELETE FROM deferred_donations WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True})
 
 
@@ -1753,7 +1752,7 @@ def api_profile_save():
         )
 
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True})
 
 
@@ -1798,7 +1797,7 @@ def api_identity_upload():
     # Проверяем, оба ли загружены
     u = db.execute("SELECT identity_doc_path, identity_selfie_path FROM users WHERE id = ?", (user['id'],)).fetchone()
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
 
     return jsonify({'ok': True, 'path': '/' + rel_path})
 
@@ -1928,7 +1927,7 @@ def api_state():
             'action_label': 'Открыть'
         })
 
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({
         'actions': actions,
         'count': len(actions)
@@ -1946,7 +1945,7 @@ def api_notifications():
         "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
         (user['id'],)
     ).fetchall()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'items': [dict(r) for r in rows]})
 
 
@@ -1964,7 +1963,7 @@ def api_notifications_read():
     else:
         db.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (user['id'],))
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return jsonify({'ok': True})
 
 
@@ -2033,7 +2032,7 @@ def metrics_dashboard():
     # Для sidebar — счётчики
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/dashboard.html',
         user=user,
@@ -2097,7 +2096,7 @@ def metrics_flags():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/flags.html',
         user=user,
@@ -2156,7 +2155,7 @@ def metrics_users():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/users.html',
         user=user,
@@ -2181,7 +2180,7 @@ def metrics_user_detail(user_id):
     
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -2248,7 +2247,7 @@ def metrics_user_detail(user_id):
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/user_detail.html',
         user=admin,
@@ -2285,11 +2284,11 @@ def metrics_user_ban(user_id):
     db = get_db()
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     if u['is_admin']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Нельзя забанить админа.', 'danger')
         return redirect(url_for('metrics_user_detail', user_id=user_id))
     
@@ -2305,7 +2304,7 @@ def metrics_user_ban(user_id):
         (admin['id'], str(user_id), details)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash(f'Пользователь #{user_id} забанен.', 'success')
     return redirect(url_for('metrics_user_detail', user_id=user_id))
 
@@ -2328,7 +2327,7 @@ def metrics_user_unban(user_id):
     db = get_db()
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -2344,7 +2343,7 @@ def metrics_user_unban(user_id):
         (admin['id'], str(user_id), details)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash(f'Пользователь #{user_id} разбанен.', 'success')
     return redirect(url_for('metrics_user_detail', user_id=user_id))
 
@@ -2395,7 +2394,7 @@ def metrics_goals():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/goals.html',
         user=user,
@@ -2433,7 +2432,7 @@ def metrics_goal_detail(goal_id):
     """, (goal_id,)).fetchone()
     
     if not g:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -2526,7 +2525,7 @@ def metrics_goal_detail(goal_id):
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/goal_detail.html',
         user=admin,
@@ -2559,7 +2558,7 @@ def metrics_goal_hide(goal_id):
     db = get_db()
     old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -2575,7 +2574,7 @@ def metrics_goal_hide(goal_id):
         (admin['id'], str(goal_id), details)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash(f'Цель #{goal_id} скрыта.', 'success')
     return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
 
@@ -2589,7 +2588,7 @@ def metrics_goal_restore(goal_id):
     db = get_db()
     old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -2603,7 +2602,7 @@ def metrics_goal_restore(goal_id):
         (admin['id'], str(goal_id), details)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash(f'Цель #{goal_id} восстановлена.', 'success')
     return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
 
@@ -2666,7 +2665,7 @@ def metrics_reports():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/reports.html',
         user=user,
@@ -2718,7 +2717,7 @@ def metrics_dialogs():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/dialogs.html',
         user=user,
@@ -2750,7 +2749,7 @@ def metrics_dialog_detail(dialog_id):
     """, (dialog_id,)).fetchone()
     
     if not d:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -2769,7 +2768,7 @@ def metrics_dialog_detail(dialog_id):
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/dialog_detail.html',
         user=admin,
@@ -2794,10 +2793,10 @@ def metrics_dialog_send(dialog_id):
     db = get_db()
     d = db.execute("SELECT * FROM admin_dialogs WHERE id = ?", (dialog_id,)).fetchone()
     if not d:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
     if d['status'] == 'closed':
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Диалог закрыт'}), 400
     
     db.execute(
@@ -2805,9 +2804,66 @@ def metrics_dialog_send(dialog_id):
         (dialog_id, admin['id'], text)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return jsonify({'ok': True})
+
+
+@app.route('/_metrics/dialogs/<int:dialog_id>/messages')
+@admin_required
+def metrics_dialog_messages(dialog_id):
+    """JSON со всеми сообщениями диалога для polling."""
+    from flask import jsonify
+    admin = get_current_user()
+    db = get_db()
+    
+    d = db.execute("""
+        SELECT d.*, COALESCE(u.name, u.phone) as user_name
+        FROM admin_dialogs d
+        JOIN users u ON d.user_id = u.id
+        WHERE d.id = ?
+    """, (dialog_id,)).fetchone()
+    
+    if not d:
+        return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
+    
+    messages = db.execute("""
+        SELECT id, sender_type, sender_id, message, created_at
+        FROM admin_dialog_messages
+        WHERE dialog_id = ?
+        ORDER BY id ASC
+    """, (dialog_id,)).fetchall()
+    
+    # Помечаем сообщения пользователя прочитанными
+    db.execute(
+        "UPDATE admin_dialog_messages SET is_read = 1 WHERE dialog_id = ? AND sender_type = 'user' AND is_read = 0",
+        (dialog_id,)
+    )
+    db.commit()
+    
+    # Форматируем даты
+    def fmt_date(s):
+        if not s: return ''
+        try:
+            parts = s[:16].split(' ')
+            date_parts = parts[0].split('-')
+            time_part = parts[1][:5] if len(parts) > 1 else ''
+            return f"{date_parts[2]}.{date_parts[1]}.{date_parts[0]} {time_part}"
+        except:
+            return s[:16]
+    
+    return jsonify({
+        'ok': True,
+        'user_name': d['user_name'],
+        'messages': [{
+            'id': m['id'],
+            'sender_type': m['sender_type'],
+            'sender_id': m['sender_id'],
+            'message': m['message'],
+            'created_at': m['created_at'],
+            'created_at_formatted': fmt_date(m['created_at'])
+        } for m in messages]
+    })
 
 
 @app.route('/_metrics/dialogs/<int:dialog_id>/close', methods=['POST'])
@@ -2825,7 +2881,7 @@ def metrics_dialog_close(dialog_id):
         (admin['id'], str(dialog_id))
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Диалог закрыт.', 'success')
     return redirect(url_for('metrics_dialogs'))
 
@@ -2848,7 +2904,7 @@ def metrics_dialog_new():
         db = get_db()
         u = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
         if not u:
-            db.close()
+            pass  # db.close() убран (flask.g teardown)
             flash('Пользователь не найден.', 'danger')
             return redirect(url_for('metrics_dialog_new'))
         
@@ -2869,7 +2925,7 @@ def metrics_dialog_new():
         )
         
         db.commit()
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Диалог создан.', 'success')
         return redirect(url_for('metrics_dialog_detail', dialog_id=dialog_id))
     
@@ -2881,7 +2937,7 @@ def metrics_dialog_new():
         u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     
     counts = get_sidebar_counts(db)
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/dialog_new.html',
         user=admin,
@@ -2909,7 +2965,7 @@ def api_dialog_get(dialog_id):
     ).fetchone()
     
     if not d:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
     
     messages = db.execute(
@@ -2922,7 +2978,7 @@ def api_dialog_get(dialog_id):
         (dialog_id,)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return jsonify({
         'ok': True,
@@ -2962,10 +3018,10 @@ def api_dialog_send(dialog_id):
     ).fetchone()
     
     if not d:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
     if d['status'] == 'closed':
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         return jsonify({'ok': False, 'error': 'Диалог закрыт'}), 400
     
     db.execute(
@@ -2973,7 +3029,7 @@ def api_dialog_send(dialog_id):
         (dialog_id, user['id'], text)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return jsonify({'ok': True})
 
@@ -2994,7 +3050,7 @@ def api_dialogs_check():
         WHERE d.user_id = ? AND d.status = 'open'
     """, (user['id'],)).fetchall()
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     total_unread = sum(d['unread'] for d in dialogs)
     
@@ -3075,7 +3131,7 @@ def metrics_moderation():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/moderation.html',
         user=user,
@@ -3108,7 +3164,7 @@ def metrics_moderation_approve(goal_id):
             (goal['user_id'],)
         )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Цель одобрена.', 'success')
     return redirect(url_for('metrics_moderation'))
 
@@ -3134,7 +3190,7 @@ def metrics_moderation_reject(goal_id):
     db = get_db()
     old_status = db.execute("SELECT moderation_status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -3160,7 +3216,7 @@ def metrics_moderation_reject(goal_id):
             (goal['user_id'], 'Причина: ' + comment)
         )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Цель отклонена.', 'success')
     return redirect(url_for('metrics_moderation'))
 
@@ -3207,7 +3263,7 @@ def metrics_suspicious():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     # Человекопонятные названия
     type_names = {
@@ -3251,7 +3307,7 @@ def metrics_suspicious_resolve(activity_id):
     db = get_db()
     old = db.execute("SELECT status FROM suspicious_activity WHERE id = ?", (activity_id,)).fetchone()
     if not old:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
@@ -3267,7 +3323,7 @@ def metrics_suspicious_resolve(activity_id):
         (admin['id'], str(activity_id), details)
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Помечено как обработанное.', 'success')
     return redirect(url_for('metrics_suspicious'))
 
@@ -3280,7 +3336,7 @@ def metrics_suspicious_review(activity_id):
     db = get_db()
     db.execute("UPDATE suspicious_activity SET status = 'reviewed' WHERE id = ?", (activity_id,))
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash('Взято в работу.', 'info')
     return redirect(url_for('metrics_suspicious'))
 
@@ -3432,7 +3488,7 @@ def metrics_logs():
     
     counts = get_sidebar_counts(db)
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/logs.html',
         user=user,
@@ -3498,7 +3554,7 @@ def metrics_settings():
         settings[r['key']] = {'value': r['value'], 'description': r['description'], 'updated_at': r['updated_at']}
     
     counts = get_sidebar_counts(db)
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/settings.html',
         user=user,
@@ -3539,7 +3595,7 @@ def metrics_settings_save():
             updated += 1
     
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash(f'Сохранено изменений: {updated}', 'success')
     return redirect(url_for('metrics_settings'))
 
@@ -3552,7 +3608,7 @@ def metrics_settings_toggle_flag(flag_id):
     db = get_db()
     flag = db.execute("SELECT * FROM feature_flags WHERE id = ?", (flag_id,)).fetchone()
     if not flag:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Флаг не найден.', 'danger')
         return redirect(url_for('metrics_settings'))
     
@@ -3563,7 +3619,7 @@ def metrics_settings_toggle_flag(flag_id):
         (admin['id'], str(flag_id), '{"key": "' + flag['flag_key'] + '", "new": ' + str(new_value) + '}')
     )
     db.commit()
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     flash(f'Флаг {flag["flag_key"]} переключён.', 'success')
     return redirect(url_for('metrics_settings'))
 
@@ -3581,12 +3637,12 @@ def goal_edit(goal_id):
         return redirect(url_for('goals_list'))
     
     if goal['user_id'] != user['id']:
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         from flask import abort
         abort(404)
     
     if goal['status'] not in ('failed', 'draft'):
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Эту цель нельзя редактировать.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
@@ -3682,11 +3738,11 @@ def goal_edit(goal_id):
         )
         
         db.commit()
-        db.close()
+        pass  # db.close() убран (flask.g teardown)
         flash('Цель отправлена на повторную проверку.', 'success')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     return render_template('create_goal.html',
         goal_type=goal['type'],
         mode='edit',
@@ -3778,7 +3834,7 @@ def metrics_events():
     ).fetchone()[0]
     
     counts = get_sidebar_counts(db)
-    db.close()
+    pass  # db.close() убран (flask.g teardown)
     
     return render_template('_metrics/events.html',
         user=user,
