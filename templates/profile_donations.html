@@ -173,7 +173,7 @@
                     {% endif %}
 
                     <div class="donation-meta">
-                        <span>{{ d.donor_confirmed_at[:10] }}</span>
+                        <span>{{ d.donor_confirmed_at[:10] | date_ru if d.donor_confirmed_at else '—' }}</span>
                         {% if d.status == 'donor_confirmed' %}
                             <span class="status-badge status-pending">ожидает</span>
                         {% elif d.status == 'recipient_confirmed' %}
