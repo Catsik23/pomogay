@@ -1,6 +1,6 @@
 import os, re, time, uuid
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, abort
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import init_db, get_db, close_db
@@ -110,10 +110,8 @@ def admin_required(f):
     def wrap(*args, **kwargs):
         user = get_current_user()
         if not user or not user['is_admin']:
-            from flask import abort
             abort(404)
         if request.method == 'POST' and not check_csrf():
-            from flask import abort
             abort(403)
         return f(*args, **kwargs)
     return wrap
@@ -639,9 +637,8 @@ def create_goal(goal_type):
         
         # Content Guard
         from content_guard import check as cg_check, is_filter_enabled
-        db_check = get_db()
-        if is_filter_enabled(db_check):
-            pass
+        db = get_db()
+        if is_filter_enabled(db):
             r_title = cg_check(title, 'goal_title')
             log_guard(r_title, title, 'goal_title', 'create_goal')
             if r_title['status'] == 'blocked':
@@ -663,8 +660,6 @@ def create_goal(goal_type):
                     amount=amt_str, days=days_str)
             if r_title['status'] == 'flagged' or r_desc['status'] == 'flagged':
                 flash('Цель отправлена на модерацию. Мы проверим её вручную.', 'warning')
-        else:
-            pass
         if not title or len(title) > 140:
             flash('Название обязательно (до 140 символов).', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
@@ -705,7 +700,6 @@ def create_goal(goal_type):
                     flash(f'Ошибка фото: {e}', 'warning')
         photo_url = photos_urls[0] if photos_urls else None
         photos_json = _json.dumps(photos_urls) if photos_urls else None
-        db = get_db()
         # Проверка слотов: тип цели → слот → открыт ли
         if not can_create_goal(user, db, goal_type=goal_type):
             from trust_engine import can_create_goal_reason
@@ -774,7 +768,6 @@ def goal_page(goal_id):
         is_author = current_user and current_user['id'] == goal['user_id']
         is_admin = current_user and current_user['is_admin']
         if not (is_author or is_admin):
-            from flask import abort
             abort(404)
     
     # Скрытые цели не показываем никому, кроме админа
@@ -782,7 +775,6 @@ def goal_page(goal_id):
         current_user = get_current_user()
         is_admin = current_user and current_user['is_admin']
         if not is_admin:
-            from flask import abort
             abort(404)
     
     # Парсим photos — JSON-массив путей
@@ -1321,8 +1313,9 @@ def api_photos_update(goal_id):
     if not current_photos and goal['photo_url']:
         current_photos = [goal['photo_url']]
 
+    current_photos_set = set(current_photos)
     def is_own(path):
-        return path in current_photos
+        return path in current_photos_set
 
     new_order = [p for p in new_order if is_own(p)]
     deleted = [p for p in deleted if is_own(p)]
@@ -1841,7 +1834,6 @@ def identity_file(filename):
     """Отдача файлов верификации — только владельцу."""
     user = get_current_user()
     if not filename.startswith(f"{user['id']}_"):
-        from flask import abort
         abort(403)
     return send_from_directory(os.path.join(BASE_DIR, 'uploads', 'identity'), filename)
 
@@ -2214,7 +2206,6 @@ def metrics_user_detail(user_id):
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
         pass
-        from flask import abort
         abort(404)
     
     # Статистика
@@ -2318,7 +2309,6 @@ def metrics_user_ban(user_id):
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
         pass
-        from flask import abort
         abort(404)
     if u['is_admin']:
         pass
@@ -2361,7 +2351,6 @@ def metrics_user_unban(user_id):
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
         pass
-        from flask import abort
         abort(404)
     
     db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
@@ -2466,7 +2455,6 @@ def metrics_goal_detail(goal_id):
     
     if not g:
         pass
-        from flask import abort
         abort(404)
     
     donations = db.execute("""
@@ -2594,7 +2582,6 @@ def metrics_goal_hide(goal_id):
     old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
         pass
-        from flask import abort
         abort(404)
     
     db.execute("UPDATE goals SET status = 'hidden' WHERE id = ?", (goal_id,))
@@ -2624,7 +2611,6 @@ def metrics_goal_restore(goal_id):
     old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
         pass
-        from flask import abort
         abort(404)
     
     db.execute("UPDATE goals SET status = 'active' WHERE id = ?", (goal_id,))
@@ -2785,7 +2771,6 @@ def metrics_dialog_detail(dialog_id):
     
     if not d:
         pass
-        from flask import abort
         abort(404)
     
     messages = db.execute("""
@@ -3226,7 +3211,6 @@ def metrics_moderation_reject(goal_id):
     old_status = db.execute("SELECT moderation_status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
         pass
-        from flask import abort
         abort(404)
     
     db.execute(
@@ -3343,7 +3327,6 @@ def metrics_suspicious_resolve(activity_id):
     old = db.execute("SELECT status FROM suspicious_activity WHERE id = ?", (activity_id,)).fetchone()
     if not old:
         pass
-        from flask import abort
         abort(404)
     
     db.execute("UPDATE suspicious_activity SET status = 'resolved' WHERE id = ?", (activity_id,))
@@ -3673,7 +3656,6 @@ def goal_edit(goal_id):
     
     if goal['user_id'] != user['id']:
         pass
-        from flask import abort
         abort(404)
     
     if goal['status'] not in ('failed', 'draft'):
