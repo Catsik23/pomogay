@@ -68,7 +68,7 @@ def add_trust_score(user_id, action, db):
     
     _, level_key, _, _ = get_trust_level(new_score)
     db.execute("UPDATE users SET trust_level = ? WHERE id = ?", (level_key, user_id))
-    db.commit()
+    # commit делается вызывающим кодом
     
     return points
 
