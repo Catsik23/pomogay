@@ -137,15 +137,31 @@ def can_create_goal(user, db, goal_type=None):
     return active_in_slot < 1
 
 
-def can_create_goal_reason(user):
+def can_create_goal_reason(user, goal_type=None):
     """Возвращает причину, почему нельзя создать цель — для UX."""
     slots = get_open_slots(user)
     if 1 not in slots:
         return 'no_slot'
-    if 2 not in slots and 3 not in slots:
-        return 'need_profile'
-    if 3 not in slots:
-        return 'need_video'
+    
+    if goal_type is None:
+        # Без типа — общая причина
+        if 2 not in slots and 3 not in slots:
+            return 'need_profile'
+        if 3 not in slots:
+            return 'need_video'
+        return None
+    
+    slot_needed = GOAL_SLOTS.get(goal_type)
+    if slot_needed is None:
+        return 'no_slot'
+    
+    if slot_needed not in slots:
+        if slot_needed == 2:
+            return 'need_profile'
+        elif slot_needed == 3:
+            return 'need_video'
+        else:
+            return 'no_slot'
     return None
 
 

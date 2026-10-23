@@ -6,6 +6,13 @@ from werkzeug.utils import secure_filename
 from models import init_db, get_db, close_db
 from trust_engine import add_trust_score, get_trust_perks, can_create_goal
 from functools import wraps
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger('pomogay')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE = os.path.join(BASE_DIR, 'data', 'pomogay.db')
@@ -33,13 +40,13 @@ if os.environ.get('SEED_USERS') == '1':
     if not seed:
         db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456'),))
         db.commit()
-        print('Seed 1 создан: 79885260358')
+        logger.info('Seed 1 создан: 79885260358')
 
     seed2 = db.execute("SELECT id FROM users WHERE phone = '7999999999'").fetchone()
     if not seed2:
         db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456'),))
         db.commit()
-        print('Seed 2 создан: 7999999999')
+        logger.info('Seed 2 создан: 7999999999')
 
     # Seed 3 с готовой целью
     seed3 = db.execute("SELECT id FROM users WHERE phone = '79888888888'").fetchone()
@@ -54,7 +61,7 @@ if os.environ.get('SEED_USERS') == '1':
             (seed3_id, ends)
         )
         db.commit()
-        print('Seed 3 создан: 79888888888 с целью')
+        logger.info('Seed 3 создан: 79888888888 с целью')
     db.close()
 
 def get_current_user():
@@ -92,7 +99,7 @@ def log_guard(result, text, context, user_action):
         ))
         db.commit()
     except Exception as e:
-        print(f'[content_guard_log] Ошибка: {e}')
+        logger.error(f'[content_guard_log] Ошибка: {e}')
 
 
 def login_required(f):
@@ -169,20 +176,16 @@ def check_csrf():
     return bool(token) and bool(expected) and _secrets.compare_digest(token, expected)
 
 
-def record_event(event_type, db=None, *, actor_user_id=None, target_user_id=None,
+def record_event(event_type, db, *, actor_user_id=None, target_user_id=None,
                  goal_id=None, donation_id=None, report_id=None,
                  source='user', severity='info', payload=None, correlation_id=None):
     """
     Единая точка записи событий платформы.
-    Если db не передан — открывает своё соединение.
+    db ОБЯЗАТЕЛЕН — используется соединение вызывающего (flask.g).
+    Commit — на вызывающем коде.
     payload — dict, сериализуется в JSON.
     """
     import json as _json
-    
-    own_db = False
-    if db is None:
-        db = get_db()
-        own_db = True
     
     try:
         payload_json = None
@@ -209,14 +212,8 @@ def record_event(event_type, db=None, *, actor_user_id=None, target_user_id=None
             payload_json,
             correlation_id,
         ))
-        
-        if own_db:
-            db.commit()
     except Exception as e:
-        print(f'[record_event] Ошибка записи {event_type}: {e}')
-    finally:
-        if own_db:
-            db.close()
+        logger.error(f'[record_event] Ошибка записи {event_type}: {e}')
 
 
 def _safe_count(db, query, params=None):
@@ -354,17 +351,17 @@ def register():
         pw2 = request.form.get('password2','').strip()
         clean = validate_phone(phone)
         if not clean:
-            flash('Введите номер телефона (10 цифр после +7).', 'danger')
+            flash('Номер: 10 цифр после +7.', 'danger')
             return render_template('register.html')
         if len(pw) < 6:
-            flash('Пароль должен быть не менее 6 символов.', 'danger')
+            flash('Пароль: минимум 6 символов.', 'danger')
             return render_template('register.html')
         if pw != pw2:
             flash('Пароли не совпадают.', 'danger')
             return render_template('register.html')
         db = get_db()
         if db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone():
-            flash('Этот номер уже зарегистрирован.', 'danger')
+            flash('Номер уже зарегистрирован.', 'danger')
             pass
             return render_template('register.html')
         db.execute("INSERT INTO users (phone, password_hash, name) VALUES (?,?,?)", (clean, generate_password_hash(pw), name if name else None))
@@ -373,6 +370,7 @@ def register():
         # Автоматически входим
         user = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()
         if user:
+            session.clear()
             session['user_id'] = user['id']
             # trust_score = 50 из DEFAULT, ставим правильный уровень
             db.execute("UPDATE users SET trust_level = 'member' WHERE id = ?", (user['id'],))
@@ -398,10 +396,10 @@ def login():
         pw = request.form.get('password','').strip()
         clean = validate_phone(phone)
         if not clean:
-            flash('Введите номер (10 цифр после +7).', 'danger')
+            flash('Номер: 10 цифр после +7.', 'danger')
             return render_template('login.html')
         if is_rate_limited(clean):
-            flash('Слишком много попыток. Попробуйте через 15 минут.', 'danger')
+            flash('Слишком много попыток. Подождите 15 мин.', 'danger')
             return render_template('login.html')
         db = get_db()
         db.execute("INSERT INTO analytics_events (event_type, event_data) VALUES ('login_attempt',?)", (f'{{"phone":"{clean}"}}',))
@@ -409,6 +407,7 @@ def login():
         user = db.execute("SELECT * FROM users WHERE phone = ?", (clean,)).fetchone()
         pass
         if user and check_password_hash(user['password_hash'], pw):
+            session.clear()
             session['user_id'] = user['id']
             flash('Вы вошли!', 'success')
             return redirect(url_for('goals_list'))
@@ -432,6 +431,26 @@ def delete_account():
         
         # ID целей пользователя (для удаления связанных)
         goal_ids = [r['id'] for r in db.execute("SELECT id FROM goals WHERE user_id = ?", (uid,)).fetchall()]
+        
+        # Собираем ВСЕ файлы фото ДО удаления из БД
+        import json as _json_del
+        files_to_delete = []
+        if goal_ids:
+            placeholders_photos = ','.join('?' * len(goal_ids))
+            photo_rows = db.execute(
+                f"SELECT photo_url, photos FROM goals WHERE id IN ({placeholders_photos})",
+                goal_ids
+            ).fetchall()
+            for row in photo_rows:
+                if row['photo_url']:
+                    files_to_delete.append(row['photo_url'])
+                if row['photos']:
+                    try:
+                        extra = _json_del.loads(row['photos'])
+                        if isinstance(extra, list):
+                            files_to_delete.extend(extra)
+                    except Exception:
+                        pass
         
         if goal_ids:
             placeholders = ','.join('?' * len(goal_ids))
@@ -481,7 +500,20 @@ def delete_account():
         db.execute("DELETE FROM users WHERE id = ?", (uid,))
         
         db.commit()
-        pass
+        
+        # Удаляем файлы фото с диска
+        upload_folder = app.config['UPLOAD_FOLDER']
+        deleted_files = 0
+        for url_path in files_to_delete:
+            try:
+                filename = url_path.split('/')[-1]
+                fpath = os.path.join(upload_folder, filename)
+                if os.path.exists(fpath):
+                    os.remove(fpath)
+                    deleted_files += 1
+            except Exception:
+                pass
+        logger.info(f'[delete_account] Удалено файлов: {deleted_files} из {len(files_to_delete)}')
     session.clear()
     flash('Аккаунт удалён.', 'info')
     return redirect(url_for('index'))
@@ -659,9 +691,9 @@ def create_goal(goal_type):
                     title=title, description=desc,
                     amount=amt_str, days=days_str)
             if r_title['status'] == 'flagged' or r_desc['status'] == 'flagged':
-                flash('Цель отправлена на модерацию. Мы проверим её вручную.', 'warning')
+                flash('Цель на модерации.', 'warning')
         if not title or len(title) > 140:
-            flash('Название обязательно (до 140 символов).', 'danger')
+            flash('Название: до 140 символов.', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
         try:
             amt = float(amt_str)
@@ -683,6 +715,20 @@ def create_goal(goal_type):
         except ValueError:
             flash('Некорректный срок.', 'danger')
             return render_template('create_goal.html', goal_type=goal_type)
+        # Проверка слотов: тип цели → слот → открыт ли (ДО обработки фото)
+        if not can_create_goal(user, db, goal_type=goal_type):
+            from trust_engine import can_create_goal_reason
+            reason = can_create_goal_reason(user, goal_type=goal_type)
+            if reason == 'need_profile':
+                flash('Блицы закрыты. Заполните анкету.', 'warning')
+                return redirect(url_for('profile'))
+            elif reason == 'need_video':
+                flash('Нужна видео-верификация.', 'warning')
+                return redirect(url_for('profile'))
+            else:
+                flash('Цель в этой категории уже есть.', 'warning')
+                return redirect(url_for('goals_list'))
+        
         import json as _json
         photos_urls = []
         MAX_PHOTOS = 20
@@ -700,23 +746,9 @@ def create_goal(goal_type):
                     flash(f'Ошибка фото: {e}', 'warning')
         photo_url = photos_urls[0] if photos_urls else None
         photos_json = _json.dumps(photos_urls) if photos_urls else None
-        # Проверка слотов: тип цели → слот → открыт ли
-        if not can_create_goal(user, db, goal_type=goal_type):
-            from trust_engine import can_create_goal_reason
-            reason = can_create_goal_reason(user)
-            pass
-            if reason == 'need_profile':
-                flash('Блицы закрыты. Заполните анкету.', 'warning')
-                return redirect(url_for('profile'))
-            elif reason == 'need_video':
-                flash('Серьёзные сборы закрыты. Нужна видео-верификация.', 'warning')
-                return redirect(url_for('profile'))
-            else:
-                flash('У вас уже есть активная цель в этой категории.', 'warning')
-                return redirect(url_for('goals_list'))
         ends = (datetime.now() + timedelta(days=days)).isoformat()
         if not user:
-            flash('Ошибка: пользователь не найден. Войдите заново.', 'danger')
+            flash('Войдите заново.', 'danger')
             return redirect(url_for('login'))
         # Автоодобрение для админа, модерация для всех остальных
         moderation_status = 'approved' if user['is_admin'] else 'pending'
@@ -749,7 +781,7 @@ def create_goal(goal_type):
         if user['is_admin']:
             flash('Цель создана', 'success')
         else:
-            flash('Цель отправлена на модерацию. Мы проверим её в ближайшее время.', 'info')
+            flash('Цель на модерации.', 'info')
         
         return redirect(url_for('goal_page', goal_id=gid))
     return render_template('create_goal.html', goal_type=goal_type)
@@ -944,17 +976,35 @@ def admin_panel():
     return '<h2>Админка — скоро</h2>'
 
 
-@app.route('/clear')
+@app.route('/clear', methods=['POST'])
 @admin_required
 def clear_all():
+    """Очистка БД. Только POST + CSRF + явное подтверждение."""
+    if request.form.get('confirm') != 'YES_DELETE_ALL':
+        flash('Подтверждение не получено. База не очищена.', 'danger')
+        return redirect(url_for('metrics_dashboard'))
+    
+    admin = get_current_user()
     db = get_db()
     db.execute("DELETE FROM donations")
     db.execute("DELETE FROM goals")
     db.execute("DELETE FROM users")
     db.commit()
-    pass
+    
+    # Логируем критическое действие
+    record_event(
+        'db_cleared',
+        db=db,
+        actor_user_id=admin['id'] if admin else None,
+        source='admin',
+        severity='critical',
+        payload={'action': 'full_db_clear'}
+    )
+    db.commit()
+    
     session.clear()
-    return 'База очищена. <a href="/register">Зарегистрироваться</a>'
+    flash('База очищена.', 'info')
+    return redirect(url_for('index'))
 
 
 
@@ -1007,7 +1057,10 @@ def add_xp(user_id, action, amount=0, db=None):
     if xp > 0:
         db.execute("UPDATE users SET xp = xp + ? WHERE id = ?", (xp, user_id))
     user = db.execute("SELECT xp, xp_level FROM users WHERE id = ?", (user_id,)).fetchone()
-    if user and user['xp'] >= 100:
+    if not user:
+        # Пользователь удалён или не существует — XP не начисляем
+        return 0
+    if user['xp'] >= 100:
         total = db.execute("SELECT COUNT(*) FROM donations WHERE donor_id = ?", (user_id,)).fetchone()[0]
         big = db.execute("SELECT COUNT(*) FROM donations WHERE donor_id = ? AND amount_reported >= 1000", (user_id,)).fetchone()[0]
         if total > 0 and (big / total) > 0.5:
@@ -1017,12 +1070,13 @@ def add_xp(user_id, action, amount=0, db=None):
     from datetime import datetime, timedelta
     today = datetime.now().strftime('%Y-%m-%d')
     u = db.execute("SELECT last_action_date, streak_days FROM users WHERE id = ?", (user_id,)).fetchone()
-    if u['last_action_date'] == today:
-        pass
-    elif u['last_action_date'] == (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'):
-        db.execute("UPDATE users SET streak_days = streak_days + 1, last_action_date = ? WHERE id = ?", (today, user_id))
-    else:
-        db.execute("UPDATE users SET streak_days = 1, last_action_date = ? WHERE id = ?", (today, user_id))
+    if u:
+        if u['last_action_date'] == today:
+            pass
+        elif u['last_action_date'] == (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'):
+            db.execute("UPDATE users SET streak_days = streak_days + 1, last_action_date = ? WHERE id = ?", (today, user_id))
+        else:
+            db.execute("UPDATE users SET streak_days = 1, last_action_date = ? WHERE id = ?", (today, user_id))
     # commit делается вызывающим кодом
     return xp
 
@@ -1058,7 +1112,27 @@ def donate(goal_id):
     is_anonymous = 1 if request.form.get('anonymous') == '1' else 0
     ip_address = request.remote_addr
 
+    # Лимит на сумму доната
+    if amount > 1000000:
+        flash('Сумма доната слишком велика (максимум 1 000 000 ₽).', 'danger')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
     db = get_db()
+    
+    # Проверка цели: существует, активна, есть остаток
+    goal_check = db.execute("SELECT id, status, amount_goal, amount_collected FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal_check:
+        flash('Цель не найдена.', 'danger')
+        return redirect(url_for('goals_list'))
+    if goal_check['status'] != 'active':
+        flash('Эта цель не принимает новые переводы.', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    remaining = (goal_check['amount_goal'] or 0) - (goal_check['amount_collected'] or 0)
+    if remaining > 0 and amount > remaining:
+        flash(f'Сумма превышает остаток по цели ({remaining:.0f} ₽).', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
     try:
         db.execute(
             "INSERT INTO donations (goal_id, donor_id, amount_reported, status, warm_word, is_anonymous, ip_address, donor_confirmed_at) VALUES (?, ?, ?, 'donor_confirmed', ?, ?, ?, datetime('now'))",
@@ -1118,7 +1192,7 @@ def donate(goal_id):
         flash('Перевод ожидает подтверждения', 'success')
     except Exception as e:
         db.rollback()
-        print(f"[donate] Ошибка: {e}")
+        logger.error(f"[donate] Ошибка: {e}")
         flash('Ошибка при создании перевода. Попробуйте ещё раз.', 'danger')
 
     return redirect(url_for('goal_page', goal_id=goal_id))
@@ -1138,13 +1212,17 @@ def confirm_donation(donation_id):
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
     if goal['user_id'] != user['id']:
         pass
-        flash('Только автор цели может подтверждать переводы.', 'danger')
+        flash('Только автор цели.', 'danger')
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
-    if donation['status'] != 'donor_confirmed':
-        pass
+    # Атомарное подтверждение: обновляем только если статус ещё donor_confirmed
+    cur = db.execute(
+        "UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') "
+        "WHERE id = ? AND status = 'donor_confirmed'",
+        (donation_id,)
+    )
+    if cur.rowcount == 0:
         flash('Уже обработан', 'info')
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
-    db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
     # Удаляем напоминания — получатель уже подтвердил
     db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
     db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
@@ -1196,12 +1274,15 @@ def api_confirm_donation(donation_id):
         pass
         return jsonify({'ok': False, 'error': 'Только автор цели может подтверждать'}), 403
     
-    if donation['status'] != 'donor_confirmed':
-        pass
+    # Атомарное подтверждение: обновляем только если статус ещё donor_confirmed
+    cur = db.execute(
+        "UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') "
+        "WHERE id = ? AND status = 'donor_confirmed'",
+        (donation_id,)
+    )
+    if cur.rowcount == 0:
         return jsonify({'ok': False, 'error': 'Уже обработан'}), 400
     
-    # Подтверждаем
-    db.execute("UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') WHERE id = ?", (donation_id,))
     db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
     db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
     
@@ -1350,7 +1431,7 @@ def api_photos_update(goal_id):
             with open(fpath, 'wb') as f:
                 f.write(output.getvalue())
         except Exception as e:
-            print(f'Rotate error: {e}')
+            logger.error(f'Rotate error: {e}')
 
     # Финальный список — исключаем удалённые, сохраняем порядок
     final = [p for p in new_order if p not in deleted]
@@ -1404,7 +1485,7 @@ def api_photos_upload(goal_id):
                     f.write(compressed)
                 added.append(f"/uploads/goals/{fname}")
             except Exception as e:
-                print(f'Upload error: {e}')
+                logger.error(f'Upload error: {e}')
 
     final = current_photos + added
     photo_url = final[0] if final else None
@@ -1457,11 +1538,6 @@ def api_update_description(goal_id):
     db.commit()
     pass
     return jsonify({'ok': True, 'description': new_desc})
-
-
-@app.route('/demo-crane')
-def demo_crane():
-    return render_template('demo_crane.html')
 
 
 @app.route('/api/goal/<int:goal_id>/like', methods=['POST'])
@@ -3687,7 +3763,7 @@ def goal_edit(goal_id):
         days_str = request.form.get('days', '').strip()
         
         if not title or len(title) > 140:
-            flash('Название обязательно (до 140 символов).', 'danger')
+            flash('Название: до 140 символов.', 'danger')
             return render_template('create_goal.html', 
                 goal_type=goal['type'], mode='edit', goal=goal, 
                 photos_list=photos_list, rejection_cats=rejection_cats)

@@ -246,13 +246,13 @@ a { color: var(--cta); text-decoration: none; }
 }
 
 .toast {
-    padding: 10px 16px;
+    padding: 10px 20px;
     border-radius: 10px;
     color: white;
     font-size: 13px;
     font-weight: 500;
     text-align: center;
-    max-width: 280px;
+    max-width: 380px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
