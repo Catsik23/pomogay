@@ -1,17 +1,16 @@
 import os, re, time, uuid
+import sqlite3
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from models import init_db, get_db, close_db
 from trust_engine import add_trust_score, get_trust_perks, can_create_goal
 from functools import wraps
 import logging
+import secrets as _secrets
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
-)
+# Gunicorn сам настраивает логи (stdout → journalctl).
+# basicConfig здесь перехватил бы root-логгер — убираем.
 logger = logging.getLogger('pomogay')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,11 +18,11 @@ DATABASE = os.path.join(BASE_DIR, 'data', 'pomogay.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'goals')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 MAX_FILE_SIZE = 50 * 1024 * 1024
-TARGET_PHOTO_SIZE = 500 * 1024
 
 app = Flask(__name__)
 app.teardown_appcontext(close_db)
 app.secret_key = os.environ.get('SECRET_KEY')
+app.config['PERMANENT_SESSION_LIFETIME'] = 60 * 60 * 24 * 31  # 31 день
 if not app.secret_key:
     raise RuntimeError('SECRET_KEY environment variable is not set. Server cannot start without it.')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -54,7 +53,6 @@ if os.environ.get('SEED_USERS') == '1':
         db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456'),))
         db.commit()
         seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-        from datetime import datetime, timedelta
         ends = (datetime.now() + timedelta(days=7)).isoformat()
         db.execute(
             "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, moderation_status) VALUES (?, 'blitz', 'на ноутбук', 'для работы', 25000, 0, ?, 'active', 'approved')",
@@ -70,7 +68,8 @@ def get_current_user():
         try:
             user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
             return user
-        except:
+        except sqlite3.Error as e:
+            logger.error(f'[get_current_user] Ошибка БД: {e}')
             return None
     return None
 
@@ -157,8 +156,6 @@ def set_setting(db, key, value, admin_id=None):
             (admin_id, key, '{"value": "' + str(value).replace('"', '\\"') + '"}')
         )
 
-
-import secrets as _secrets
 
 def get_csrf_token():
     """Возвращает CSRF-токен текущей сессии, генерирует если нет."""
@@ -326,7 +323,6 @@ def index():
         except:
             g['ends_at_formatted'] = g['ends_at'][:10]
         goals_list.append(g)
-    pass
     return render_template('index.html', goals=goals_list)
 
 @app.route('/register', methods=['GET','POST'])
@@ -362,7 +358,6 @@ def register():
         db = get_db()
         if db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone():
             flash('Номер уже зарегистрирован.', 'danger')
-            pass
             return render_template('register.html')
         db.execute("INSERT INTO users (phone, password_hash, name) VALUES (?,?,?)", (clean, generate_password_hash(pw), name if name else None))
         db.commit()
@@ -371,6 +366,7 @@ def register():
         user = db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone()
         if user:
             session.clear()
+            session.permanent = True
             session['user_id'] = user['id']
             # trust_score = 50 из DEFAULT, ставим правильный уровень
             db.execute("UPDATE users SET trust_level = 'member' WHERE id = ?", (user['id'],))
@@ -385,7 +381,6 @@ def register():
                 payload={'phone': clean, 'name': name or None}
             )
             db.commit()
-        pass
         return redirect(url_for('goals_list'))
     return render_template('register.html')
 
@@ -405,9 +400,9 @@ def login():
         db.execute("INSERT INTO analytics_events (event_type, event_data) VALUES ('login_attempt',?)", (f'{{"phone":"{clean}"}}',))
         db.commit()
         user = db.execute("SELECT * FROM users WHERE phone = ?", (clean,)).fetchone()
-        pass
         if user and check_password_hash(user['password_hash'], pw):
             session.clear()
+            session.permanent = True
             session['user_id'] = user['id']
             flash('Вы вошли!', 'success')
             return redirect(url_for('goals_list'))
@@ -574,7 +569,6 @@ def profile():
         ORDER BY l.created_at DESC
     """, (user['id'],)).fetchall()
     
-    pass
     return render_template('profile.html',
         user=user,
         goals=goals,
@@ -594,7 +588,7 @@ def profile_received():
     donations = db.execute("""
         SELECT d.*, 
                CASE WHEN d.is_anonymous = 1 OR d.donor_id IS NULL THEN NULL 
-                    ELSE COALESCE(u.name, '+' || u.phone) 
+                    ELSE COALESCE(NULLIF(u.name, ''), '+' || u.phone) 
                END as donor_name,
                g.title as goal_title,
                g.id as goal_id
@@ -606,7 +600,6 @@ def profile_received():
     """, (user['id'],)).fetchall()
     total = len(donations)
     approved = sum(1 for d in donations if d['status'] in ('recipient_confirmed', 'completed'))
-    pass
     return render_template('profile_donations.html',
         mode='received',
         donations=donations,
@@ -625,7 +618,7 @@ def profile_sent():
         SELECT d.*, 
                g.title as goal_title,
                g.id as goal_id,
-               COALESCE(u.name, '+' || u.phone) as recipient_name
+               COALESCE(NULLIF(u.name, ''), '+' || u.phone) as recipient_name
         FROM donations d
         JOIN goals g ON d.goal_id = g.id
         JOIN users u ON g.user_id = u.id
@@ -634,7 +627,6 @@ def profile_sent():
     """, (user['id'],)).fetchall()
     total = len(donations)
     approved = sum(1 for d in donations if d['status'] in ('recipient_confirmed', 'completed'))
-    pass
     return render_template('profile_donations.html',
         mode='sent',
         donations=donations,
@@ -776,7 +768,6 @@ def create_goal(goal_type):
             }
         )
         db.commit()
-        pass
         
         if user['is_admin']:
             flash('Цель создана', 'success')
@@ -832,7 +823,7 @@ def goal_page(goal_id):
     donations = db.execute(
         """SELECT d.*, 
            CASE WHEN d.is_anonymous = 1 OR d.donor_id IS NULL THEN NULL 
-                ELSE COALESCE(u.name, '+' || u.phone) 
+                ELSE COALESCE(NULLIF(u.name, ''), '+' || u.phone) 
            END as donor_name
         FROM donations d 
         LEFT JOIN users u ON d.donor_id = u.id 
@@ -888,7 +879,6 @@ def report_goal(goal_id):
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     if goal['user_id'] == user['id']:
-        pass
         flash('Нельзя жаловаться на свою цель.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
@@ -897,7 +887,6 @@ def report_goal(goal_id):
         (goal_id, user['id'])
     ).fetchone()
     if existing:
-        pass
         flash('Вы уже жаловались на эту цель.', 'info')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
@@ -932,7 +921,6 @@ def report_goal(goal_id):
         flash('Цель скрыта после нескольких жалоб. Администратор проверит её.', 'info')
         return redirect(url_for('goals_list'))
     
-    pass
     flash('Жалоба отправлена. Спасибо за бдительность.', 'success')
     return redirect(url_for('goal_page', goal_id=goal_id))
 
@@ -955,7 +943,6 @@ def goals_list():
             g['ends_at_formatted'] = g['ends_at'][:10]
         goals.append(g)
 
-    pass
     user = get_current_user()
     return render_template('goals.html', goals=goals, user=user)
 
@@ -1067,7 +1054,6 @@ def add_xp(user_id, action, amount=0, db=None):
             db.execute("UPDATE users SET author_badge = 'Меценат' WHERE id = ?", (user_id,))
     _, level_key, _ = get_level(user['xp'])
     db.execute("UPDATE users SET xp_level = ? WHERE id = ?", (level_key, user_id))
-    from datetime import datetime, timedelta
     today = datetime.now().strftime('%Y-%m-%d')
     u = db.execute("SELECT last_action_date, streak_days FROM users WHERE id = ?", (user_id,)).fetchone()
     if u:
@@ -1206,12 +1192,10 @@ def confirm_donation(donation_id):
     db = get_db()
     donation = db.execute("SELECT * FROM donations WHERE id = ?", (donation_id,)).fetchone()
     if not donation:
-        pass
         flash('Донат не найден.', 'danger')
         return redirect(url_for('goals_list'))
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
     if goal['user_id'] != user['id']:
-        pass
         flash('Только автор цели.', 'danger')
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     # Атомарное подтверждение: обновляем только если статус ещё donor_confirmed
@@ -1258,7 +1242,6 @@ def confirm_donation(donation_id):
 @app.route('/api/confirm/<int:donation_id>', methods=['POST'])
 def api_confirm_donation(donation_id):
     """AJAX-подтверждение доната. Возвращает JSON."""
-    from flask import jsonify
     user = get_current_user()
     if not user:
         return jsonify({'ok': False, 'error': 'Войдите в аккаунт'}), 401
@@ -1266,12 +1249,10 @@ def api_confirm_donation(donation_id):
     db = get_db()
     donation = db.execute("SELECT * FROM donations WHERE id = ?", (donation_id,)).fetchone()
     if not donation:
-        pass
         return jsonify({'ok': False, 'error': 'Донат не найден'}), 404
     
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
     if goal['user_id'] != user['id']:
-        pass
         return jsonify({'ok': False, 'error': 'Только автор цели может подтверждать'}), 403
     
     # Атомарное подтверждение: обновляем только если статус ещё donor_confirmed
@@ -1327,7 +1308,6 @@ def api_confirm_donation(donation_id):
 @app.route('/api/guard-check', methods=['POST'])
 def api_guard_check():
     """AJAX-проверка текста через Content Guard с rate limit."""
-    from flask import jsonify
     from content_guard import check as cg_check
     
     # Rate limit: не более 30 запросов в минуту с одного IP
@@ -1339,7 +1319,6 @@ def api_guard_check():
     ).fetchone()[0]
     
     if recent >= 30:
-        pass
         return jsonify({'status': 'rate_limited', 'error': 'Слишком много запросов. Подождите минуту.'}), 429
     
     rl_db.execute(
@@ -1347,7 +1326,6 @@ def api_guard_check():
         ('{"ip":"' + ip + '"}',)
     )
     rl_db.commit()
-    pass
     
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
@@ -1369,7 +1347,6 @@ def api_guard_check():
 @login_required
 def api_photos_update(goal_id):
     """Сохранение изменений в галерее: порядок, повороты, удаления."""
-    from flask import jsonify
     import json as _json
     from PIL import Image
     import io
@@ -1378,10 +1355,8 @@ def api_photos_update(goal_id):
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        pass
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
-        pass
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1444,7 +1419,6 @@ def api_photos_update(goal_id):
         (photos_json, photo_url, goal_id)
     )
     db.commit()
-    pass
     return jsonify({'ok': True, 'photos': final})
 
 
@@ -1452,17 +1426,14 @@ def api_photos_update(goal_id):
 @login_required
 def api_photos_upload(goal_id):
     """Добавление новых фото в цель."""
-    from flask import jsonify
     import json as _json
 
     user = get_current_user()
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        pass
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
-        pass
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     current_photos = _json.loads(goal['photos']) if goal['photos'] else []
@@ -1496,7 +1467,6 @@ def api_photos_upload(goal_id):
         (photos_json, photo_url, goal_id)
     )
     db.commit()
-    pass
     return jsonify({'ok': True, 'added': added, 'photos': final})
 
 
@@ -1504,31 +1474,26 @@ def api_photos_upload(goal_id):
 @login_required
 def api_update_description(goal_id):
     """Инлайн-редактирование описания цели."""
-    from flask import jsonify
     from content_guard import check as cg_check
 
     user = get_current_user()
     db = get_db()
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        pass
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
-        pass
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     data = request.get_json(silent=True) or {}
     new_desc = (data.get('description') or '').strip()
 
     if len(new_desc) > 1000:
-        pass
         return jsonify({'error': 'Максимум 1000 символов'}), 400
 
     # Content Guard
     r = cg_check(new_desc, 'goal_description')
     log_guard(r, new_desc, 'goal_description', 'edit_description')
     if r['status'] == 'blocked':
-        pass
         return jsonify({
             'error': r.get('message', 'Текст не прошёл проверку'),
             'position': r.get('position'),
@@ -1536,38 +1501,32 @@ def api_update_description(goal_id):
 
     db.execute("UPDATE goals SET description = ? WHERE id = ?", (new_desc if new_desc else None, goal_id))
     db.commit()
-    pass
     return jsonify({'ok': True, 'description': new_desc})
 
 
 @app.route('/api/goal/<int:goal_id>/like', methods=['POST'])
 @login_required
 def api_goal_like(goal_id):
-    from flask import jsonify
     user = get_current_user()
     db = get_db()
     goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        pass
         return jsonify({'error': 'Цель не найдена'}), 404
     try:
         db.execute("INSERT INTO likes (user_id, goal_id) VALUES (?, ?)", (user['id'], goal_id))
         db.commit()
     except Exception:
         pass
-    pass
     return jsonify({'ok': True, 'liked': True})
 
 
 @app.route('/api/goal/<int:goal_id>/unlike', methods=['POST'])
 @login_required
 def api_goal_unlike(goal_id):
-    from flask import jsonify
     user = get_current_user()
     db = get_db()
     db.execute("DELETE FROM likes WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
     db.commit()
-    pass
     return jsonify({'ok': True, 'liked': False})
 
 
@@ -1604,19 +1563,16 @@ def abuse():
 @app.route('/api/regions')
 def api_regions():
     """Список всех регионов."""
-    from flask import jsonify
     db = get_db()
     regions = db.execute(
         "SELECT DISTINCT region_code, region_name FROM cities ORDER BY region_name"
     ).fetchall()
-    pass
     return jsonify([{'code': r['region_code'], 'name': r['region_name']} for r in regions])
 
 
 @app.route('/api/cities')
 def api_cities():
     """Города по региону."""
-    from flask import jsonify
     region_code = request.args.get('region', '').strip()
     if not region_code:
         return jsonify([])
@@ -1625,7 +1581,6 @@ def api_cities():
         "SELECT city_name FROM cities WHERE region_code = ? ORDER BY city_name",
         (region_code,)
     ).fetchall()
-    pass
     return jsonify([c['city_name'] for c in cities])
 
 
@@ -1633,7 +1588,6 @@ def api_cities():
 @login_required
 def api_onboarding_step():
     """Сохранение одного шага онбординга."""
-    from flask import jsonify
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     step = data.get('step')
@@ -1674,7 +1628,6 @@ def api_onboarding_step():
             )
 
     db.commit()
-    pass
     return jsonify({'ok': True, 'step': step})
 
 
@@ -1682,7 +1635,6 @@ def api_onboarding_step():
 @login_required
 def api_onboarding_state():
     """Текущее состояние онбординга пользователя."""
-    from flask import jsonify
     user = get_current_user()
     return jsonify({
         'passed': user['onboarding_passed'] or 0,
@@ -1699,7 +1651,6 @@ def api_onboarding_state():
 @login_required
 def api_report_photo():
     """Жалоба на конкретное фото цели."""
-    from flask import jsonify
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     goal_id = data.get('goal_id')
@@ -1714,10 +1665,8 @@ def api_report_photo():
     db = get_db()
     goal = db.execute("SELECT id, user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        pass
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] == user['id']:
-        pass
         return jsonify({'error': 'Нельзя жаловаться на свою цель'}), 403
 
     # Проверяем, не жаловался ли уже
@@ -1726,7 +1675,6 @@ def api_report_photo():
         (goal_id, user['id'], photo_index)
     ).fetchone()
     if existing:
-        pass
         return jsonify({'error': 'Вы уже жаловались на это фото'}), 400
 
     db.execute(
@@ -1734,7 +1682,6 @@ def api_report_photo():
         (goal_id, user['id'], reason, photo_index)
     )
     db.commit()
-    pass
     return jsonify({'ok': True})
 
 
@@ -1742,8 +1689,6 @@ def api_report_photo():
 @login_required
 def api_deferred_set():
     """Установить напоминание о цели."""
-    from flask import jsonify
-    from datetime import datetime, timedelta
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     goal_id = data.get('goal_id')
@@ -1756,7 +1701,6 @@ def api_deferred_set():
     db = get_db()
     goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
-        pass
         return jsonify({'error': 'Цель не найдена'}), 404
 
     now = datetime.now()
@@ -1774,10 +1718,8 @@ def api_deferred_set():
                 days = 365
             remind_at = (now + timedelta(days=days)).isoformat()
         except (ValueError, TypeError):
-            pass
             return jsonify({'error': 'Неверное количество дней'}), 400
     else:
-        pass
         return jsonify({'error': 'Неверный тип напоминания'}), 400
 
     # Удаляем старое напоминание для этой цели
@@ -1789,7 +1731,6 @@ def api_deferred_set():
         (user['id'], goal_id, remind_at, frequency)
     )
     db.commit()
-    pass
     return jsonify({'ok': True, 'remind_at': remind_at, 'frequency': frequency})
 
 
@@ -1797,7 +1738,6 @@ def api_deferred_set():
 @login_required
 def api_deferred_cancel():
     """Отменить напоминание."""
-    from flask import jsonify
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     goal_id = data.get('goal_id')
@@ -1808,7 +1748,6 @@ def api_deferred_cancel():
     db = get_db()
     db.execute("DELETE FROM deferred_donations WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
     db.commit()
-    pass
     return jsonify({'ok': True})
 
 
@@ -1824,7 +1763,6 @@ def profile_edit():
 @login_required
 def api_profile_save():
     """Сохранение анкеты."""
-    from flask import jsonify
     user = get_current_user()
     data = request.get_json(silent=True) or {}
 
@@ -1854,7 +1792,6 @@ def api_profile_save():
         )
 
     db.commit()
-    pass
     return jsonify({'ok': True})
 
 
@@ -1862,7 +1799,6 @@ def api_profile_save():
 @login_required
 def api_identity_upload():
     """Загрузка документа или селфи для верификации."""
-    from flask import jsonify
     user = get_current_user()
     doc_type = request.form.get('type', '').strip()
     if doc_type not in ('passport', 'selfie'):
@@ -1899,7 +1835,6 @@ def api_identity_upload():
     # Проверяем, оба ли загружены
     u = db.execute("SELECT identity_doc_path, identity_selfie_path FROM users WHERE id = ?", (user['id'],)).fetchone()
     db.commit()
-    pass
 
     return jsonify({'ok': True, 'path': '/' + rel_path})
 
@@ -1920,8 +1855,6 @@ def api_state():
     """
     Текущее состояние пользователя — действия на лету.
     """
-    from flask import jsonify
-    from datetime import datetime
     user = get_current_user()
     db = get_db()
     actions = []
@@ -1948,7 +1881,7 @@ def api_state():
     # 2. Неподтверждённые донаты
     unconfirmed = db.execute("""
         SELECT d.id, d.amount_reported, g.title as goal_title,
-               COALESCE(u.name, 'Донатор') as donor_name
+               COALESCE(NULLIF(u.name, ''), 'Донатор') as donor_name
         FROM donations d
         JOIN goals g ON d.goal_id = g.id
         LEFT JOIN users u ON d.donor_id = u.id
@@ -2028,7 +1961,6 @@ def api_state():
             'action_label': 'Открыть'
         })
 
-    pass
     return jsonify({
         'actions': actions,
         'count': len(actions)
@@ -2039,14 +1971,12 @@ def api_state():
 @login_required
 def api_notifications():
     """Только события (что-то произошло)."""
-    from flask import jsonify
     user = get_current_user()
     db = get_db()
     rows = db.execute(
         "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
         (user['id'],)
     ).fetchall()
-    pass
     return jsonify({'items': [dict(r) for r in rows]})
 
 
@@ -2054,7 +1984,6 @@ def api_notifications():
 @login_required
 def api_notifications_read():
     """Отметить уведомление прочитанным."""
-    from flask import jsonify
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     nid = data.get('id')
@@ -2064,7 +1993,6 @@ def api_notifications_read():
     else:
         db.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ?", (user['id'],))
     db.commit()
-    pass
     return jsonify({'ok': True})
 
 
@@ -2077,7 +2005,6 @@ def api_notifications_read():
 @admin_required
 def metrics_dashboard():
     """Дашборд — сводка за сегодня."""
-    from datetime import datetime, timedelta
     user = get_current_user()
     db = get_db()
     
@@ -2133,7 +2060,6 @@ def metrics_dashboard():
     # Для sidebar — счётчики
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/dashboard.html',
         user=user,
@@ -2197,7 +2123,6 @@ def metrics_flags():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/flags.html',
         user=user,
@@ -2256,7 +2181,6 @@ def metrics_users():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/users.html',
         user=user,
@@ -2281,7 +2205,6 @@ def metrics_user_detail(user_id):
     
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
-        pass
         abort(404)
     
     # Статистика
@@ -2292,7 +2215,7 @@ def metrics_user_detail(user_id):
     
     donations_sent = db.execute(
         """SELECT d.*, g.title as goal_title, g.id as goal_id,
-                  COALESCE(gu.name, gu.phone) as recipient_name
+                  COALESCE(NULLIF(gu.name, ''), gu.phone) as recipient_name
            FROM donations d
            JOIN goals g ON d.goal_id = g.id
            JOIN users gu ON g.user_id = gu.id
@@ -2303,7 +2226,7 @@ def metrics_user_detail(user_id):
     
     donations_received = db.execute(
         """SELECT d.*, g.title as goal_title, g.id as goal_id,
-                  COALESCE(du.name, du.phone) as donor_name
+                  COALESCE(NULLIF(du.name, ''), du.phone) as donor_name
            FROM donations d
            JOIN goals g ON d.goal_id = g.id
            LEFT JOIN users du ON d.donor_id = du.id
@@ -2347,7 +2270,6 @@ def metrics_user_detail(user_id):
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/user_detail.html',
         user=admin,
@@ -2384,10 +2306,8 @@ def metrics_user_ban(user_id):
     db = get_db()
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
-        pass
         abort(404)
     if u['is_admin']:
-        pass
         flash('Нельзя забанить админа.', 'danger')
         return redirect(url_for('metrics_user_detail', user_id=user_id))
     
@@ -2403,7 +2323,6 @@ def metrics_user_ban(user_id):
         (admin['id'], str(user_id), details)
     )
     db.commit()
-    pass
     flash(f'Пользователь #{user_id} забанен.', 'success')
     return redirect(url_for('metrics_user_detail', user_id=user_id))
 
@@ -2426,7 +2345,6 @@ def metrics_user_unban(user_id):
     db = get_db()
     u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     if not u:
-        pass
         abort(404)
     
     db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
@@ -2441,7 +2359,6 @@ def metrics_user_unban(user_id):
         (admin['id'], str(user_id), details)
     )
     db.commit()
-    pass
     flash(f'Пользователь #{user_id} разбанен.', 'success')
     return redirect(url_for('metrics_user_detail', user_id=user_id))
 
@@ -2459,7 +2376,7 @@ def metrics_goals():
     
     query = """
         SELECT g.*, 
-            COALESCE(u.name, u.phone) as author_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as author_name,
             u.phone as author_phone,
             (SELECT COUNT(*) FROM donations WHERE goal_id = g.id) as donations_count,
             (SELECT COUNT(*) FROM reports WHERE goal_id = g.id) as reports_count
@@ -2492,7 +2409,6 @@ def metrics_goals():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/goals.html',
         user=user,
@@ -2518,7 +2434,7 @@ def metrics_goal_detail(goal_id):
     
     g = db.execute("""
         SELECT g.*, 
-            COALESCE(u.name, u.phone) as author_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as author_name,
             u.phone as author_phone,
             u.id as author_id,
             u.trust_score as author_trust,
@@ -2530,12 +2446,11 @@ def metrics_goal_detail(goal_id):
     """, (goal_id,)).fetchone()
     
     if not g:
-        pass
         abort(404)
     
     donations = db.execute("""
         SELECT d.*, 
-            COALESCE(u.name, u.phone) as donor_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as donor_name,
             u.id as donor_user_id
         FROM donations d
         LEFT JOIN users u ON d.donor_id = u.id
@@ -2545,7 +2460,7 @@ def metrics_goal_detail(goal_id):
     
     reports = db.execute("""
         SELECT r.*, 
-            COALESCE(u.name, u.phone) as reporter_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as reporter_name,
             u.id as reporter_user_id
         FROM reports r
         LEFT JOIN users u ON r.reporter_id = u.id
@@ -2561,7 +2476,7 @@ def metrics_goal_detail(goal_id):
     
     # История модерации — из admin_actions (решения админов)
     moderation_history_rows = db.execute("""
-        SELECT aa.*, COALESCE(u.name, u.phone) as admin_name
+        SELECT aa.*, COALESCE(NULLIF(u.name, ''), u.phone) as admin_name
         FROM admin_actions aa
         LEFT JOIN users u ON aa.admin_id = u.id
         WHERE aa.target_type = 'goal' AND aa.target_id = ?
@@ -2570,7 +2485,7 @@ def metrics_goal_detail(goal_id):
     
     # История событий — из platform_events (действия автора и системы)
     platform_events_rows = db.execute("""
-        SELECT pe.*, COALESCE(u.name, u.phone) as actor_name
+        SELECT pe.*, COALESCE(NULLIF(u.name, ''), u.phone) as actor_name
         FROM platform_events pe
         LEFT JOIN users u ON pe.actor_user_id = u.id
         WHERE pe.goal_id = ? AND pe.event_type IN ('goal_resubmitted', 'goal_created', 'goal_published')
@@ -2624,7 +2539,6 @@ def metrics_goal_detail(goal_id):
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/goal_detail.html',
         user=admin,
@@ -2657,7 +2571,6 @@ def metrics_goal_hide(goal_id):
     db = get_db()
     old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
-        pass
         abort(404)
     
     db.execute("UPDATE goals SET status = 'hidden' WHERE id = ?", (goal_id,))
@@ -2672,7 +2585,6 @@ def metrics_goal_hide(goal_id):
         (admin['id'], str(goal_id), details)
     )
     db.commit()
-    pass
     flash(f'Цель #{goal_id} скрыта.', 'success')
     return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
 
@@ -2686,7 +2598,6 @@ def metrics_goal_restore(goal_id):
     db = get_db()
     old_status = db.execute("SELECT status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
-        pass
         abort(404)
     
     db.execute("UPDATE goals SET status = 'active' WHERE id = ?", (goal_id,))
@@ -2699,7 +2610,6 @@ def metrics_goal_restore(goal_id):
         (admin['id'], str(goal_id), details)
     )
     db.commit()
-    pass
     flash(f'Цель #{goal_id} восстановлена.', 'success')
     return redirect(url_for('metrics_goal_detail', goal_id=goal_id))
 
@@ -2718,8 +2628,8 @@ def metrics_reports():
             g.title as goal_title,
             g.status as goal_status,
             g.user_id as goal_author_id,
-            COALESCE(au.name, au.phone) as goal_author_name,
-            COALESCE(ru.name, ru.phone) as reporter_name,
+            COALESCE(NULLIF(au.name, ''), au.phone) as goal_author_name,
+            COALESCE(NULLIF(ru.name, ''), ru.phone) as reporter_name,
             ru.id as reporter_user_id
         FROM reports r
         JOIN goals g ON r.goal_id = g.id
@@ -2762,7 +2672,6 @@ def metrics_reports():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/reports.html',
         user=user,
@@ -2788,7 +2697,7 @@ def metrics_dialogs():
     
     query = """
         SELECT d.*,
-            COALESCE(u.name, u.phone) as user_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as user_name,
             u.phone as user_phone,
             (SELECT COUNT(*) FROM admin_dialog_messages WHERE dialog_id = d.id) as messages_count,
             (SELECT COUNT(*) FROM admin_dialog_messages WHERE dialog_id = d.id AND sender_type = 'user' AND is_read = 0) as unread_count,
@@ -2814,7 +2723,6 @@ def metrics_dialogs():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/dialogs.html',
         user=user,
@@ -2837,7 +2745,7 @@ def metrics_dialog_detail(dialog_id):
     
     d = db.execute("""
         SELECT d.*, 
-            COALESCE(u.name, u.phone) as user_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as user_name,
             u.phone as user_phone,
             u.id as user_id
         FROM admin_dialogs d
@@ -2846,7 +2754,6 @@ def metrics_dialog_detail(dialog_id):
     """, (dialog_id,)).fetchone()
     
     if not d:
-        pass
         abort(404)
     
     messages = db.execute("""
@@ -2864,7 +2771,6 @@ def metrics_dialog_detail(dialog_id):
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/dialog_detail.html',
         user=admin,
@@ -2879,7 +2785,6 @@ def metrics_dialog_detail(dialog_id):
 @admin_required
 def metrics_dialog_send(dialog_id):
     """Отправить сообщение в диалог."""
-    from flask import jsonify
     admin = get_current_user()
     data = request.get_json(silent=True) or {}
     text = (data.get('message') or '').strip()
@@ -2889,10 +2794,8 @@ def metrics_dialog_send(dialog_id):
     db = get_db()
     d = db.execute("SELECT * FROM admin_dialogs WHERE id = ?", (dialog_id,)).fetchone()
     if not d:
-        pass
         return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
     if d['status'] == 'closed':
-        pass
         return jsonify({'ok': False, 'error': 'Диалог закрыт'}), 400
     
     db.execute(
@@ -2900,7 +2803,6 @@ def metrics_dialog_send(dialog_id):
         (dialog_id, admin['id'], text)
     )
     db.commit()
-    pass
     
     return jsonify({'ok': True})
 
@@ -2909,12 +2811,11 @@ def metrics_dialog_send(dialog_id):
 @admin_required
 def metrics_dialog_messages(dialog_id):
     """JSON со всеми сообщениями диалога для polling."""
-    from flask import jsonify
     admin = get_current_user()
     db = get_db()
     
     d = db.execute("""
-        SELECT d.*, COALESCE(u.name, u.phone) as user_name
+        SELECT d.*, COALESCE(NULLIF(u.name, ''), u.phone) as user_name
         FROM admin_dialogs d
         JOIN users u ON d.user_id = u.id
         WHERE d.id = ?
@@ -2977,7 +2878,6 @@ def metrics_dialog_close(dialog_id):
         (admin['id'], str(dialog_id))
     )
     db.commit()
-    pass
     flash('Диалог закрыт.', 'success')
     return redirect(url_for('metrics_dialogs'))
 
@@ -3000,7 +2900,6 @@ def metrics_dialog_new():
         db = get_db()
         u = db.execute("SELECT id FROM users WHERE id = ?", (user_id,)).fetchone()
         if not u:
-            pass
             flash('Пользователь не найден.', 'danger')
             return redirect(url_for('metrics_dialog_new'))
         
@@ -3021,7 +2920,6 @@ def metrics_dialog_new():
         )
         
         db.commit()
-        pass
         flash('Диалог создан.', 'success')
         return redirect(url_for('metrics_dialog_detail', dialog_id=dialog_id))
     
@@ -3033,7 +2931,6 @@ def metrics_dialog_new():
         u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     
     counts = get_sidebar_counts(db)
-    pass
     
     return render_template('_metrics/dialog_new.html',
         user=admin,
@@ -3051,7 +2948,6 @@ def metrics_dialog_new():
 @login_required
 def api_dialog_get(dialog_id):
     """Получить сообщения диалога."""
-    from flask import jsonify
     user = get_current_user()
     db = get_db()
     
@@ -3061,7 +2957,6 @@ def api_dialog_get(dialog_id):
     ).fetchone()
     
     if not d:
-        pass
         return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
     
     messages = db.execute(
@@ -3074,7 +2969,6 @@ def api_dialog_get(dialog_id):
         (dialog_id,)
     )
     db.commit()
-    pass
     
     return jsonify({
         'ok': True,
@@ -3091,7 +2985,6 @@ def api_dialog_get(dialog_id):
 @login_required
 def api_dialog_send(dialog_id):
     """Пользователь отправляет сообщение в диалог."""
-    from flask import jsonify
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     text = (data.get('message') or '').strip()
@@ -3114,10 +3007,8 @@ def api_dialog_send(dialog_id):
     ).fetchone()
     
     if not d:
-        pass
         return jsonify({'ok': False, 'error': 'Диалог не найден'}), 404
     if d['status'] == 'closed':
-        pass
         return jsonify({'ok': False, 'error': 'Диалог закрыт'}), 400
     
     db.execute(
@@ -3125,7 +3016,6 @@ def api_dialog_send(dialog_id):
         (dialog_id, user['id'], text)
     )
     db.commit()
-    pass
     
     return jsonify({'ok': True})
 
@@ -3134,7 +3024,6 @@ def api_dialog_send(dialog_id):
 @login_required
 def api_dialogs_check():
     """Проверка новых сообщений во всех открытых диалогах (для polling)."""
-    from flask import jsonify
     user = get_current_user()
     db = get_db()
     
@@ -3146,7 +3035,6 @@ def api_dialogs_check():
         WHERE d.user_id = ? AND d.status = 'open'
     """, (user['id'],)).fetchall()
     
-    pass
     
     total_unread = sum(d['unread'] for d in dialogs)
     
@@ -3166,7 +3054,7 @@ def metrics_moderation():
     
     pending_rows = db.execute("""
         SELECT g.*, 
-            COALESCE(u.name, u.phone) as author_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as author_name,
             u.phone as author_phone,
             u.id as author_id,
             u.trust_score as author_trust,
@@ -3218,7 +3106,7 @@ def metrics_moderation():
     history = db.execute("""
         SELECT g.id, g.title, g.moderation_status, g.moderation_comment, g.moderated_at,
                g.is_resubmission, g.resubmission_count,
-               COALESCE(u.name, u.phone) as author_name
+               COALESCE(NULLIF(u.name, ''), u.phone) as author_name
         FROM goals g
         JOIN users u ON g.user_id = u.id
         WHERE g.moderation_status IN ('approved', 'rejected')
@@ -3227,7 +3115,6 @@ def metrics_moderation():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/moderation.html',
         user=user,
@@ -3260,7 +3147,6 @@ def metrics_moderation_approve(goal_id):
             (goal['user_id'],)
         )
     db.commit()
-    pass
     flash('Цель одобрена.', 'success')
     return redirect(url_for('metrics_moderation'))
 
@@ -3286,7 +3172,6 @@ def metrics_moderation_reject(goal_id):
     db = get_db()
     old_status = db.execute("SELECT moderation_status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not old_status:
-        pass
         abort(404)
     
     db.execute(
@@ -3311,7 +3196,6 @@ def metrics_moderation_reject(goal_id):
             (goal['user_id'], 'Причина: ' + comment)
         )
     db.commit()
-    pass
     flash('Цель отклонена.', 'success')
     return redirect(url_for('metrics_moderation'))
 
@@ -3328,7 +3212,7 @@ def metrics_suspicious():
     
     query = """
         SELECT s.*, 
-            COALESCE(u.name, u.phone) as user_name,
+            COALESCE(NULLIF(u.name, ''), u.phone) as user_name,
             u.phone as user_phone,
             u.is_banned as user_banned
         FROM suspicious_activity s
@@ -3358,7 +3242,6 @@ def metrics_suspicious():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     # Человекопонятные названия
     type_names = {
@@ -3402,7 +3285,6 @@ def metrics_suspicious_resolve(activity_id):
     db = get_db()
     old = db.execute("SELECT status FROM suspicious_activity WHERE id = ?", (activity_id,)).fetchone()
     if not old:
-        pass
         abort(404)
     
     db.execute("UPDATE suspicious_activity SET status = 'resolved' WHERE id = ?", (activity_id,))
@@ -3417,7 +3299,6 @@ def metrics_suspicious_resolve(activity_id):
         (admin['id'], str(activity_id), details)
     )
     db.commit()
-    pass
     flash('Помечено как обработанное.', 'success')
     return redirect(url_for('metrics_suspicious'))
 
@@ -3430,7 +3311,6 @@ def metrics_suspicious_review(activity_id):
     db = get_db()
     db.execute("UPDATE suspicious_activity SET status = 'reviewed' WHERE id = ?", (activity_id,))
     db.commit()
-    pass
     flash('Взято в работу.', 'info')
     return redirect(url_for('metrics_suspicious'))
 
@@ -3522,7 +3402,7 @@ def metrics_logs():
                 'time': r['created_at'],
                 'source': 'donation',
                 'icon': '💰',
-                'label': f"Донат {r['amount_reported']:.0f} ₽",
+                'label': f"Донат {(r['amount_reported'] or 0):.0f} ₽",
                 'user_id': r['user_id'],
                 'data': f"status: {r['status']}",
             })
@@ -3540,7 +3420,7 @@ def metrics_logs():
                 'time': r['created_at'],
                 'source': 'goal',
                 'icon': '🎯',
-                'label': f"Цель: {r['title'][:60]}",
+                'label': f"Цель: {(r['title'] or '')[:60]}",
                 'user_id': r['user_id'],
                 'data': f"type: {r['type']}, status: {r['status']}",
             })
@@ -3582,7 +3462,6 @@ def metrics_logs():
     
     counts = get_sidebar_counts(db)
     
-    pass
     
     return render_template('_metrics/logs.html',
         user=user,
@@ -3627,7 +3506,6 @@ def metrics_settings():
             cg_loaded = False
     
     # Системная информация
-    import sqlite3
     db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'pomogay.db')
     db_size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
     
@@ -3648,7 +3526,6 @@ def metrics_settings():
         settings[r['key']] = {'value': r['value'], 'description': r['description'], 'updated_at': r['updated_at']}
     
     counts = get_sidebar_counts(db)
-    pass
     
     return render_template('_metrics/settings.html',
         user=user,
@@ -3689,7 +3566,6 @@ def metrics_settings_save():
             updated += 1
     
     db.commit()
-    pass
     flash(f'Сохранено изменений: {updated}', 'success')
     return redirect(url_for('metrics_settings'))
 
@@ -3702,7 +3578,6 @@ def metrics_settings_toggle_flag(flag_id):
     db = get_db()
     flag = db.execute("SELECT * FROM feature_flags WHERE id = ?", (flag_id,)).fetchone()
     if not flag:
-        pass
         flash('Флаг не найден.', 'danger')
         return redirect(url_for('metrics_settings'))
     
@@ -3713,7 +3588,6 @@ def metrics_settings_toggle_flag(flag_id):
         (admin['id'], str(flag_id), '{"key": "' + flag['flag_key'] + '", "new": ' + str(new_value) + '}')
     )
     db.commit()
-    pass
     flash(f'Флаг {flag["flag_key"]} переключён.', 'success')
     return redirect(url_for('metrics_settings'))
 
@@ -3731,11 +3605,9 @@ def goal_edit(goal_id):
         return redirect(url_for('goals_list'))
     
     if goal['user_id'] != user['id']:
-        pass
         abort(404)
     
     if goal['status'] not in ('failed', 'draft'):
-        pass
         flash('Эту цель нельзя редактировать.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
@@ -3831,11 +3703,9 @@ def goal_edit(goal_id):
         )
         
         db.commit()
-        pass
         flash('Цель отправлена на повторную проверку.', 'success')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
-    pass
     return render_template('create_goal.html',
         goal_type=goal['type'],
         mode='edit',
@@ -3872,7 +3742,7 @@ def metrics_events():
     
     query = """
         SELECT pe.*, 
-            COALESCE(au.name, au.phone) as actor_name,
+            COALESCE(NULLIF(au.name, ''), au.phone) as actor_name,
             COALESCE(tu.name, tu.phone) as target_name,
             g.title as goal_title,
             d.amount_reported as donation_amount
@@ -3927,7 +3797,6 @@ def metrics_events():
     ).fetchone()[0]
     
     counts = get_sidebar_counts(db)
-    pass
     
     return render_template('_metrics/events.html',
         user=user,
