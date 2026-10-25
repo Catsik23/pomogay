@@ -1,4 +1,4 @@
-import os, re, time, uuid
+import os, re, time, uuid, math
 import sqlite3
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify
@@ -67,6 +67,8 @@ def get_current_user():
         db = get_db()
         try:
             user = db.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],)).fetchone()
+            if user and user['is_banned']:
+                return None
             return user
         except sqlite3.Error as e:
             logger.error(f'[get_current_user] Ошибка БД: {e}')
@@ -104,7 +106,9 @@ def log_guard(result, text, context, user_action):
 def login_required(f):
     @wraps(f)
     def wrap(*args, **kwargs):
-        if 'user_id' not in session:
+        user = get_current_user()
+        if not user:
+            session.clear()
             flash('Сначала войдите в аккаунт.', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -151,9 +155,11 @@ def set_setting(db, key, value, admin_id=None):
         (str(value), key)
     )
     if admin_id:
+        import json as _json
+        details_json = _json.dumps({'value': str(value)}, ensure_ascii=False)
         db.execute(
             "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'update_setting', 'setting', ?, ?)",
-            (admin_id, key, '{"value": "' + str(value).replace('"', '\\"') + '"}')
+            (admin_id, key, details_json)
         )
 
 
@@ -249,8 +255,8 @@ def get_sidebar_counts(db):
                 'dialogs': row['dialogs'] or 0,
                 'events': row['events'] or 0,
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f'[get_sidebar_counts] Fallback на _safe_count: {e}')
     
     # Fallback — если хоть одна таблица отсутствует
     return {
@@ -278,17 +284,46 @@ def validate_phone(phone):
 def is_rate_limited(phone):
     db = get_db()
     ago = int(time.time() - 900)
-    c = db.execute("SELECT COUNT(*) FROM analytics_events WHERE event_type='login_attempt' AND event_data LIKE ? AND created_at > datetime(?, 'unixepoch')", (f'%{phone}%', ago)).fetchone()[0]
+    # Точное сравнение по JSON (защита от LIKE-совпадений)
+    phone_json = f'{{"phone":"{phone}"}}'
+    c = db.execute(
+        "SELECT COUNT(*) FROM analytics_events WHERE event_type='login_attempt' AND event_data = ? AND created_at > datetime(?, 'unixepoch')",
+        (phone_json, ago)
+    ).fetchone()[0]
     return c >= 5
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def compress_photo(data):
+    """
+    Сжимает фото до 800px JPEG quality 75.
+    При ошибке Pillow/декодирования — возвращает оригинал (НЕ отклоняет,
+    чтобы не ломать сценарий без Pillow).
+    Защита от decompression bomb: >40M пикселей → отказ.
+    """
     try:
         from PIL import Image
         import io
+    except ImportError:
+        logger.warning('[compress_photo] Pillow не установлен — фото не сжимается')
+        return data
+    
+    try:
         img = Image.open(io.BytesIO(data))
+        
+        # Защита от decompression bomb
+        if img.width * img.height > 40_000_000:
+            logger.warning(f'[compress_photo] Отказ: {img.width}x{img.height} > 40M пикселей')
+            return data  # оригинал, но с логом
+        
+        # Применяем EXIF-поворот (важно для селфи/паспортов с телефона)
+        try:
+            from PIL import ImageOps
+            img = ImageOps.exif_transpose(img)
+        except Exception:
+            pass
+        
         img = img.convert('RGB')
         max_size = (800, 800)
         img.thumbnail(max_size, Image.LANCZOS)
@@ -297,10 +332,8 @@ def compress_photo(data):
         compressed = output.getvalue()
         if len(compressed) < len(data):
             return compressed
-    except ImportError:
-        pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f'[compress_photo] Ошибка сжатия: {e}')
     return data
 
 @app.route('/')
@@ -401,6 +434,9 @@ def login():
         db.commit()
         user = db.execute("SELECT * FROM users WHERE phone = ?", (clean,)).fetchone()
         if user and check_password_hash(user['password_hash'], pw):
+            if user['is_banned']:
+                flash('Аккаунт заблокирован. Обратитесь к администрации.', 'danger')
+                return render_template('login.html')
             session.clear()
             session.permanent = True
             session['user_id'] = user['id']
@@ -409,7 +445,7 @@ def login():
         flash('Неверный номер или пароль.', 'danger')
     return render_template('login.html')
 
-@app.route('/logout', methods=['GET', 'POST'])
+@app.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     flash('Вы вышли.', 'info')
@@ -689,6 +725,8 @@ def create_goal(goal_type):
             return render_template('create_goal.html', goal_type=goal_type)
         try:
             amt = float(amt_str)
+            if not math.isfinite(amt):
+                raise ValueError
             if goal_type == 'super_blitz':
                 if amt < 100 or amt > 5000:
                     raise ValueError
@@ -1091,7 +1129,7 @@ def donate(goal_id):
     except ValueError:
         flash('Некорректная сумма.', 'danger')
         return redirect(url_for('goal_page', goal_id=goal_id))
-    if amount <= 0:
+    if not math.isfinite(amount) or amount <= 0:
         flash('Некорректная сумма.', 'danger')
         return redirect(url_for('goal_page', goal_id=goal_id))
     warm_word = request.form.get('warm_word', '').strip()[:200]
@@ -1106,12 +1144,18 @@ def donate(goal_id):
     db = get_db()
     
     # Проверка цели: существует, активна, есть остаток
-    goal_check = db.execute("SELECT id, status, amount_goal, amount_collected FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    goal_check = db.execute("SELECT id, user_id, status, amount_goal, amount_collected FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal_check:
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     if goal_check['status'] != 'active':
         flash('Эта цель не принимает новые переводы.', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    # Проверка: автор цели не забанен
+    goal_owner = db.execute("SELECT is_banned FROM users WHERE id = ?", (goal_check['user_id'],)).fetchone()
+    if goal_owner and goal_owner['is_banned']:
+        flash('Эта цель временно недоступна для переводов.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
     remaining = (goal_check['amount_goal'] or 0) - (goal_check['amount_collected'] or 0)
@@ -1360,9 +1404,23 @@ def api_photos_update(goal_id):
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
     data = request.get_json(silent=True) or {}
-    new_order = data.get('order', [])       # [path1, path2, ...]
-    angles = data.get('angles', {})         # { path: angle }
-    deleted = data.get('deleted', [])       # [path1, path2]
+    new_order = data.get('order', [])
+    angles = data.get('angles', {})
+    deleted = data.get('deleted', [])
+    
+    # Валидация типов
+    if not isinstance(new_order, list):
+        return jsonify({'error': 'order должен быть списком'}), 400
+    if not isinstance(deleted, list):
+        return jsonify({'error': 'deleted должен быть списком'}), 400
+    if not isinstance(angles, dict):
+        return jsonify({'error': 'angles должен быть объектом'}), 400
+    
+    # Валидация элементов списков — должны быть строками
+    if not all(isinstance(p, str) for p in new_order):
+        return jsonify({'error': 'order содержит не строки'}), 400
+    if not all(isinstance(p, str) for p in deleted):
+        return jsonify({'error': 'deleted содержит не строки'}), 400
 
     # Валидация: все пути должны быть из текущей цели
     current_photos = _json.loads(goal['photos']) if goal['photos'] else []
@@ -1409,7 +1467,11 @@ def api_photos_update(goal_id):
             logger.error(f'Rotate error: {e}')
 
     # Финальный список — исключаем удалённые, сохраняем порядок
-    final = [p for p in new_order if p not in deleted]
+    # Если order пуст — сохраняем текущий порядок (защита от обнуления галереи)
+    base_order = new_order if new_order else current_photos
+    final = [p for p in base_order if p not in deleted]
+    # Дедупликация с сохранением порядка
+    final = list(dict.fromkeys(final))
 
     photo_url = final[0] if final else None
     photos_json = _json.dumps(final) if final else None
@@ -1513,11 +1575,13 @@ def api_goal_like(goal_id):
     if not goal:
         return jsonify({'error': 'Цель не найдена'}), 404
     try:
-        db.execute("INSERT INTO likes (user_id, goal_id) VALUES (?, ?)", (user['id'], goal_id))
+        cur = db.execute("INSERT OR IGNORE INTO likes (user_id, goal_id) VALUES (?, ?)", (user['id'], goal_id))
         db.commit()
-    except Exception:
-        pass
-    return jsonify({'ok': True, 'liked': True})
+        created = cur.rowcount == 1
+    except sqlite3.Error as e:
+        logger.error(f'[api_goal_like] Ошибка: {e}')
+        return jsonify({'ok': False, 'error': 'Не удалось сохранить лайк'}), 500
+    return jsonify({'ok': True, 'liked': True, 'created': created})
 
 
 @app.route('/api/goal/<int:goal_id>/unlike', methods=['POST'])
@@ -1636,6 +1700,8 @@ def api_onboarding_step():
 def api_onboarding_state():
     """Текущее состояние онбординга пользователя."""
     user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Не авторизован'}), 401
     return jsonify({
         'passed': user['onboarding_passed'] or 0,
         'step': user['onboarding_step'] or 0,
@@ -1691,12 +1757,18 @@ def api_deferred_set():
     """Установить напоминание о цели."""
     user = get_current_user()
     data = request.get_json(silent=True) or {}
-    goal_id = data.get('goal_id')
+    
+    # Валидация goal_id
+    try:
+        goal_id = int(data.get('goal_id'))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Неверный ID цели'}), 400
+    
     frequency = data.get('frequency', 'once')  # once / daily / custom
     days = data.get('days')  # для custom
-
-    if not goal_id:
-        return jsonify({'error': 'Не указана цель'}), 400
+    
+    if frequency not in ('once', 'daily', 'custom'):
+        return jsonify({'error': 'Неверный тип напоминания'}), 400
 
     db = get_db()
     goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
@@ -2312,18 +2384,30 @@ def metrics_user_ban(user_id):
         return redirect(url_for('metrics_user_detail', user_id=user_id))
     
     db.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (user_id,))
+    
+    # Скрываем все активные цели забаненного (с флагом)
+    hidden_count = db.execute(
+        "UPDATE goals SET status = 'hidden', hidden_by_ban = 1 WHERE user_id = ? AND status IN ('active', 'draft')",
+        (user_id,)
+    ).rowcount
+    
     details = _json.dumps({
         'categories': categories,
         'comment': comment,
         'old_value': 'active',
-        'new_value': 'banned'
+        'new_value': 'banned',
+        'hidden_goals': hidden_count
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'ban_user', 'user', ?, ?)",
         (admin['id'], str(user_id), details)
     )
     db.commit()
-    flash(f'Пользователь #{user_id} забанен.', 'success')
+    
+    if hidden_count > 0:
+        flash(f'Пользователь #{user_id} забанен. Скрыто целей: {hidden_count}.', 'success')
+    else:
+        flash(f'Пользователь #{user_id} забанен.', 'success')
     return redirect(url_for('metrics_user_detail', user_id=user_id))
 
 
@@ -2348,18 +2432,30 @@ def metrics_user_unban(user_id):
         abort(404)
     
     db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
+    
+    # Восстанавливаем цели, скрытые при бане
+    restored_count = db.execute(
+        "UPDATE goals SET status = 'active', hidden_by_ban = 0 WHERE user_id = ? AND hidden_by_ban = 1 AND status = 'hidden'",
+        (user_id,)
+    ).rowcount
+    
     details = _json.dumps({
         'categories': categories,
         'comment': comment,
         'old_value': 'banned',
-        'new_value': 'active'
+        'new_value': 'active',
+        'restored_goals': restored_count
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'unban_user', 'user', ?, ?)",
         (admin['id'], str(user_id), details)
     )
     db.commit()
-    flash(f'Пользователь #{user_id} разбанен.', 'success')
+    
+    if restored_count > 0:
+        flash(f'Пользователь #{user_id} разбанен. Восстановлено целей: {restored_count}.', 'success')
+    else:
+        flash(f'Пользователь #{user_id} разбанен.', 'success')
     return redirect(url_for('metrics_user_detail', user_id=user_id))
 
 
@@ -2889,9 +2985,14 @@ def metrics_dialog_new():
     admin = get_current_user()
     
     if request.method == 'POST':
-        user_id = request.form.get('user_id', '').strip()
-        subject = request.form.get('subject', '').strip()
-        message = request.form.get('message', '').strip()
+        try:
+            user_id = int(request.form.get('user_id', '0'))
+        except (ValueError, TypeError):
+            flash('Неверный ID пользователя.', 'danger')
+            return redirect(url_for('metrics_dialog_new'))
+        
+        subject = request.form.get('subject', '').strip()[:200]
+        message = request.form.get('message', '').strip()[:2000]
         
         if not user_id or not message:
             flash('Заполните все поля.', 'danger')
@@ -3373,7 +3474,10 @@ def metrics_logs():
     
     # 2. Content Guard flags
     if source in ('all', 'flags'):
-        q = "SELECT id, user_id, found_word, category, status, original_text, created_at FROM content_guard_log WHERE 1=1"
+        if flagged:
+            q = "SELECT id, user_id, found_word, category, status, original_text, created_at FROM content_guard_log WHERE status = 'flagged'"
+        else:
+            q = "SELECT id, user_id, found_word, category, status, original_text, created_at FROM content_guard_log WHERE status IN ('blocked', 'flagged')"
         params = []
         if time_filter:
             q += " AND created_at > datetime('now', ?)"
@@ -3444,7 +3548,15 @@ def metrics_logs():
             })
     
     # Сортируем по времени
-    events.sort(key=lambda x: x['time'], reverse=True)
+    # Если flagged=1 — оставляем только события-флаги
+    if flagged:
+        events = [e for e in events if e['source'] == 'flag']
+    
+    # Нормализация дат — разные источники могут давать разный формат
+    def _norm_dt(s):
+        return (s or '').replace('T', ' ')[:19]
+    
+    events.sort(key=lambda x: _norm_dt(x['time']), reverse=True)
     events = events[:300]
     
     # Обогащаем данными юзера
