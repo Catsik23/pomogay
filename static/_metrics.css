@@ -85,9 +85,38 @@ body {
 }
 
 .m-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 0 20px 20px;
     border-bottom: 1px solid var(--m-border);
     margin-bottom: 16px;
+}
+.m-brand-icon-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255,90,60,0.1);
+    color: var(--m-sunset-1);
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+}
+.m-brand-icon-link:hover {
+    background: rgba(255,90,60,0.2);
+}
+.m-brand-icon-link:active {
+    transform: scale(0.95);
+}
+.m-brand-icon-link svg,
+.m-brand .m-brand-icon-link svg {
+    width: 20px !important;
+    height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
 }
 
 .m-brand-title {

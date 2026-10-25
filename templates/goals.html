@@ -421,6 +421,89 @@
             margin: 8px 20px;
         }
 
+        /* Нижние действия (Мостик + Выйти) */
+        .sidebar-bottom-actions {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px 12px;
+            border-top: 1px solid #F5F0EC;
+            margin-top: auto;
+        }
+        
+        .sidebar-admin-link {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 10px;
+            background: linear-gradient(135deg, #16161A 0%, #1C1C22 100%);
+            color: #E8E8EC;
+            border: 1px solid #2A2A32;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            text-decoration: none;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+            transition: transform 0.1s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            min-height: 44px;
+            box-sizing: border-box;
+        }
+        .sidebar-admin-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #FF5A3C 0%, #E85D75 100%);
+        }
+        .sidebar-admin-link:active {
+            transform: scale(0.97);
+            box-shadow: 0 4px 20px rgba(255,90,60,0.25);
+        }
+        .sidebar-admin-link .sidebar-icon {
+            color: #FF5A3C;
+            width: 18px;
+            height: 18px;
+        }
+        .sidebar-admin-link span {
+            color: #E8E8EC;
+        }
+        
+        /* Кнопка Выйти — в стиле платформы */
+        .sidebar-logout-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 10px;
+            background: white;
+            color: #FF5A3C;
+            border: 1.5px solid #FF5A3C;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+            min-height: 44px;
+            box-sizing: border-box;
+        }
+        .sidebar-logout-btn:active {
+            transform: scale(0.97);
+            box-shadow: 0 0 0 3px rgba(255,90,60,0.15);
+        }
+        .sidebar-logout-btn .sidebar-icon {
+            color: #FF5A3C;
+            width: 18px;
+            height: 18px;
+        }
+        
         /* Logout */
         .sidebar-logout-form {
             margin-top: auto;
@@ -916,14 +999,24 @@
             </div>
         </div>
 
-        <div class="sidebar-divider"></div>
-
-        <form method="POST" action="/logout" class="sidebar-logout-form">
-            <button type="submit" class="sidebar-logout">
-                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                <span>Выйти</span>
-            </button>
-        </form>
+        <div class="sidebar-bottom-actions">
+            {% if user and user.is_admin %}
+            <a href="/_metrics" class="sidebar-admin-link">
+                <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>Мостик</span>
+            </a>
+            {% endif %}
+            
+            <form method="POST" action="/logout" style="flex: 1; margin: 0; display: flex;">
+                <button type="submit" class="sidebar-logout-btn">
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <span>Выйти</span>
+                </button>
+            </form>
+        </div>
         {% else %}
         <nav class="sidebar-nav">
             <a href="/login" class="sidebar-link">

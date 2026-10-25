@@ -1435,22 +1435,29 @@ def api_photos_update(goal_id):
     deleted = [p for p in deleted if is_own(p)]
     angles = {k: v for k, v in angles.items() if is_own(k)}
 
-    # Удаляем файлы
+    # Собираем пути для удаления (удалим после commit)
     upload_folder = app.config['UPLOAD_FOLDER']
+    files_to_delete = []
     for path in deleted:
-        filename = path.split('/')[-1]
+        filename = os.path.basename(path)
         fpath = os.path.join(upload_folder, filename)
         if os.path.exists(fpath):
-            try:
-                os.remove(fpath)
-            except Exception:
-                pass
+            files_to_delete.append(fpath)
 
-    # Поворачиваем файлы
+    # Валидация angles: только int, только 90/180/270, только свои пути
+    validated_angles = {}
     for path, angle in angles.items():
-        if angle % 360 == 0:
+        if not isinstance(path, str) or not is_own(path):
             continue
-        filename = path.split('/')[-1]
+        if not isinstance(angle, int) or isinstance(angle, bool):
+            continue
+        if angle not in (90, 180, 270):
+            continue
+        validated_angles[path] = angle
+    
+    # Поворачиваем файлы
+    for path, angle in validated_angles.items():
+        filename = os.path.basename(path)
         fpath = os.path.join(upload_folder, filename)
         if not os.path.exists(fpath):
             continue
@@ -1481,7 +1488,17 @@ def api_photos_update(goal_id):
         (photos_json, photo_url, goal_id)
     )
     db.commit()
-    return jsonify({'ok': True, 'photos': final})
+    
+    # Удаляем файлы только после успешного commit
+    deleted_files = 0
+    for fpath in files_to_delete:
+        try:
+            os.remove(fpath)
+            deleted_files += 1
+        except Exception as e:
+            logger.warning(f'[photos_update] Не удалось удалить {fpath}: {e}')
+    
+    return jsonify({'ok': True, 'photos': final, 'deleted_files': deleted_files})
 
 
 @app.route('/api/goal/<int:goal_id>/photos/upload', methods=['POST'])
@@ -1717,23 +1734,44 @@ def api_onboarding_state():
 @login_required
 def api_report_photo():
     """Жалоба на конкретное фото цели."""
+    import json as _json
     user = get_current_user()
     data = request.get_json(silent=True) or {}
-    goal_id = data.get('goal_id')
+    
+    # Валидация goal_id
+    try:
+        goal_id = int(data.get('goal_id'))
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Неверный ID цели'}), 400
+    
+    # Валидация photo_index
     photo_index = data.get('photo_index')
-    reason = (data.get('reason') or '').strip()
-
-    if not goal_id or photo_index is None:
-        return jsonify({'error': 'Неверные данные'}), 400
+    if not isinstance(photo_index, int) or isinstance(photo_index, bool) or photo_index < 0:
+        return jsonify({'error': 'Неверный индекс фото'}), 400
+    
+    reason = (data.get('reason') or '').strip()[:500]
     if not reason:
         return jsonify({'error': 'Укажите причину'}), 400
 
     db = get_db()
-    goal = db.execute("SELECT id, user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    goal = db.execute("SELECT id, user_id, photos, photo_url FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] == user['id']:
         return jsonify({'error': 'Нельзя жаловаться на свою цель'}), 403
+
+    # Проверяем, что фото с таким индексом существует
+    photos = []
+    if goal['photos']:
+        try:
+            photos = _json.loads(goal['photos'])
+        except Exception:
+            photos = []
+    if not photos and goal['photo_url']:
+        photos = [goal['photo_url']]
+    
+    if photo_index >= len(photos):
+        return jsonify({'error': 'Фото не найдено'}), 404
 
     # Проверяем, не жаловался ли уже
     existing = db.execute(
@@ -1883,30 +1921,74 @@ def api_identity_upload():
     if not allowed_file(file.filename):
         return jsonify({'error': 'Неверный формат файла'}), 400
 
+    # Проверка через Pillow (реальный тип, не только расширение)
+    try:
+        from PIL import Image
+        import io as _io
+        data = file.read()
+        try:
+            img_check = Image.open(_io.BytesIO(data))
+            if img_check.format not in ('JPEG', 'PNG', 'WEBP'):
+                return jsonify({'error': 'Неверный формат (JPEG/PNG/WEBP)'}), 400
+            if img_check.width * img_check.height > 40_000_000:
+                return jsonify({'error': 'Фото слишком большое'}), 400
+            # Переоткрыть после verify
+            img_check = Image.open(_io.BytesIO(data))
+        except Exception:
+            return jsonify({'error': 'Файл не является изображением'}), 400
+    except ImportError:
+        data = file.read()
+    
     # Папка uploads/identity
     identity_folder = os.path.join(BASE_DIR, 'uploads', 'identity')
     os.makedirs(identity_folder, exist_ok=True)
+    
+    # UUID-имя вместо предсказуемого {user_id}_{doc_type}
+    fname = f"{uuid.uuid4().hex}.jpg"
+    fpath = os.path.join(identity_folder, fname)
 
     try:
-        data = file.read()
         compressed = compress_photo(data)
-        fname = f"{user['id']}_{doc_type}.jpg"
-        fpath = os.path.join(identity_folder, fname)
         with open(fpath, 'wb') as f:
             f.write(compressed)
     except Exception as e:
-        return jsonify({'error': f'Ошибка сохранения: {e}'}), 500
+        logger.error(f'[api_identity_upload] Ошибка сохранения: {e}')
+        return jsonify({'error': 'Не удалось сохранить файл'}), 500
 
     rel_path = f"uploads/identity/{fname}"
     db = get_db()
+    
+    # Запоминаем старый путь для удаления
+    old_path = db.execute(
+        f"SELECT identity_{'doc' if doc_type == 'passport' else 'selfie'}_path as p FROM users WHERE id = ?",
+        (user['id'],)
+    ).fetchone()
+    
     if doc_type == 'passport':
         db.execute("UPDATE users SET identity_doc_path = ? WHERE id = ?", (rel_path, user['id']))
     else:
         db.execute("UPDATE users SET identity_selfie_path = ? WHERE id = ?", (rel_path, user['id']))
-
-    # Проверяем, оба ли загружены
-    u = db.execute("SELECT identity_doc_path, identity_selfie_path FROM users WHERE id = ?", (user['id'],)).fetchone()
+    
+    # Аудит
+    import json as _json
+    record_event(
+        'identity_uploaded',
+        db=db,
+        actor_user_id=user['id'],
+        source='user',
+        payload={'doc_type': doc_type, 'path': rel_path}
+    )
     db.commit()
+    
+    # Удаляем старый файл (если был)
+    if old_path and old_path['p']:
+        try:
+            old_filename = os.path.basename(old_path['p'])
+            old_fpath = os.path.join(identity_folder, old_filename)
+            if os.path.exists(old_fpath):
+                os.remove(old_fpath)
+        except Exception as e:
+            logger.warning(f'[api_identity_upload] Не удалён старый файл: {e}')
 
     return jsonify({'ok': True, 'path': '/' + rel_path})
 
@@ -1914,10 +1996,39 @@ def api_identity_upload():
 @app.route('/uploads/identity/<filename>')
 @login_required
 def identity_file(filename):
-    """Отдача файлов верификации — только владельцу."""
+    """Отдача файлов верификации — владельцу или админу (для модерации)."""
+    import re as _re
     user = get_current_user()
-    if not filename.startswith(f"{user['id']}_"):
+    if not user:
+        abort(401)
+    
+    # Защита от traversal и проверка формата имени (uuid.jpg)
+    if not _re.fullmatch(r'[0-9a-f]{32}\.(jpg|jpeg|png|webp)', filename):
+        abort(404)
+    
+    # Админ — может открыть любой
+    if user['is_admin']:
+        return send_from_directory(os.path.join(BASE_DIR, 'uploads', 'identity'), filename)
+    
+    # Обычный юзер — только свой файл
+    # Проверяем, что этот файл принадлежит юзеру (по БД, а не по префиксу имени)
+    db = get_db()
+    u = db.execute(
+        "SELECT identity_doc_path, identity_selfie_path FROM users WHERE id = ?",
+        (user['id'],)
+    ).fetchone()
+    if not u:
         abort(403)
+    
+    own_paths = set()
+    if u['identity_doc_path']:
+        own_paths.add(os.path.basename(u['identity_doc_path']))
+    if u['identity_selfie_path']:
+        own_paths.add(os.path.basename(u['identity_selfie_path']))
+    
+    if filename not in own_paths:
+        abort(403)
+    
     return send_from_directory(os.path.join(BASE_DIR, 'uploads', 'identity'), filename)
 
 
@@ -2963,15 +3074,23 @@ def metrics_dialog_messages(dialog_id):
 @admin_required
 def metrics_dialog_close(dialog_id):
     """Закрыть диалог."""
+    import json as _json
     admin = get_current_user()
     db = get_db()
-    db.execute(
-        "UPDATE admin_dialogs SET status = 'closed', closed_at = datetime('now') WHERE id = ?",
+    
+    # Атомарно: только если ещё open
+    cur = db.execute(
+        "UPDATE admin_dialogs SET status = 'closed', closed_at = datetime('now') WHERE id = ? AND status = 'open'",
         (dialog_id,)
     )
+    if cur.rowcount == 0:
+        flash('Диалог уже закрыт или не найден.', 'warning')
+        return redirect(url_for('metrics_dialogs'))
+    
+    details = _json.dumps({'old_value': 'open', 'new_value': 'closed'}, ensure_ascii=False)
     db.execute(
-        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'close_dialog', 'dialog', ?, NULL)",
-        (admin['id'], str(dialog_id))
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'close_dialog', 'dialog', ?, ?)",
+        (admin['id'], str(dialog_id), details)
     )
     db.commit()
     flash('Диалог закрыт.', 'success')
@@ -3232,21 +3351,35 @@ def metrics_moderation_approve(goal_id):
     """Одобрить цель."""
     admin = get_current_user()
     db = get_db()
-    db.execute(
-        "UPDATE goals SET moderation_status = 'approved', status = 'active', moderation_comment = NULL, rejection_categories = NULL, moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
+    
+    # Проверка: автор не забанен
+    goal = db.execute("SELECT user_id, title FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        abort(404)
+    author = db.execute("SELECT is_banned FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
+    if author and author['is_banned']:
+        flash('Автор цели забанен. Разбаньте его перед одобрением.', 'danger')
+        return redirect(url_for('metrics_moderation'))
+    
+    # Атомарное одобрение: только если ещё pending
+    cur = db.execute(
+        "UPDATE goals SET moderation_status = 'approved', status = 'active', moderation_comment = NULL, rejection_categories = NULL, moderated_at = datetime('now'), moderated_by = ? WHERE id = ? AND moderation_status = 'pending'",
         (admin['id'], goal_id)
     )
+    if cur.rowcount == 0:
+        flash('Цель уже рассмотрена (не в статусе pending).', 'warning')
+        return redirect(url_for('metrics_moderation'))
+    
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'approve_goal', 'goal', ?, NULL)",
         (admin['id'], str(goal_id))
     )
+    
     # Уведомление автору
-    goal = db.execute("SELECT user_id, title FROM goals WHERE id = ?", (goal_id,)).fetchone()
-    if goal:
-        db.execute(
-            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_approved', 'Цель одобрена', 'Цель одобрена и появится в ленте.', '/goal/" + str(goal_id) + "')",
-            (goal['user_id'],)
-        )
+    db.execute(
+        "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_approved', 'Цель одобрена', 'Цель одобрена и появится в ленте.', ?)",
+        (goal['user_id'], '/goal/' + str(goal_id))
+    )
     db.commit()
     flash('Цель одобрена.', 'success')
     return redirect(url_for('metrics_moderation'))
@@ -3269,20 +3402,26 @@ def metrics_moderation_reject(goal_id):
         return redirect(url_for('metrics_moderation'))
     
     categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    comment = comment[:1000]
     
     db = get_db()
-    old_status = db.execute("SELECT moderation_status FROM goals WHERE id = ?", (goal_id,)).fetchone()
-    if not old_status:
+    old_goal = db.execute("SELECT user_id, moderation_status FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not old_goal:
         abort(404)
     
-    db.execute(
-        "UPDATE goals SET moderation_status = 'rejected', status = 'failed', moderation_comment = ?, rejection_categories = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ?",
+    # Атомарное отклонение: только если ещё pending
+    cur = db.execute(
+        "UPDATE goals SET moderation_status = 'rejected', status = 'failed', moderation_comment = ?, rejection_categories = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ? AND moderation_status = 'pending'",
         (comment, _json.dumps(categories, ensure_ascii=False), admin['id'], goal_id)
     )
+    if cur.rowcount == 0:
+        flash('Цель уже рассмотрена (не в статусе pending).', 'warning')
+        return redirect(url_for('metrics_moderation'))
+    
     details = _json.dumps({
         'categories': categories,
         'comment': comment,
-        'old_value': old_status['moderation_status'],
+        'old_value': old_goal['moderation_status'],
         'new_value': 'rejected'
     }, ensure_ascii=False)
     db.execute(
@@ -3290,12 +3429,10 @@ def metrics_moderation_reject(goal_id):
         (admin['id'], str(goal_id), details)
     )
     # Уведомление автору
-    goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
-    if goal:
-        db.execute(
-            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_rejected', 'Цель отклонена', ?, '/goal/" + str(goal_id) + "')",
-            (goal['user_id'], 'Причина: ' + comment)
-        )
+    db.execute(
+        "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_rejected', 'Цель отклонена', ?, ?)",
+        (old_goal['user_id'], 'Причина: ' + comment, '/goal/' + str(goal_id))
+    )
     db.commit()
     flash('Цель отклонена.', 'success')
     return redirect(url_for('metrics_moderation'))
@@ -3388,7 +3525,15 @@ def metrics_suspicious_resolve(activity_id):
     if not old:
         abort(404)
     
-    db.execute("UPDATE suspicious_activity SET status = 'resolved' WHERE id = ?", (activity_id,))
+    # Атомарно: только если ещё new или reviewed
+    cur = db.execute(
+        "UPDATE suspicious_activity SET status = 'resolved' WHERE id = ? AND status IN ('new', 'reviewed')",
+        (activity_id,)
+    )
+    if cur.rowcount == 0:
+        flash('Уже обработано.', 'warning')
+        return redirect(url_for('metrics_suspicious'))
+    
     details = _json.dumps({
         'categories': categories,
         'comment': comment,
@@ -3408,9 +3553,25 @@ def metrics_suspicious_resolve(activity_id):
 @admin_required
 def metrics_suspicious_review(activity_id):
     """Пометить как reviewed (взято в работу)."""
+    import json as _json
     admin = get_current_user()
     db = get_db()
-    db.execute("UPDATE suspicious_activity SET status = 'reviewed' WHERE id = ?", (activity_id,))
+    
+    # Атомарно: только если ещё 'new'
+    cur = db.execute(
+        "UPDATE suspicious_activity SET status = 'reviewed' WHERE id = ? AND status = 'new'",
+        (activity_id,)
+    )
+    if cur.rowcount == 0:
+        flash('Уже взято в работу или обработано.', 'warning')
+        return redirect(url_for('metrics_suspicious'))
+    
+    # Аудит
+    details = _json.dumps({'old_value': 'new', 'new_value': 'reviewed'}, ensure_ascii=False)
+    db.execute(
+        "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'review_suspicious', 'suspicious', ?, ?)",
+        (admin['id'], str(activity_id), details)
+    )
     db.commit()
     flash('Взято в работу.', 'info')
     return redirect(url_for('metrics_suspicious'))
