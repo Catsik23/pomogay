@@ -460,6 +460,13 @@ def delete_account():
         db = get_db()
         uid = user['id']
         
+        try:
+            db.execute("BEGIN IMMEDIATE")
+        except sqlite3.OperationalError as e:
+            logger.error(f'[delete_account] Не удалось начать транзакцию: {e}')
+            flash('Не удалось удалить аккаунт. Попробуйте позже.', 'danger')
+            return redirect(url_for('profile'))
+        
         # ID целей пользователя (для удаления связанных)
         goal_ids = [r['id'] for r in db.execute("SELECT id FROM goals WHERE user_id = ?", (uid,)).fetchall()]
         
@@ -530,20 +537,28 @@ def delete_account():
         # Сам пользователь
         db.execute("DELETE FROM users WHERE id = ?", (uid,))
         
-        db.commit()
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f'[delete_account] Ошибка commit: {e}')
+            flash('Не удалось удалить аккаунт. Попробуйте позже.', 'danger')
+            return redirect(url_for('profile'))
         
-        # Удаляем файлы фото с диска
+        # Удаляем файлы фото с диска (после успешного commit)
         upload_folder = app.config['UPLOAD_FOLDER']
         deleted_files = 0
         for url_path in files_to_delete:
             try:
-                filename = url_path.split('/')[-1]
+                filename = os.path.basename(url_path)
+                if not filename:
+                    continue
                 fpath = os.path.join(upload_folder, filename)
                 if os.path.exists(fpath):
                     os.remove(fpath)
                     deleted_files += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f'[delete_account] Не удалось удалить {url_path}: {e}')
         logger.info(f'[delete_account] Удалено файлов: {deleted_files} из {len(files_to_delete)}')
     session.clear()
     flash('Аккаунт удалён.', 'info')

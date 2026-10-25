@@ -1108,7 +1108,107 @@
     </div>
 </div>
 
+<!-- Опасная зона -->
+<div class="danger-zone">
+    <div class="danger-zone-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>Опасная зона</span>
+    </div>
+    <p class="danger-zone-desc">
+        Удаление аккаунта <strong>необратимо</strong>. Будут удалены: профиль, все ваши цели, донаты, лайки, напоминания и история. Восстановить данные невозможно.
+    </p>
+    <button type="button" class="danger-zone-btn" onclick="openDeleteModal()">
+        Удалить аккаунт
+    </button>
+</div>
+
+<!-- Модалка удаления аккаунта -->
+<div class="info-modal" id="deleteModal">
+    <div class="info-modal-content" style="max-width: 420px;">
+        <div class="info-modal-header">
+            <h3 style="color: #E57373;">Удалить аккаунт?</h3>
+            <button type="button" class="info-modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div style="padding: 16px 0; font-size: 14px; line-height: 1.6; color: #2D2D2D;">
+            <p style="margin-bottom: 12px;">Это действие <strong>необратимо</strong>. Всё, что связано с аккаунтом, будет удалено навсегда.</p>
+            <p style="margin-bottom: 8px; color: #8C7A6B; font-size: 13px;">Для подтверждения введите слово <strong style="color: #E57373;">УДАЛИТЬ</strong>:</p>
+            <input type="text" id="deleteConfirmInput" autocomplete="off" placeholder="УДАЛИТЬ"
+                   style="width: 100%; padding: 12px 14px; border: 1px solid #E0E0E0; border-radius: 12px; font-size: 15px; font-family: 'Inter', sans-serif; box-sizing: border-box; outline: none;"
+                   oninput="document.getElementById('deleteConfirmBtn').disabled = (this.value.trim().toUpperCase() !== 'УДАЛИТЬ');">
+        </div>
+        <form method="POST" action="/delete_account">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
+            <button type="submit" id="deleteConfirmBtn" disabled
+                    style="width: 100%; padding: 14px; background: #E57373; color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: opacity 0.15s; opacity: 0.5;">
+                Удалить навсегда
+            </button>
+        </form>
+        <button type="button" onclick="closeDeleteModal()"
+                style="width: 100%; padding: 12px; background: none; border: none; color: #8C7A6B; font-size: 14px; cursor: pointer; margin-top: 8px; font-family: 'Inter', sans-serif;">
+            Отмена
+        </button>
+    </div>
+</div>
+
+<style>
+    .danger-zone {
+        margin: 24px 16px 16px;
+        padding: 20px;
+        background: #FFF5F5;
+        border: 1px solid #F5C6C6;
+        border-radius: 16px;
+    }
+    .danger-zone-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #C62828;
+        margin-bottom: 10px;
+    }
+    .danger-zone-desc {
+        font-size: 13px;
+        line-height: 1.55;
+        color: #8C7A6B;
+        margin-bottom: 16px;
+    }
+    .danger-zone-desc strong {
+        color: #C62828;
+    }
+    .danger-zone-btn {
+        width: 100%;
+        padding: 12px;
+        background: white;
+        border: 1.5px solid #E57373;
+        color: #E57373;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        transition: transform 0.1s, background 0.15s;
+    }
+    .danger-zone-btn:active {
+        transform: scale(0.97);
+        background: #FFF5F5;
+    }
+    #deleteConfirmBtn:not(:disabled) {
+        opacity: 1 !important;
+    }
+    #deleteConfirmInput:focus {
+        border-color: #E57373 !important;
+    }
+</style>
+
 <script>
+    function openDeleteModal() { document.getElementById('deleteModal').classList.add('active'); }
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('active');
+        document.getElementById('deleteConfirmInput').value = '';
+        document.getElementById('deleteConfirmBtn').disabled = true;
+    }
+    
     function openSumModal() { document.getElementById('sumModal').classList.add('active'); }
     function closeSumModal() { document.getElementById('sumModal').classList.remove('active'); }
     function openStreakModal() { document.getElementById('streakModal').classList.add('active'); }
