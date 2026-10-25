@@ -233,7 +233,6 @@
 
         <form method="POST" id="regForm">
             <input type="text" name="honeypot" style="opacity:0;position:absolute;top:0;left:0;height:0;width:0;z-index:-1;" tabindex="-1" autocomplete="off">
-            <input type="hidden" name="form_time" id="formTime">
 
             <div class="field">
                 <label>Как к вам обращаться?</label>
@@ -282,7 +281,6 @@
 <script src="/static/toast.js"></script>
 <script src="/static/lottie.min.js"></script>
 <script>
-    document.getElementById("formTime").value = Date.now()/1000;
 
     // Lottie-чекбоксы
     var checkboxAnims = {};

@@ -365,14 +365,11 @@ def register():
         if request.form.get('honeypot', '').strip():
             flash('Регистрация отклонена.', 'danger')
             return render_template('register.html')
-        # Тайминг-проверка (форма должна быть открыта >3 сек)
-        try:
-            form_time = float(request.form.get('form_time', '0'))
-            if time.time() - form_time < 3:
-                flash('Пожалуйста, не спешите.', 'danger')
-                return render_template('register.html')
-        except (ValueError, TypeError):
-            pass
+        # Тайминг-проверка через сессию (>3 сек с открытия формы)
+        form_time = session.pop('register_form_time', None)
+        if form_time is None or (time.time() - form_time) < 3:
+            flash('Пожалуйста, не спешите.', 'danger')
+            return render_template('register.html')
         
         name = request.form.get('name','').strip()[:50]
         phone = request.form.get('phone','').strip()
@@ -415,6 +412,8 @@ def register():
             )
             db.commit()
         return redirect(url_for('goals_list'))
+    # GET — запоминаем время открытия формы
+    session['register_form_time'] = time.time()
     return render_template('register.html')
 
 @app.route('/login', methods=['GET','POST'])
