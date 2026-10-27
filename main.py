@@ -7,10 +7,17 @@ from models import init_db, get_db, close_db
 from trust_engine import add_trust_score, get_trust_perks, can_create_goal
 from functools import wraps
 import logging
+import sys
 import secrets as _secrets
 
-# Gunicorn сам настраивает логи (stdout → journalctl).
-# basicConfig здесь перехватил бы root-логгер — убираем.
+# Логи идут в stderr → journalctl через Gunicorn.
+# force=True перезаписывает root handler (если Gunicorn что-то настроил).
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    stream=sys.stderr,
+    force=True
+)
 logger = logging.getLogger('pomogay')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -432,8 +439,17 @@ def login():
         db.execute("INSERT INTO analytics_events (event_type, event_data) VALUES ('login_attempt',?)", (f'{{"phone":"{clean}"}}',))
         db.commit()
         user = db.execute("SELECT * FROM users WHERE phone = ?", (clean,)).fetchone()
-        if user and check_password_hash(user['password_hash'], pw):
+        
+        # Фиктивный хеш для несуществующего — защита от timing attack
+        if not user:
+            check_password_hash(generate_password_hash('dummy'), pw)
+            logger.warning(f'[login] Попытка входа: несуществующий номер (IP: {request.remote_addr})')
+            flash('Неверный номер или пароль.', 'danger')
+            return render_template('login.html')
+        
+        if check_password_hash(user['password_hash'], pw):
             if user['is_banned']:
+                logger.warning(f'[login] Попытка входа забаненного: {clean}')
                 flash('Аккаунт заблокирован. Обратитесь к администрации.', 'danger')
                 return render_template('login.html')
             session.clear()
@@ -441,6 +457,8 @@ def login():
             session['user_id'] = user['id']
             flash('Вы вошли!', 'success')
             return redirect(url_for('goals_list'))
+        
+        logger.warning(f'[login] Неудачный вход: {clean} (IP: {request.remote_addr})')
         flash('Неверный номер или пароль.', 'danger')
     return render_template('login.html')
 
@@ -955,21 +973,24 @@ def report_goal(goal_id):
     ).fetchone()[0]
     
     if report_count >= 3:
-        db.execute(
-            "UPDATE goals SET status = 'hidden', moderation_status = 'reported' WHERE id = ?",
+        # Атомарное скрытие: только если цель ещё active и не была скрыта по жалобам
+        cur = db.execute(
+            "UPDATE goals SET status = 'hidden', moderation_status = 'reported' "
+            "WHERE id = ? AND status = 'active' AND (moderation_status IS NULL OR moderation_status != 'reported')",
             (goal_id,)
         )
-        db.execute(
-            "INSERT INTO notifications_log (user_id, type, goal_id, channel) VALUES (?, 'goal_reported_hidden', ?, 'admin')",
-            (goal['user_id'], goal_id)
-        )
-        db.commit()
-        # Trust Score: -20 автору цели, +3 каждому жалобщику
-        add_trust_score(goal['user_id'], 'goal_hidden_reports', db)
-        reporters = db.execute('SELECT DISTINCT reporter_id FROM reports WHERE goal_id = ?', (goal_id,)).fetchall()
-        for r in reporters:
-            add_trust_score(r['reporter_id'], 'report_valid', db)
-        db.commit()
+        if cur.rowcount > 0:
+            # Скрыли впервые — уведомление автору и trust -20
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, goal_id, channel) VALUES (?, 'goal_reported_hidden', ?, 'admin')",
+                (goal['user_id'], goal_id)
+            )
+            add_trust_score(goal['user_id'], 'goal_hidden_reports', db)
+            # +3 каждому жалобщику за подтверждённую жалобу
+            reporters = db.execute('SELECT DISTINCT reporter_id FROM reports WHERE goal_id = ?', (goal_id,)).fetchall()
+            for r in reporters:
+                add_trust_score(r['reporter_id'], 'report_valid', db)
+            db.commit()
         flash('Цель скрыта после нескольких жалоб. Администратор проверит её.', 'info')
         return redirect(url_for('goals_list'))
     
