@@ -1512,11 +1512,27 @@ def api_photos_update(goal_id):
             continue
         try:
             with open(fpath, 'rb') as f:
-                img = Image.open(io.BytesIO(f.read()))
+                from PIL import ImageOps
+            img = Image.open(io.BytesIO(f.read()))
+            # Исправляем EXIF-ориентацию ДО поворота
+            try:
+                img = ImageOps.exif_transpose(img)
+            except Exception:
+                pass
             img = img.convert('RGB')
-            rotated = img.rotate(-angle, expand=True)  # минус, т.к. Pillow поворачивает против часовой
+            # Для 90/180/270 — transpose без потери качества и без изменения размера
+            rotate_map = {
+                90: Image.ROTATE_90,
+                180: Image.ROTATE_180,
+                270: Image.ROTATE_270,
+            }
+            if angle in rotate_map:
+                rotated = img.transpose(rotate_map[angle])
+            else:
+                # Не должно сюда попасть — angles валидируются 90/180/270
+                rotated = img
             output = io.BytesIO()
-            rotated.save(output, format='JPEG', quality=75, optimize=True)
+            rotated.save(output, format='JPEG', quality=85, optimize=True)
             with open(fpath, 'wb') as f:
                 f.write(output.getvalue())
         except Exception as e:
@@ -1553,27 +1569,24 @@ def api_photos_update(goal_id):
 @app.route('/api/goal/<int:goal_id>/photos/upload', methods=['POST'])
 @login_required
 def api_photos_upload(goal_id):
-    """Добавление новых фото в цель."""
+    """Добавление новых фото в цель. BEGIN IMMEDIATE защищает от гонки на MAX_PHOTOS."""
     import json as _json
 
     user = get_current_user()
     db = get_db()
-    goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    
+    # Проверка авторства до транзакции (быстрая, без lock)
+    goal = db.execute("SELECT id, user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] != user['id']:
         return jsonify({'error': 'Только автор может редактировать'}), 403
 
-    current_photos = _json.loads(goal['photos']) if goal['photos'] else []
-    if not current_photos and goal['photo_url']:
-        current_photos = [goal['photo_url']]
-
+    # Сохраняем файлы на диск ДО транзакции (не держим lock во время I/O)
     MAX_PHOTOS = 20
     files = request.files.getlist('photos')
-    added = []
+    saved_paths = []
     for pf in files:
-        if len(current_photos) + len(added) >= MAX_PHOTOS:
-            break
         if pf and pf.filename and allowed_file(pf.filename):
             try:
                 data = pf.read()
@@ -1582,20 +1595,61 @@ def api_photos_upload(goal_id):
                 fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
                 with open(fpath, 'wb') as f:
                     f.write(compressed)
-                added.append(f"/uploads/goals/{fname}")
+                saved_paths.append(f"/uploads/goals/{fname}")
             except Exception as e:
                 logger.error(f'Upload error: {e}')
 
-    final = current_photos + added
-    photo_url = final[0] if final else None
-    photos_json = _json.dumps(final) if final else None
-
-    db.execute(
-        "UPDATE goals SET photos = ?, photo_url = ? WHERE id = ?",
-        (photos_json, photo_url, goal_id)
-    )
-    db.commit()
-    return jsonify({'ok': True, 'added': added, 'photos': final})
+    # BEGIN IMMEDIATE: блокируем запись, перечитываем актуальные photos, проверяем лимит
+    added = []
+    try:
+        db.execute("BEGIN IMMEDIATE")
+        goal_fresh = db.execute("SELECT photos, photo_url FROM goals WHERE id = ?", (goal_id,)).fetchone()
+        current_photos = _json.loads(goal_fresh['photos']) if goal_fresh['photos'] else []
+        if not current_photos and goal_fresh['photo_url']:
+            current_photos = [goal_fresh['photo_url']]
+        
+        room = MAX_PHOTOS - len(current_photos)
+        added = saved_paths[:room]
+        skipped = saved_paths[room:]  # лишние — удаляем с диска
+        
+        if not added:
+            db.rollback()
+            # Удаляем все сохранённые, но не вошедшие файлы
+            for p in saved_paths:
+                try:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], p.split('/')[-1]))
+                except Exception:
+                    pass
+            return jsonify({'ok': False, 'error': f'Лимит {MAX_PHOTOS} фото. Удалите лишние.'}), 400
+        
+        final = current_photos + added
+        photo_url = final[0] if final else None
+        photos_json = _json.dumps(final) if final else None
+        
+        db.execute(
+            "UPDATE goals SET photos = ?, photo_url = ? WHERE id = ?",
+            (photos_json, photo_url, goal_id)
+        )
+        db.commit()
+        
+        # Удаляем с диска файлы, не вошедшие в лимит
+        for p in skipped:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], p.split('/')[-1]))
+            except Exception:
+                pass
+        
+        return jsonify({'ok': True, 'added': added, 'photos': final})
+    except Exception as e:
+        db.rollback()
+        logger.error(f'[api_photos_upload] {e}')
+        # Удаляем все сохранённые файлы, раз транзакция не прошла
+        for p in saved_paths:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], p.split('/')[-1]))
+            except Exception:
+                pass
+        return jsonify({'error': 'Ошибка сохранения'}), 500
 
 
 @app.route('/api/goal/<int:goal_id>/update-description', methods=['POST'])
