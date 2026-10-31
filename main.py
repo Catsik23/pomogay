@@ -44,20 +44,20 @@ if os.environ.get('SEED_USERS') == '1':
     db = get_db()
     seed = db.execute("SELECT id FROM users WHERE phone = '79885260358'").fetchone()
     if not seed:
-        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456'),))
+        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456', method='scrypt'),))
         db.commit()
         logger.info('Seed 1 создан: 79885260358')
 
     seed2 = db.execute("SELECT id FROM users WHERE phone = '7999999999'").fetchone()
     if not seed2:
-        db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456'),))
+        db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456', method='scrypt'),))
         db.commit()
         logger.info('Seed 2 создан: 7999999999')
 
     # Seed 3 с готовой целью
     seed3 = db.execute("SELECT id FROM users WHERE phone = '79888888888'").fetchone()
     if not seed3:
-        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456'),))
+        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456', method='scrypt'),))
         db.commit()
         seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         ends = (datetime.now() + timedelta(days=7)).isoformat()
@@ -389,6 +389,9 @@ def register():
         if len(pw) < 6:
             flash('Пароль: минимум 6 символов.', 'danger')
             return render_template('register.html')
+        if len(pw) > 200:
+            flash('Пароль: максимум 200 символов.', 'danger')
+            return render_template('register.html')
         if pw != pw2:
             flash('Пароли не совпадают.', 'danger')
             return render_template('register.html')
@@ -396,7 +399,7 @@ def register():
         if db.execute("SELECT id FROM users WHERE phone = ?", (clean,)).fetchone():
             flash('Номер уже зарегистрирован.', 'danger')
             return render_template('register.html')
-        db.execute("INSERT INTO users (phone, password_hash, name) VALUES (?,?,?)", (clean, generate_password_hash(pw), name if name else None))
+        db.execute("INSERT INTO users (phone, password_hash, name) VALUES (?,?,?)", (clean, generate_password_hash(pw, method='scrypt'), name if name else None))
         db.commit()
         flash('Регистрация успешна', 'success')
         # Автоматически входим
@@ -611,7 +614,16 @@ def profile():
     
     # Список игноров: донаты в статусе donor_confirmed старше 24 часов для целей пользователя
     ignored = db.execute(
-        "SELECT d.amount_reported, d.donor_confirmed_at, u.phone as donor_phone FROM donations d LEFT JOIN users u ON d.donor_id = u.id WHERE d.goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND d.status = 'donor_confirmed' AND datetime(d.donor_confirmed_at) <= datetime('now', '-24 hours') ORDER BY d.donor_confirmed_at DESC LIMIT 10",
+        """SELECT d.amount_reported, d.donor_confirmed_at,
+                  CASE WHEN d.is_anonymous = 1 OR d.donor_id IS NULL THEN NULL
+                       ELSE u.phone
+                  END as donor_phone
+           FROM donations d
+           LEFT JOIN users u ON d.donor_id = u.id
+           WHERE d.goal_id IN (SELECT id FROM goals WHERE user_id = ?)
+             AND d.status = 'donor_confirmed'
+             AND datetime(d.donor_confirmed_at) <= datetime('now', '-24 hours')
+           ORDER BY d.donor_confirmed_at DESC LIMIT 10""",
         (user['id'],)
     ).fetchall()
     
@@ -903,7 +915,7 @@ def goal_page(goal_id):
     ).fetchall()
     donor_count = db.execute("SELECT COUNT(DISTINCT donor_id) FROM donations WHERE goal_id = ? AND status IN ('recipient_confirmed','completed')", (goal_id,)).fetchone()[0]
     last_donation = db.execute("SELECT MAX(donor_confirmed_at) FROM donations WHERE goal_id = ?", (goal_id,)).fetchone()[0]
-    pct = int((goal['amount_collected'] / goal['amount_goal']) * 100) if goal['amount_goal'] > 0 else 0
+    pct = min(100, int((goal['amount_collected'] / goal['amount_goal']) * 100)) if goal['amount_goal'] > 0 else 0
     # Форматируем дату
     months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
     try:
@@ -917,8 +929,7 @@ def goal_page(goal_id):
     # Лайкнут ли цель текущим пользователем
     is_liked = False
     if user:
-        ldb = get_db()
-        is_liked = ldb.execute(
+        is_liked = db.execute(
             "SELECT id FROM likes WHERE user_id = ? AND goal_id = ?",
             (user['id'], goal_id)
         ).fetchone() is not None
@@ -926,8 +937,7 @@ def goal_page(goal_id):
     # Проверяем, жаловался ли уже пользователь
     already_reported = False
     if user:
-        rdb = get_db()
-        already_reported = rdb.execute(
+        already_reported = db.execute(
             'SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ?',
             (goal_id, user['id'])
         ).fetchone() is not None
@@ -950,6 +960,10 @@ def report_goal(goal_id):
         return redirect(url_for('goals_list'))
     if goal['user_id'] == user['id']:
         flash('Нельзя жаловаться на свою цель.', 'warning')
+        return redirect(url_for('goal_page', goal_id=goal_id))
+    
+    if goal['status'] != 'active':
+        flash('Цель уже неактивна.', 'info')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
     existing = db.execute(
@@ -1603,6 +1617,8 @@ def api_update_description(goal_id):
 
     if len(new_desc) > 1000:
         return jsonify({'error': 'Максимум 1000 символов'}), 400
+    if not new_desc:
+        return jsonify({'error': 'Описание не может быть пустым'}), 400
 
     # Content Guard
     r = cg_check(new_desc, 'goal_description')
@@ -1613,7 +1629,21 @@ def api_update_description(goal_id):
             'position': r.get('position'),
         }), 400
 
-    db.execute("UPDATE goals SET description = ? WHERE id = ?", (new_desc if new_desc else None, goal_id))
+    # Если CG пометил как подозрительное — сохраняем, но отправляем на модерацию
+    if r['status'] == 'flagged':
+        db.execute(
+            "UPDATE goals SET description = ?, moderation_status = 'pending' WHERE id = ?",
+            (new_desc, goal_id)
+        )
+        db.commit()
+        return jsonify({
+            'ok': True,
+            'description': new_desc,
+            'flagged': True,
+            'message': 'Описание сохранено. Цель отправлена на повторную проверку.'
+        })
+
+    db.execute("UPDATE goals SET description = ? WHERE id = ?", (new_desc, goal_id))
     db.commit()
     return jsonify({'ok': True, 'description': new_desc})
 
@@ -1641,6 +1671,9 @@ def api_goal_like(goal_id):
 def api_goal_unlike(goal_id):
     user = get_current_user()
     db = get_db()
+    goal = db.execute("SELECT id FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    if not goal:
+        return jsonify({'ok': False, 'error': 'Цель не найдена'}), 404
     db.execute("DELETE FROM likes WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
     db.commit()
     return jsonify({'ok': True, 'liked': False})
@@ -1789,11 +1822,13 @@ def api_report_photo():
         return jsonify({'error': 'Укажите причину'}), 400
 
     db = get_db()
-    goal = db.execute("SELECT id, user_id, photos, photo_url FROM goals WHERE id = ?", (goal_id,)).fetchone()
+    goal = db.execute("SELECT id, user_id, photos, photo_url, status FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] == user['id']:
         return jsonify({'error': 'Нельзя жаловаться на свою цель'}), 403
+    if goal.get('status') and goal['status'] != 'active':
+        return jsonify({'error': 'Цель уже неактивна'}), 400
 
     # Проверяем, что фото с таким индексом существует
     photos = []
@@ -1821,6 +1856,31 @@ def api_report_photo():
         (goal_id, user['id'], reason, photo_index)
     )
     db.commit()
+    
+    # Порог: 3+ жалобы на фото → скрытие цели
+    photo_report_count = db.execute(
+        "SELECT COUNT(DISTINCT reporter_id) FROM reports WHERE goal_id = ? AND photo_index = ?",
+        (goal_id, photo_index)
+    ).fetchone()[0]
+    
+    if photo_report_count >= 3:
+        cur = db.execute(
+            "UPDATE goals SET status = 'hidden', moderation_status = 'reported' "
+            "WHERE id = ? AND status = 'active'",
+            (goal_id,)
+        )
+        if cur.rowcount > 0:
+            db.execute(
+                "INSERT INTO notifications_log (user_id, type, goal_id, channel) VALUES (?, 'goal_photo_reported', ?, 'admin')",
+                (goal['user_id'], goal_id)
+            )
+            db.commit()
+            return jsonify({
+                'ok': True,
+                'goal_hidden': True,
+                'message': 'Цель скрыта после нескольких жалоб на фото'
+            })
+    
     return jsonify({'ok': True})
 
 
