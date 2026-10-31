@@ -124,6 +124,20 @@ def init_db():
     c.execute("CREATE TABLE IF NOT EXISTS donations (id INTEGER PRIMARY KEY AUTOINCREMENT, goal_id INTEGER NOT NULL, donor_id INTEGER NULL, amount_reported REAL NOT NULL, status TEXT NOT NULL CHECK(status IN ('donor_confirmed','recipient_confirmed','completed','disputed')), is_anonymous INTEGER DEFAULT 0, is_seed INTEGER DEFAULT 0, warm_word TEXT NULL, donor_confirmed_at TEXT DEFAULT (datetime('now')), recipient_confirmed_at TEXT NULL, completed_at TEXT NULL, dispute_reason TEXT NULL, donor_to_recipient_count INTEGER DEFAULT 1, referred_by INTEGER NULL, FOREIGN KEY (goal_id) REFERENCES goals(id), FOREIGN KEY (donor_id) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, goal_id INTEGER NOT NULL, user_id INTEGER NOT NULL, amount REAL NOT NULL, weeks INTEGER DEFAULT 1, payment_id TEXT NULL, status TEXT DEFAULT 'pending', paid_at TEXT NULL, expires_at TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (goal_id) REFERENCES goals(id), FOREIGN KEY (user_id) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS feature_flags (id INTEGER PRIMARY KEY AUTOINCREMENT, flag_key TEXT UNIQUE NOT NULL, enabled INTEGER DEFAULT 0, value_json TEXT NULL, description TEXT NULL, updated_at TEXT DEFAULT (datetime('now')))")
+    c.execute("""CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        action_url TEXT,
+        action_label TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )""")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)")
+    
     c.execute("CREATE TABLE IF NOT EXISTS notifications_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, type TEXT NOT NULL, donation_id INTEGER NULL, goal_id INTEGER NULL, channel TEXT DEFAULT 'fcm', sent_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS analytics_events (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NULL, event_type TEXT NOT NULL, event_data TEXT NULL, created_at TEXT DEFAULT (datetime('now')))")
     c.execute("CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, goal_id INTEGER NOT NULL, reporter_id INTEGER NOT NULL, reason TEXT NULL, photo_index INTEGER NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (goal_id) REFERENCES goals(id), FOREIGN KEY (reporter_id) REFERENCES users(id))")
