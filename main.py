@@ -319,10 +319,16 @@ def compress_photo(data):
     try:
         img = Image.open(io.BytesIO(data))
         
+        # Проверка формата — только изображения
+        allowed_formats = {'JPEG', 'PNG', 'WEBP', 'GIF'}
+        if img.format not in allowed_formats:
+            logger.warning(f'[compress_photo] Отказ: формат {img.format} не разрешён')
+            return None
+        
         # Защита от decompression bomb
         if img.width * img.height > 40_000_000:
             logger.warning(f'[compress_photo] Отказ: {img.width}x{img.height} > 40M пикселей')
-            return data  # оригинал, но с логом
+            return None
         
         # Применяем EXIF-поворот (важно для селфи/паспортов с телефона)
         try:
@@ -339,9 +345,10 @@ def compress_photo(data):
         compressed = output.getvalue()
         if len(compressed) < len(data):
             return compressed
+        return compressed  # если сжатие не помогло — всё равно возвращаем валидный JPEG
     except Exception as e:
-        logger.warning(f'[compress_photo] Ошибка сжатия: {e}')
-    return data
+        logger.warning(f'[compress_photo] Ошибка: {e} — файл отклонён')
+    return None  # отказ — файл не валиден
 
 @app.route('/')
 def index():
@@ -733,7 +740,7 @@ def create_goal(goal_type):
     if request.method == 'POST':
         user = get_current_user()
         title = request.form.get('title','').strip()
-        desc = request.form.get('description','').strip()
+        desc = request.form.get('description','').strip()[:1000]
         
         amt_str = request.form.get('amount','').strip()
         days_str = request.form.get('days','').strip()
@@ -811,13 +818,16 @@ def create_goal(goal_type):
                 try:
                     data = pf.read()
                     compressed = compress_photo(data)
+                    if compressed is None:
+                        # Файл не является валидным изображением
+                        continue
                     fname = f"{uuid.uuid4().hex}.jpg"
                     fpath = os.path.join(app.config['UPLOAD_FOLDER'], fname)
                     with open(fpath, 'wb') as f:
                         f.write(compressed)
                     photos_urls.append(f"/uploads/goals/{fname}")
                 except Exception as e:
-                    flash(f'Ошибка фото: {e}', 'warning')
+                    logger.warning(f'[create_goal] Ошибка фото: {e}')
         photo_url = photos_urls[0] if photos_urls else None
         photos_json = _json.dumps(photos_urls) if photos_urls else None
         ends = (datetime.now() + timedelta(days=days)).isoformat()
@@ -1399,6 +1409,7 @@ def api_confirm_donation(donation_id):
 
 
 @app.route('/api/guard-check', methods=['POST'])
+@login_required
 def api_guard_check():
     """AJAX-проверка текста через Content Guard с rate limit."""
     from content_guard import check as cg_check
@@ -1422,7 +1433,17 @@ def api_guard_check():
     
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
+    
+    # Лимит длины текста
+    if len(text) > 5000:
+        return jsonify({'status': 'too_long', 'error': 'Текст слишком длинный (макс. 5000 символов)'}), 400
+    
+    # Whitelist контекстов
+    ALLOWED_CONTEXTS = {'goal_title', 'goal_description', 'warm_word', 'dialog_message', 'report_reason', 'profile_name'}
     context = data.get('context', 'goal_description')
+    if context not in ALLOWED_CONTEXTS:
+        context = 'goal_description'
+    
     if not text:
         return jsonify({'status': 'passed'})
     result = cg_check(text, context)
@@ -1792,30 +1813,60 @@ def api_cities():
 def api_onboarding_step():
     """Сохранение одного шага онбординга."""
     user = get_current_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'Войдите в аккаунт'}), 401
+    
     data = request.get_json(silent=True) or {}
     step = data.get('step')
-
+    
+    # Whitelist шагов
+    if step not in (1, 2, 3, 4):
+        return jsonify({'ok': False, 'error': 'Неверный шаг'}), 400
+    
     db = get_db()
+    import re as _re
+    from datetime import datetime as _dt
 
     if step == 1:
         name = (data.get('name') or '').strip()[:50]
+        # Фильтр управляющих символов (кроме пробела, дефиса)
+        name = _re.sub(r'[^\w\s\-]', '', name, flags=_re.UNICODE).strip()
         if name:
-            db.execute("UPDATE users SET name = ?, onboarding_step = 1 WHERE id = ?", (name, user['id']))
+            db.execute("UPDATE users SET name = ?, onboarding_step = MAX(onboarding_step, 1) WHERE id = ?", (name, user['id']))
     elif step == 2:
         region_code = (data.get('region_code') or '').strip()
-        region_name = (data.get('region_name') or '').strip()
         city = (data.get('city') or '').strip()
         if region_code and city:
+            # Проверяем, что регион + город существуют
+            city_row = db.execute(
+                "SELECT region_name FROM cities WHERE region_code = ? AND city_name = ?",
+                (region_code, city)
+            ).fetchone()
+            if not city_row:
+                return jsonify({'ok': False, 'error': 'Город не найден'}), 400
+            region_name = city_row['region_name']
             db.execute(
-                "UPDATE users SET region_code = ?, region_name = ?, city = ?, onboarding_step = 2 WHERE id = ?",
+                "UPDATE users SET region_code = ?, region_name = ?, city = ?, onboarding_step = MAX(onboarding_step, 2) WHERE id = ?",
                 (region_code, region_name, city, user['id'])
             )
     elif step == 3:
-        birth_date = (data.get('birth_date') or '').strip()
-        if birth_date:
-            db.execute("UPDATE users SET birth_date = ?, onboarding_step = 3 WHERE id = ?", (birth_date, user['id']))
+        birth_date_raw = (data.get('birth_date') or '').strip()
+        if birth_date_raw:
+            # Принимаем DD/MM/YYYY (для пользователя), храним YYYY-MM-DD
+            try:
+                if '/' in birth_date_raw:
+                    bd = _dt.strptime(birth_date_raw, '%d/%m/%Y')
+                else:
+                    bd = _dt.strptime(birth_date_raw, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'ok': False, 'error': 'Неверный формат даты'}), 400
+            # Возраст 14+ (можно изменить)
+            age = (_dt.now() - bd).days // 365
+            if age < 14 or age > 120:
+                return jsonify({'ok': False, 'error': 'Недопустимый возраст'}), 400
+            birth_date_iso = bd.strftime('%Y-%m-%d')
+            db.execute("UPDATE users SET birth_date = ?, onboarding_step = MAX(onboarding_step, 3) WHERE id = ?", (birth_date_iso, user['id']))
     elif step == 4:
-        # Проверяем, всё ли заполнено
         u = db.execute("SELECT name, region_code, city, birth_date FROM users WHERE id = ?", (user['id'],)).fetchone()
         all_filled = u and u['name'] and u['region_code'] and u['city'] and u['birth_date']
         if all_filled:
@@ -1824,7 +1875,6 @@ def api_onboarding_step():
                 (user['id'],)
             )
         else:
-            # Онбординг пройден (модалки больше не показываем), но анкета не заполнена
             db.execute(
                 "UPDATE users SET onboarding_passed = 1, onboarding_step = 4 WHERE id = ?",
                 (user['id'],)
@@ -2021,25 +2071,57 @@ def profile_edit():
 @app.route('/api/profile/save', methods=['POST'])
 @login_required
 def api_profile_save():
-    """Сохранение анкеты."""
+    """Сохранение анкеты с валидацией."""
     user = get_current_user()
+    if not user:
+        return jsonify({'ok': False, 'error': 'Войдите в аккаунт'}), 401
+    
     data = request.get_json(silent=True) or {}
+    
+    import re as _re
+    from datetime import datetime as _dt
 
     name = (data.get('name') or '').strip()[:50]
+    name = _re.sub(r'[^\w\s\-]', '', name, flags=_re.UNICODE).strip()
+    
     region_code = (data.get('region_code') or '').strip()
-    region_name = (data.get('region_name') or '').strip()
     city = (data.get('city') or '').strip()
-    birth_date = (data.get('birth_date') or '').strip()
+    birth_date_raw = (data.get('birth_date') or '').strip()
 
     db = get_db()
+    
+    # Валидация региона + города
+    region_name = None
+    if region_code and city:
+        city_row = db.execute(
+            "SELECT region_name FROM cities WHERE region_code = ? AND city_name = ?",
+            (region_code, city)
+        ).fetchone()
+        if not city_row:
+            return jsonify({'ok': False, 'error': 'Город не найден'}), 400
+        region_name = city_row['region_name']
+    
+    # Валидация даты (принимаем DD/MM/YYYY или YYYY-MM-DD)
+    birth_date_iso = None
+    if birth_date_raw:
+        try:
+            if '/' in birth_date_raw:
+                bd = _dt.strptime(birth_date_raw, '%d/%m/%Y')
+            else:
+                bd = _dt.strptime(birth_date_raw, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'ok': False, 'error': 'Неверный формат даты'}), 400
+        age = (_dt.now() - bd).days // 365
+        if age < 14 or age > 120:
+            return jsonify({'ok': False, 'error': 'Недопустимый возраст'}), 400
+        birth_date_iso = bd.strftime('%Y-%m-%d')
+
     db.execute(
         "UPDATE users SET name = ?, region_code = ?, region_name = ?, city = ?, birth_date = ? WHERE id = ?",
-        (name or None, region_code or None, region_name or None, city or None, birth_date or None, user['id'])
+        (name or None, region_code or None, region_name, city or None, birth_date_iso, user['id'])
     )
 
-    # Любое сохранение через /profile/edit — пользователь "прошёл" онбординг
-    # (модалки больше не показываем)
-    if name and region_code and city and birth_date:
+    if name and region_code and city and birth_date_iso:
         db.execute(
             "UPDATE users SET profile_completed = 1, onboarding_passed = 1, onboarding_step = 4 WHERE id = ?",
             (user['id'],)
@@ -3965,30 +4047,71 @@ def metrics_settings():
 @app.route('/_metrics/settings/save', methods=['POST'])
 @admin_required
 def metrics_settings_save():
-    """Сохранить настройки из формы."""
+    """Сохранить настройки из формы с валидацией и аудитом."""
+    import json as _json
     admin = get_current_user()
     db = get_db()
     
-    # Все ключи из settings
-    rows = db.execute("SELECT key FROM settings").fetchall()
+    # Whitelist редактируемых ключей с типом и границами
+    EDITABLE = {
+        # Boolean (0/1)
+        'notifications_enabled': {'type': 'bool'},
+        'reminders_enabled': {'type': 'bool'},
+        'registration_open': {'type': 'bool'},
+        'goals_open': {'type': 'bool'},
+        # Integer с границами
+        'max_goals_per_user': {'type': 'int', 'min': 1, 'max': 20},
+        'max_goals_per_hour': {'type': 'int', 'min': 1, 'max': 50},
+        'max_reports_per_day': {'type': 'int', 'min': 1, 'max': 50},
+        'max_phone_reveals_per_hour': {'type': 'int', 'min': 1, 'max': 50},
+        'auto_approve_amount': {'type': 'int', 'min': 0, 'max': 1000000},
+        'auto_hide_reports': {'type': 'int', 'min': 1, 'max': 50},
+    }
+    
     updated = 0
-    for r in rows:
-        key = r['key']
-        # Boolean через чекбоксы — если не пришёл, значит выключено
-        if key in ('notifications_enabled', 'reminders_enabled', 'registration_open', 'goals_open'):
+    errors = []
+    
+    for key, rules in EDITABLE.items():
+        if rules['type'] == 'bool':
             new_value = '1' if request.form.get(key) == '1' else '0'
-        else:
-            new_value = request.form.get(key, '').strip()
-            if not new_value:
+        elif rules['type'] == 'int':
+            raw = request.form.get(key, '').strip()
+            if not raw:
                 continue
+            try:
+                num = int(raw)
+            except ValueError:
+                errors.append(f'{key}: не число')
+                continue
+            if num < rules['min'] or num > rules['max']:
+                errors.append(f'{key}: вне диапазона {rules["min"]}-{rules["max"]}')
+                continue
+            new_value = str(num)
+        else:
+            continue
         
-        old_val = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()['value']
+        row = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+        old_val = row['value'] if row else None
+        
         if old_val != new_value:
             set_setting(db, key, new_value, admin['id'])
+            # Аудит каждого изменения
+            record_event(
+                'setting_changed',
+                db=db,
+                actor_user_id=admin['id'],
+                source='admin',
+                severity='info',
+                payload={'key': key, 'old': old_val, 'new': new_value}
+            )
             updated += 1
     
     db.commit()
-    flash(f'Сохранено изменений: {updated}', 'success')
+    
+    if errors:
+        flash(f'Сохранено: {updated}. Ошибки: {"; ".join(errors)}', 'warning')
+    else:
+        flash(f'Сохранено изменений: {updated}', 'success')
     return redirect(url_for('metrics_settings'))
 
 
@@ -4052,7 +4175,7 @@ def goal_edit(goal_id):
     
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
-        desc = request.form.get('description', '').strip()
+        desc = request.form.get('description', '').strip()[:1000]
         amt_str = request.form.get('amount', '').strip()
         days_str = request.form.get('days', '').strip()
         
