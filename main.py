@@ -599,25 +599,23 @@ def profile():
     db = get_db()
     goals = db.execute("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC", (user['id'],)).fetchall()
     
-    # Статистика: донаты МНЕ (в мои цели)
-    received_total = db.execute(
-        "SELECT COUNT(*) FROM donations WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND donor_id IS NOT NULL",
-        (user['id'],)
-    ).fetchone()[0]
-    received_approved = db.execute(
-        "SELECT COUNT(*) FROM donations WHERE goal_id IN (SELECT id FROM goals WHERE user_id = ?) AND donor_id IS NOT NULL AND status IN ('recipient_confirmed','completed')",
-        (user['id'],)
-    ).fetchone()[0]
-
-    # Статистика: МОИ донаты (я — донатор)
-    sent_total = db.execute(
-        "SELECT COUNT(*) FROM donations WHERE donor_id = ?",
-        (user['id'],)
-    ).fetchone()[0]
-    sent_approved = db.execute(
-        "SELECT COUNT(*) FROM donations WHERE donor_id = ? AND status IN ('recipient_confirmed','completed')",
-        (user['id'],)
-    ).fetchone()[0]
+    # Статистика: 4 COUNT в одном запросе
+    stats = db.execute("""
+        SELECT
+            (SELECT COUNT(*) FROM donations d JOIN goals g ON d.goal_id = g.id 
+             WHERE g.user_id = ? AND d.donor_id IS NOT NULL) AS received_total,
+            (SELECT COUNT(*) FROM donations d JOIN goals g ON d.goal_id = g.id 
+             WHERE g.user_id = ? AND d.donor_id IS NOT NULL 
+             AND d.status IN ('recipient_confirmed','completed')) AS received_approved,
+            (SELECT COUNT(*) FROM donations WHERE donor_id = ?) AS sent_total,
+            (SELECT COUNT(*) FROM donations WHERE donor_id = ? 
+             AND status IN ('recipient_confirmed','completed')) AS sent_approved
+    """, (user['id'], user['id'], user['id'], user['id'])).fetchone()
+    
+    received_total = stats['received_total']
+    received_approved = stats['received_approved']
+    sent_total = stats['sent_total']
+    sent_approved = stats['sent_approved']
     
     # Список игноров: донаты в статусе donor_confirmed старше 24 часов для целей пользователя
     ignored = db.execute(
@@ -872,23 +870,21 @@ def create_goal(goal_type):
 @app.route('/goal/<int:goal_id>')
 def goal_page(goal_id):
     db = get_db()
+    user = get_current_user()  # один SELECT на всю функцию
     goal = db.execute("SELECT * FROM goals WHERE id = ?", (goal_id,)).fetchone()
     if not goal:
         flash('Цель не найдена.', 'danger')
         return redirect(url_for('goals_list'))
     
-    # Проверка видимости: черновики и отклонённые видят только автор и админ
+    # Проверка видимости
     if goal['status'] in ('draft', 'failed'):
-        current_user = get_current_user()
-        is_author = current_user and current_user['id'] == goal['user_id']
-        is_admin = current_user and current_user['is_admin']
+        is_author = user and user['id'] == goal['user_id']
+        is_admin = user and user['is_admin']
         if not (is_author or is_admin):
             abort(404)
     
-    # Скрытые цели не показываем никому, кроме админа
     if goal['status'] == 'hidden':
-        current_user = get_current_user()
-        is_admin = current_user and current_user['is_admin']
+        is_admin = user and user['is_admin']
         if not is_admin:
             abort(404)
     
@@ -911,9 +907,24 @@ def goal_page(goal_id):
         except Exception:
             rejection_cats = []
     
-    author = db.execute("SELECT phone FROM users WHERE id = ?", (goal['user_id'],)).fetchone()
+    # Один запрос: author + статистика донатов
+    stats = db.execute("""
+        SELECT 
+            u.phone AS author_phone,
+            (SELECT COUNT(DISTINCT donor_id) FROM donations 
+             WHERE goal_id = ? AND status IN ('recipient_confirmed','completed')) AS donor_count,
+            (SELECT MAX(donor_confirmed_at) FROM donations WHERE goal_id = ?) AS last_donation
+        FROM users u WHERE u.id = ?
+    """, (goal_id, goal_id, goal['user_id'])).fetchone()
+    
+    author = {'phone': stats['author_phone']}
+    donor_count = stats['donor_count']
+    last_donation = stats['last_donation']
+    
+    # Донаты
     donations = db.execute(
-        """SELECT d.*, 
+        """SELECT d.id, d.amount_reported, d.status, d.warm_word, d.is_anonymous, 
+                  d.donor_confirmed_at, d.recipient_confirmed_at,
            CASE WHEN d.is_anonymous = 1 OR d.donor_id IS NULL THEN NULL 
                 ELSE COALESCE(NULLIF(u.name, ''), '+' || u.phone) 
            END as donor_name
@@ -923,8 +934,7 @@ def goal_page(goal_id):
         ORDER BY d.donor_confirmed_at DESC""", 
         (goal_id,)
     ).fetchall()
-    donor_count = db.execute("SELECT COUNT(DISTINCT donor_id) FROM donations WHERE goal_id = ? AND status IN ('recipient_confirmed','completed')", (goal_id,)).fetchone()[0]
-    last_donation = db.execute("SELECT MAX(donor_confirmed_at) FROM donations WHERE goal_id = ?", (goal_id,)).fetchone()[0]
+    
     pct = min(100, int((goal['amount_collected'] / goal['amount_goal']) * 100)) if goal['amount_goal'] > 0 else 0
     # Форматируем дату
     months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']
@@ -933,24 +943,19 @@ def goal_page(goal_id):
         ends_at_formatted = f"{int(parts[2])} {months[int(parts[1])-1]} {parts[0]}"
     except:
         ends_at_formatted = goal['ends_at'][:10]
-    user = get_current_user()
     is_author = (user and user['id'] == goal['user_id'])
     
-    # Лайкнут ли цель текущим пользователем
+    # Один запрос: is_liked + already_reported
     is_liked = False
-    if user:
-        is_liked = db.execute(
-            "SELECT id FROM likes WHERE user_id = ? AND goal_id = ?",
-            (user['id'], goal_id)
-        ).fetchone() is not None
-    
-    # Проверяем, жаловался ли уже пользователь
     already_reported = False
     if user:
-        already_reported = db.execute(
-            'SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ?',
-            (goal_id, user['id'])
-        ).fetchone() is not None
+        flags = db.execute("""
+            SELECT 
+                EXISTS(SELECT 1 FROM likes WHERE user_id = ? AND goal_id = ?) AS is_liked,
+                EXISTS(SELECT 1 FROM reports WHERE goal_id = ? AND reporter_id = ?) AS already_reported
+        """, (user['id'], goal_id, goal_id, user['id'])).fetchone()
+        is_liked = bool(flags['is_liked'])
+        already_reported = bool(flags['already_reported'])
     
     return render_template('goal.html', goal=goal, author=author, progress=pct, donations=donations, is_author=is_author, donor_count=donor_count, last_donation=last_donation, ends_at_formatted=ends_at_formatted, already_reported=already_reported, user=user, photos_list=photos_list, is_liked=is_liked, rejection_cats=rejection_cats)
 
