@@ -24,6 +24,7 @@
                 <div style="font-size: 14px; font-weight: 600;">{{ label }}</div>
                 <div class="muted" style="font-size: 12px;">{{ settings[key].description if settings[key] else '' }}</div>
             </div>
+            <input type="hidden" name="{{ key }}" value="0">
             <input type="checkbox" name="{{ key }}" value="1" {% if settings[key] and settings[key].value == '1' %}checked{% endif %}
                    style="width: 20px; height: 20px; accent-color: #FF5A3C; cursor: pointer;">
         </label>

@@ -1,6 +1,6 @@
 import os, re, time, uuid, math
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import init_db, get_db, close_db
@@ -60,7 +60,7 @@ if os.environ.get('SEED_USERS') == '1':
         db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456', method='scrypt'),))
         db.commit()
         seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-        ends = (datetime.now() + timedelta(days=7)).isoformat()
+        ends = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
         db.execute(
             "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, moderation_status) VALUES (?, 'blitz', 'на ноутбук', 'для работы', 25000, 0, ?, 'active', 'approved')",
             (seed3_id, ends)
@@ -830,7 +830,7 @@ def create_goal(goal_type):
                     logger.warning(f'[create_goal] Ошибка фото: {e}')
         photo_url = photos_urls[0] if photos_urls else None
         photos_json = _json.dumps(photos_urls) if photos_urls else None
-        ends = (datetime.now() + timedelta(days=days)).isoformat()
+        ends = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
         if not user:
             flash('Войдите заново.', 'danger')
             return redirect(url_for('login'))
@@ -1151,12 +1151,12 @@ def add_xp(user_id, action, amount=0, db=None):
             db.execute("UPDATE users SET author_badge = 'Меценат' WHERE id = ?", (user_id,))
     _, level_key, _ = get_level(user['xp'])
     db.execute("UPDATE users SET xp_level = ? WHERE id = ?", (level_key, user_id))
-    today = datetime.now().strftime('%Y-%m-%d')
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     u = db.execute("SELECT last_action_date, streak_days FROM users WHERE id = ?", (user_id,)).fetchone()
     if u:
         if u['last_action_date'] == today:
             pass
-        elif u['last_action_date'] == (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'):
+        elif u['last_action_date'] == (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%d'):
             db.execute("UPDATE users SET streak_days = streak_days + 1, last_action_date = ? WHERE id = ?", (today, user_id))
         else:
             db.execute("UPDATE users SET streak_days = 1, last_action_date = ? WHERE id = ?", (today, user_id))
@@ -2040,6 +2040,7 @@ def api_report_photo():
 @login_required
 def api_deferred_set():
     """Установить напоминание о цели."""
+    from datetime import timezone
     user = get_current_user()
     data = request.get_json(silent=True) or {}
     
@@ -2049,10 +2050,11 @@ def api_deferred_set():
     except (ValueError, TypeError):
         return jsonify({'error': 'Неверный ID цели'}), 400
     
-    frequency = data.get('frequency', 'once')  # once / daily / custom
+    frequency = data.get('frequency', 'once')  # once / custom
     days = data.get('days')  # для custom
     
-    if frequency not in ('once', 'daily', 'custom'):
+    # daily убран — повтора нет (нет cron для пересоздания)
+    if frequency not in ('once', 'custom'):
         return jsonify({'error': 'Неверный тип напоминания'}), 400
 
     db = get_db()
@@ -2060,13 +2062,14 @@ def api_deferred_set():
     if not goal:
         return jsonify({'error': 'Цель не найдена'}), 404
 
-    now = datetime.now()
+    # UTC везде — согласовано с datetime('now')
+    now = datetime.now(timezone.utc)
 
     if frequency == 'once':
         remind_at = (now + timedelta(days=1)).isoformat()
-    elif frequency == 'daily':
-        remind_at = (now + timedelta(days=1)).isoformat()
-    elif frequency == 'custom' and days:
+    elif frequency == 'custom':
+        if not days:
+            return jsonify({'error': 'Укажите количество дней'}), 400
         try:
             days = int(days)
             if days < 1:
@@ -2079,15 +2082,20 @@ def api_deferred_set():
     else:
         return jsonify({'error': 'Неверный тип напоминания'}), 400
 
-    # Удаляем старое напоминание для этой цели
-    db.execute("DELETE FROM deferred_donations WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
-
-    # Создаём новое
-    db.execute(
-        "INSERT INTO deferred_donations (user_id, goal_id, remind_at, frequency, status) VALUES (?, ?, ?, ?, 'pending')",
-        (user['id'], goal_id, remind_at, frequency)
-    )
-    db.commit()
+    # BEGIN IMMEDIATE — блокировка записи
+    try:
+        db.execute("BEGIN IMMEDIATE")
+        db.execute("DELETE FROM deferred_donations WHERE user_id = ? AND goal_id = ?", (user['id'], goal_id))
+        db.execute(
+            "INSERT INTO deferred_donations (user_id, goal_id, remind_at, frequency, status) VALUES (?, ?, ?, ?, 'pending')",
+            (user['id'], goal_id, remind_at, frequency)
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f'[api_deferred_set] Ошибка: {e}')
+        return jsonify({'error': 'Не удалось сохранить напоминание'}), 500
+    
     return jsonify({'ok': True, 'remind_at': remind_at, 'frequency': frequency})
 
 
@@ -2361,7 +2369,7 @@ def api_state():
         })
 
     # 3. Отложенные напоминания (созревшие)
-    now_iso = datetime.now().isoformat()
+    now_iso = datetime.now(timezone.utc).isoformat()
     deferred = db.execute("""
         SELECT dd.id, dd.goal_id, g.title as goal_title
         FROM deferred_donations dd
@@ -2470,17 +2478,22 @@ def metrics_dashboard():
     user = get_current_user()
     db = get_db()
     
-    today = datetime.now().strftime('%Y-%m-%d')
+    # Границы суток в UTC (индекс-совместимо)
+    now_utc = datetime.now(timezone.utc)
+    today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
+    today_end = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    from datetime import timedelta as _td
+    today_end = (today_end + _td(days=1)).strftime('%Y-%m-%d %H:%M:%S')
     
     # Метрики за сегодня
     flags_today = db.execute(
-        "SELECT COUNT(*) FROM content_guard_log WHERE date(created_at) = ?",
-        (today,)
+        "SELECT COUNT(*) FROM content_guard_log WHERE created_at >= ? AND created_at < ?",
+        (today_start, today_end)
     ).fetchone()[0]
     
     reports_new = db.execute(
-        "SELECT COUNT(*) FROM reports WHERE date(created_at) = ?",
-        (today,)
+        "SELECT COUNT(*) FROM reports WHERE created_at >= ? AND created_at < ?",
+        (today_start, today_end)
     ).fetchone()[0]
     
     moderation_pending = db.execute(
@@ -2488,18 +2501,18 @@ def metrics_dashboard():
     ).fetchone()[0]
     
     new_users_today = db.execute(
-        "SELECT COUNT(*) FROM users WHERE date(created_at) = ?",
-        (today,)
+        "SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?",
+        (today_start, today_end)
     ).fetchone()[0]
     
     donations_sum_today = db.execute(
-        "SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE date(donor_confirmed_at) = ? AND status IN ('recipient_confirmed','completed')",
-        (today,)
+        "SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE donor_confirmed_at >= ? AND donor_confirmed_at < ? AND status IN ('recipient_confirmed','completed')",
+        (today_start, today_end)
     ).fetchone()[0]
     
     donations_count_today = db.execute(
-        "SELECT COUNT(*) FROM donations WHERE date(donor_confirmed_at) = ?",
-        (today,)
+        "SELECT COUNT(*) FROM donations WHERE donor_confirmed_at >= ? AND donor_confirmed_at < ?",
+        (today_start, today_end)
     ).fetchone()[0]
     
     active_goals = db.execute(
@@ -3149,7 +3162,14 @@ def metrics_reports():
     
     # Счётчики
     counts_total = len(reports)
-    counts_today = db.execute("SELECT COUNT(*) FROM reports WHERE date(created_at) = date('now')").fetchone()[0]
+    # Границы суток в UTC для индекса
+    now_utc = datetime.now(timezone.utc)
+    today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
+    today_end = (now_utc.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')
+    counts_today = db.execute(
+        "SELECT COUNT(*) FROM reports WHERE created_at >= ? AND created_at < ?",
+        (today_start, today_end)
+    ).fetchone()[0]
     counts_goals_with_3 = db.execute("""
         SELECT COUNT(*) FROM (
             SELECT goal_id FROM reports GROUP BY goal_id HAVING COUNT(*) >= 3
@@ -4264,7 +4284,7 @@ def goal_edit(goal_id):
                     goal_type=goal['type'], mode='edit', goal=goal,
                     photos_list=photos_list, rejection_cats=rejection_cats)
         
-        ends = (datetime.now() + timedelta(days=days)).isoformat()
+        ends = (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
         new_count = (goal['resubmission_count'] or 0) + 1
         
         db.execute("""

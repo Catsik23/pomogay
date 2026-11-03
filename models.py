@@ -266,11 +266,12 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_pe_actor ON platform_events(actor_user_id, created_at DESC)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_pe_goal ON platform_events(goal_id, created_at DESC)")
     
+    # Версия схемы (для будущих миграций)
+    c.execute("PRAGMA user_version = 1")
+    
     conn.commit()
     conn.close()
     # Миграция после создания таблиц
     migrate_db()
-    # Версия схемы (для будущих миграций)
-    c.execute("PRAGMA user_version = 1")
     
     print("База данных готова. Все 17 таблиц созданы. Schema version: 1")
