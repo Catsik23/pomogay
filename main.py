@@ -1319,6 +1319,48 @@ def confirm_donation(donation_id):
         db.execute("UPDATE goals SET status = 'completed' WHERE id = ?", (donation['goal_id'],))
         db.execute("UPDATE users SET author_badge = 'Цель закрыта' WHERE id = ?", (goal_data['user_id'],))
         add_xp(goal_data['user_id'], 'goal_closed', db=db)
+        # XP всем участникам (исключая автора — ему уже начислили)
+        participants = db.execute("SELECT DISTINCT donor_id FROM donations WHERE goal_id = ? AND donor_id IS NOT NULL AND donor_id != ?", (donation['goal_id'], goal_data['user_id'])).fetchall()
+        for p in participants:
+            add_xp(p['donor_id'], 'goal_closed', db=db)
+    db.execute("INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_recipient', ?)", (user['id'], '{"donation_id":' + str(donation_id) + '}'))
+    if donation['donor_id']:
+        db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
+    # XP за confirm — только если не самоподтверждение
+    is_self_confirmation = donation['donor_id'] == user['id']
+    if not is_self_confirmation:
+        add_xp(user['id'], 'confirm', db=db)
+    # Trust Score — только если не самодонат (иначе +3 ×2 одному)
+    if not is_self_confirmation:
+        add_trust_score(user['id'], 'donation_recipient_confirmed', db)
+        if donation['donor_id']:
+            add_trust_score(donation['donor_id'], 'donation_recipient_confirmed', db)
+    else:
+        # Самодонат: получатель получает trust только за подтверждение
+        add_trust_score(user['id'], 'donation_recipient_confirmed', db)
+    # ЕДИНЫЙ commit в конце
+    db.commit()
+    flash('Подтверждено', 'success')
+    
+    return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+    # Атомарное подтверждение: обновляем только если статус ещё donor_confirmed
+    cur = db.execute(
+        "UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') "
+        "WHERE id = ? AND status = 'donor_confirmed'",
+        (donation_id,)
+    )
+    if cur.rowcount == 0:
+        flash('Уже обработан', 'info')
+        return redirect(url_for('goal_page', goal_id=donation['goal_id']))
+    # Удаляем напоминания — получатель уже подтвердил
+    db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
+    db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
+    # Если цель закрылась — выдаём брошь автору и XP участникам
+    goal_data = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
+    if goal_data and goal_data['amount_collected'] >= goal_data['amount_goal']:
+        db.execute("UPDATE goals SET status = 'completed' WHERE id = ?", (donation['goal_id'],))
+        db.execute("UPDATE users SET author_badge = 'Цель закрыта' WHERE id = ?", (goal_data['user_id'],))
+        add_xp(goal_data['user_id'], 'goal_closed', db=db)
         # XP всем участникам
         participants = db.execute("SELECT DISTINCT donor_id FROM donations WHERE goal_id = ? AND donor_id IS NOT NULL", (donation['goal_id'],)).fetchall()
         for p in participants:
@@ -1358,7 +1400,7 @@ def api_confirm_donation(donation_id):
     if goal['user_id'] != user['id']:
         return jsonify({'ok': False, 'error': 'Только автор цели может подтверждать'}), 403
     
-    # Атомарное подтверждение: обновляем только если статус ещё donor_confirmed
+    # Атомарное подтверждение
     cur = db.execute(
         "UPDATE donations SET status = 'recipient_confirmed', recipient_confirmed_at = datetime('now') "
         "WHERE id = ? AND status = 'donor_confirmed'",
@@ -1377,24 +1419,30 @@ def api_confirm_donation(donation_id):
         db.execute("UPDATE goals SET status = 'completed' WHERE id = ?", (donation['goal_id'],))
         db.execute("UPDATE users SET author_badge = 'Цель закрыта' WHERE id = ?", (goal_data['user_id'],))
         add_xp(goal_data['user_id'], 'goal_closed', db=db)
-        participants = db.execute("SELECT DISTINCT donor_id FROM donations WHERE goal_id = ? AND donor_id IS NOT NULL", (donation['goal_id'],)).fetchall()
+        # XP участникам (исключая автора)
+        participants = db.execute("SELECT DISTINCT donor_id FROM donations WHERE goal_id = ? AND donor_id IS NOT NULL AND donor_id != ?", (donation['goal_id'], goal_data['user_id'])).fetchall()
         for p in participants:
             add_xp(p['donor_id'], 'goal_closed', db=db)
     
     db.execute("INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_recipient', ?)", (user['id'], '{"donation_id":' + str(donation_id) + '}'))
     if donation['donor_id']:
         db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
-    db.commit()
+    
+    # XP за confirm — только если не самоподтверждение
     is_self_confirmation = donation['donor_id'] == user['id']
     if not is_self_confirmation:
         add_xp(user['id'], 'confirm', db=db)
-        db.commit()
-    add_trust_score(user['id'], 'donation_recipient_confirmed', db)
-    if donation['donor_id']:
-        add_trust_score(donation['donor_id'], 'donation_recipient_confirmed', db)
+    # Trust Score — самодонат → +3 только один раз
+    if not is_self_confirmation:
+        add_trust_score(user['id'], 'donation_recipient_confirmed', db)
+        if donation['donor_id']:
+            add_trust_score(donation['donor_id'], 'donation_recipient_confirmed', db)
+    else:
+        add_trust_score(user['id'], 'donation_recipient_confirmed', db)
+    
+    # ЕДИНЫЙ commit
     db.commit()
     
-    # Обновлённые данные для UI
     new_amount = db.execute("SELECT amount_collected FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()['amount_collected']
     
     return jsonify({
