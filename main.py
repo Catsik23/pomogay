@@ -2683,7 +2683,16 @@ def metrics_user_detail(user_id):
     admin = get_current_user()
     db = get_db()
     
-    u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    u = db.execute("""SELECT id, phone, name, email, avatar_url, max_id, vk_id, fcm_token,
+        onboarding_passed, onboarding_step, profile_completed,
+        rating, rating_level, trust_score, trust_level,
+        confirmations_total, confirmations_approved, confirmations_ignored,
+        donation_streak, streak_days, goals_helped_close,
+        total_helped_amount, author_badge, priority_days, circles_of_care,
+        xp, xp_level, is_banned, is_admin, identity_verified,
+        identity_verified_at, city, region_code, region_name, birth_date,
+        created_at, last_action_date
+        FROM users WHERE id = ?""", (user_id,)).fetchone()
     if not u:
         abort(404)
     
@@ -2737,16 +2746,17 @@ def metrics_user_detail(user_id):
         (user_id,)
     ).fetchall()
     
-    # Итоги
-    total_sent = db.execute(
-        "SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE donor_id = ? AND status IN ('recipient_confirmed','completed')",
-        (user_id,)
-    ).fetchone()[0]
-    
-    total_received = db.execute(
-        "SELECT COALESCE(SUM(d.amount_reported), 0) FROM donations d JOIN goals g ON d.goal_id = g.id WHERE g.user_id = ? AND d.status IN ('recipient_confirmed','completed')",
-        (user_id,)
-    ).fetchone()[0]
+    # Итоги — один запрос
+    totals = db.execute("""
+        SELECT
+            (SELECT COALESCE(SUM(amount_reported), 0) FROM donations 
+             WHERE donor_id = ? AND status IN ('recipient_confirmed','completed')) AS total_sent,
+            (SELECT COALESCE(SUM(d.amount_reported), 0) FROM donations d 
+             JOIN goals g ON d.goal_id = g.id 
+             WHERE g.user_id = ? AND d.status IN ('recipient_confirmed','completed')) AS total_received
+    """, (user_id, user_id)).fetchone()
+    total_sent = totals['total_sent']
+    total_received = totals['total_received']
     
     counts = get_sidebar_counts(db)
     
@@ -2784,7 +2794,16 @@ def metrics_user_ban(user_id):
     categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
     
     db = get_db()
-    u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    u = db.execute("""SELECT id, phone, name, email, avatar_url, max_id, vk_id, fcm_token,
+        onboarding_passed, onboarding_step, profile_completed,
+        rating, rating_level, trust_score, trust_level,
+        confirmations_total, confirmations_approved, confirmations_ignored,
+        donation_streak, streak_days, goals_helped_close,
+        total_helped_amount, author_badge, priority_days, circles_of_care,
+        xp, xp_level, is_banned, is_admin, identity_verified,
+        identity_verified_at, city, region_code, region_name, birth_date,
+        created_at, last_action_date
+        FROM users WHERE id = ?""", (user_id,)).fetchone()
     if not u:
         abort(404)
     if u['is_admin']:
@@ -2835,7 +2854,16 @@ def metrics_user_unban(user_id):
     categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
     
     db = get_db()
-    u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    u = db.execute("""SELECT id, phone, name, email, avatar_url, max_id, vk_id, fcm_token,
+        onboarding_passed, onboarding_step, profile_completed,
+        rating, rating_level, trust_score, trust_level,
+        confirmations_total, confirmations_approved, confirmations_ignored,
+        donation_streak, streak_days, goals_helped_close,
+        total_helped_amount, author_badge, priority_days, circles_of_care,
+        xp, xp_level, is_banned, is_admin, identity_verified,
+        identity_verified_at, city, region_code, region_name, birth_date,
+        created_at, last_action_date
+        FROM users WHERE id = ?""", (user_id,)).fetchone()
     if not u:
         abort(404)
     
@@ -3452,7 +3480,16 @@ def metrics_dialog_new():
     db = get_db()
     u = None
     if user_id:
-        u = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        u = db.execute("""SELECT id, phone, name, email, avatar_url, max_id, vk_id, fcm_token,
+        onboarding_passed, onboarding_step, profile_completed,
+        rating, rating_level, trust_score, trust_level,
+        confirmations_total, confirmations_approved, confirmations_ignored,
+        donation_streak, streak_days, goals_helped_close,
+        total_helped_amount, author_badge, priority_days, circles_of_care,
+        xp, xp_level, is_banned, is_admin, identity_verified,
+        identity_verified_at, city, region_code, region_name, birth_date,
+        created_at, last_action_date
+        FROM users WHERE id = ?""", (user_id,)).fetchone()
     
     counts = get_sidebar_counts(db)
     
