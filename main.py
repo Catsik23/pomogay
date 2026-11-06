@@ -2490,47 +2490,36 @@ def metrics_dashboard():
     from datetime import timedelta as _td
     today_end = (today_end + _td(days=1)).strftime('%Y-%m-%d %H:%M:%S')
     
-    # Метрики за сегодня
-    flags_today = db.execute(
-        "SELECT COUNT(*) FROM content_guard_log WHERE created_at >= ? AND created_at < ?",
-        (today_start, today_end)
-    ).fetchone()[0]
+    # Метрики за сегодня — одним запросом
+    metrics = db.execute("""
+        SELECT
+            (SELECT COUNT(*) FROM content_guard_log WHERE created_at >= ? AND created_at < ?) AS flags_today,
+            (SELECT COUNT(*) FROM reports WHERE created_at >= ? AND created_at < ?) AS reports_new,
+            (SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending') AS moderation_pending,
+            (SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?) AS new_users_today,
+            (SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE donor_confirmed_at >= ? AND donor_confirmed_at < ? AND status IN ('recipient_confirmed','completed')) AS donations_sum_today,
+            (SELECT COUNT(*) FROM donations WHERE donor_confirmed_at >= ? AND donor_confirmed_at < ?) AS donations_count_today,
+            (SELECT COUNT(*) FROM goals WHERE status = 'active') AS active_goals,
+            (SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new') AS suspicious_new,
+            (SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open') AS dialogs_open
+    """, (
+        today_start, today_end,
+        today_start, today_end,
+        today_start, today_end,
+        today_start, today_end,
+        today_start, today_end,
+    )).fetchone()
     
-    reports_new = db.execute(
-        "SELECT COUNT(*) FROM reports WHERE created_at >= ? AND created_at < ?",
-        (today_start, today_end)
-    ).fetchone()[0]
+    flags_today = metrics['flags_today']
+    reports_new = metrics['reports_new']
+    moderation_pending = metrics['moderation_pending']
+    new_users_today = metrics['new_users_today']
+    donations_sum_today = metrics['donations_sum_today']
+    donations_count_today = metrics['donations_count_today']
+    active_goals = metrics['active_goals']
+    suspicious_new = metrics['suspicious_new']
+    dialogs_open = metrics['dialogs_open']
     
-    moderation_pending = db.execute(
-        "SELECT COUNT(*) FROM goals WHERE moderation_status = 'pending'"
-    ).fetchone()[0]
-    
-    new_users_today = db.execute(
-        "SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?",
-        (today_start, today_end)
-    ).fetchone()[0]
-    
-    donations_sum_today = db.execute(
-        "SELECT COALESCE(SUM(amount_reported), 0) FROM donations WHERE donor_confirmed_at >= ? AND donor_confirmed_at < ? AND status IN ('recipient_confirmed','completed')",
-        (today_start, today_end)
-    ).fetchone()[0]
-    
-    donations_count_today = db.execute(
-        "SELECT COUNT(*) FROM donations WHERE donor_confirmed_at >= ? AND donor_confirmed_at < ?",
-        (today_start, today_end)
-    ).fetchone()[0]
-    
-    active_goals = db.execute(
-        "SELECT COUNT(*) FROM goals WHERE status = 'active'"
-    ).fetchone()[0]
-    
-    suspicious_new = db.execute(
-        "SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'"
-    ).fetchone()[0]
-    
-    dialogs_open = db.execute(
-        "SELECT COUNT(*) FROM admin_dialogs WHERE status = 'open'"
-    ).fetchone()[0]
     
     # Последние флаги
     recent_flags = db.execute(
