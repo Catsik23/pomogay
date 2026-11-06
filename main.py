@@ -2584,10 +2584,17 @@ def metrics_flags():
     ).fetchall()
     
     # Счётчики по статусам
+    # Счётчики — один запрос с подзапросами
+    status_row = db.execute("""
+        SELECT
+            (SELECT COUNT(*) FROM content_guard_log) AS all_count,
+            (SELECT COUNT(*) FROM content_guard_log WHERE status = 'blocked') AS blocked,
+            (SELECT COUNT(*) FROM content_guard_log WHERE status = 'flagged') AS flagged
+    """).fetchone()
     counts_status = {
-        'all': db.execute("SELECT COUNT(*) FROM content_guard_log").fetchone()[0],
-        'blocked': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE status = 'blocked'").fetchone()[0],
-        'flagged': db.execute("SELECT COUNT(*) FROM content_guard_log WHERE status = 'flagged'").fetchone()[0],
+        'all': status_row['all_count'],
+        'blocked': status_row['blocked'],
+        'flagged': status_row['flagged'],
     }
     
     counts = get_sidebar_counts(db)
@@ -3801,9 +3808,14 @@ def metrics_suspicious():
     activities = db.execute(query, params).fetchall()
     
     # Счётчики
-    counts_new = db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'new'").fetchone()[0]
-    counts_reviewed = db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'reviewed'").fetchone()[0]
-    counts_resolved = db.execute("SELECT COUNT(*) FROM suspicious_activity WHERE status = 'resolved'").fetchone()[0]
+    # Счётчики по статусам — один запрос
+    status_counts = db.execute("""
+        SELECT status, COUNT(*) AS cnt FROM suspicious_activity GROUP BY status
+    """).fetchall()
+    counts_map = {r['status']: r['cnt'] for r in status_counts}
+    counts_new = counts_map.get('new', 0)
+    counts_reviewed = counts_map.get('reviewed', 0)
+    counts_resolved = counts_map.get('resolved', 0)
     
     # Типы
     types = db.execute("SELECT DISTINCT activity_type FROM suspicious_activity ORDER BY activity_type").fetchall()
