@@ -3941,126 +3941,143 @@ def metrics_logs():
     
     time_filter = period_map.get(period)
     
-    events = []
+    # Условие по времени
+    time_cond = ""
+    time_params = []
+    if time_filter:
+        time_cond = " AND created_at > datetime('now', ?)"
+        time_params = [time_filter]
     
-    # Словарь человеческих названий событий
-    event_labels = {
-        'login_attempt': ('🔐', 'Вход в аккаунт'),
-        'registration': ('🎉', 'Регистрация'),
-        'transfer_confirmed_donor': ('💸', 'Донатор сообщил о переводе'),
-        'transfer_confirmed_recipient': ('✅', 'Получатель подтвердил перевод'),
-        'goal_created': ('🎯', 'Создание цели'),
-        'goal_approved': ('✓', 'Цель одобрена'),
-        'goal_rejected': ('✗', 'Цель отклонена'),
-        'report_created': ('⚠️', 'Жалоба на цель'),
-        'dialog_message': ('💬', 'Сообщение в диалоге'),
-    }
+    # 5 подзапросов UNION ALL → 1 запрос
+    parts = []
+    params = []
     
-    # 1. Analytics events (входы, действия)
+    # 1. Analytics events
     if source in ('all', 'actions'):
-        q = "SELECT id, user_id, event_type as type, event_data as data, created_at FROM analytics_events WHERE 1=1"
-        params = []
-        if time_filter:
-            q += " AND created_at > datetime('now', ?)"
-            params.append(time_filter)
-        q += " ORDER BY id DESC LIMIT 100"
-        for r in db.execute(q, params).fetchall():
-            icon, label = event_labels.get(r['type'], ('🔵', r['type']))
-            events.append({
-                'time': r['created_at'],
-                'source': 'analytics',
-                'icon': icon,
-                'label': label,
-                'user_id': r['user_id'],
-                'data': r['data'],
-            })
+        parts.append("""
+            SELECT 
+                created_at as time,
+                'analytics' as source,
+                '🔵' as icon,
+                COALESCE(
+                    CASE event_type
+                        WHEN 'login_attempt' THEN '🔐 Вход в аккаунт'
+                        WHEN 'registration' THEN '🎉 Регистрация'
+                        WHEN 'transfer_confirmed_donor' THEN '💸 Донатор сообщил о переводе'
+                        WHEN 'transfer_confirmed_recipient' THEN '✅ Получатель подтвердил перевод'
+                        WHEN 'goal_created' THEN '🎯 Создание цели'
+                        WHEN 'goal_approved' THEN '✓ Цель одобрена'
+                        WHEN 'goal_rejected' THEN '✗ Цель отклонена'
+                        WHEN 'report_created' THEN '⚠️ Жалоба на цель'
+                        WHEN 'dialog_message' THEN '💬 Сообщение в диалоге'
+                        ELSE '🔵 ' || event_type
+                    END, event_type
+                ) as label,
+                user_id,
+                event_data as data
+            FROM analytics_events
+            WHERE 1=1""" + time_cond.replace('created_at', 'created_at') + """
+        """.replace('time_cond', ''))
+        # Правильная сборка с параметрами
+        parts[-1] = """
+            SELECT 
+                created_at as time,
+                'analytics' as source,
+                '🔵' as icon,
+                CASE event_type
+                    WHEN 'login_attempt' THEN '🔐 Вход в аккаунт'
+                    WHEN 'registration' THEN '🎉 Регистрация'
+                    WHEN 'transfer_confirmed_donor' THEN '💸 Донатор сообщил о переводе'
+                    WHEN 'transfer_confirmed_recipient' THEN '✅ Получатель подтвердил перевод'
+                    WHEN 'goal_created' THEN '🎯 Создание цели'
+                    WHEN 'goal_approved' THEN '✓ Цель одобрена'
+                    WHEN 'goal_rejected' THEN '✗ Цель отклонена'
+                    WHEN 'report_created' THEN '⚠️ Жалоба на цель'
+                    WHEN 'dialog_message' THEN '💬 Сообщение в диалоге'
+                    ELSE event_type
+                END as label,
+                user_id,
+                event_data as data
+            FROM analytics_events
+            WHERE 1=1""" + time_cond
+        params.extend(time_params)
     
     # 2. Content Guard flags
     if source in ('all', 'flags'):
-        if flagged:
-            q = "SELECT id, user_id, found_word, category, status, original_text, created_at FROM content_guard_log WHERE status = 'flagged'"
-        else:
-            q = "SELECT id, user_id, found_word, category, status, original_text, created_at FROM content_guard_log WHERE status IN ('blocked', 'flagged')"
-        params = []
-        if time_filter:
-            q += " AND created_at > datetime('now', ?)"
-            params.append(time_filter)
-        q += " ORDER BY id DESC LIMIT 100"
-        for r in db.execute(q, params).fetchall():
-            events.append({
-                'time': r['created_at'],
-                'source': 'flag',
-                'icon': '🚩',
-                'label': f"FLAG: {r['found_word']} ({r['category']})",
-                'user_id': r['user_id'],
-                'data': r['original_text'][:100] if r['original_text'] else '',
-            })
+        status_cond = "status = 'flagged'" if flagged else "status IN ('blocked', 'flagged')"
+        parts.append(f"""
+            SELECT 
+                created_at as time,
+                'flag' as source,
+                '🚩' as icon,
+                'FLAG: ' || COALESCE(found_word, '') || ' (' || COALESCE(category, '') || ')' as label,
+                user_id,
+                SUBSTR(COALESCE(original_text, ''), 1, 100) as data
+            FROM content_guard_log
+            WHERE {status_cond}""" + time_cond)
+        params.extend(time_params)
     
     # 3. Донаты
     if source in ('all', 'donations'):
-        q = "SELECT id, donor_id as user_id, amount_reported, status, donor_confirmed_at as created_at FROM donations WHERE 1=1"
-        params = []
-        if time_filter:
-            q += " AND donor_confirmed_at > datetime('now', ?)"
-            params.append(time_filter)
-        q += " ORDER BY id DESC LIMIT 100"
-        for r in db.execute(q, params).fetchall():
-            events.append({
-                'time': r['created_at'],
-                'source': 'donation',
-                'icon': '💰',
-                'label': f"Донат {(r['amount_reported'] or 0):.0f} ₽",
-                'user_id': r['user_id'],
-                'data': f"status: {r['status']}",
-            })
+        parts.append("""
+            SELECT 
+                donor_confirmed_at as time,
+                'donation' as source,
+                '💰' as icon,
+                'Донат ' || CAST(CAST(COALESCE(amount_reported, 0) AS INTEGER) AS TEXT) || ' ₽' as label,
+                donor_id as user_id,
+                'status: ' || COALESCE(status, '') as data
+            FROM donations
+            WHERE donor_confirmed_at IS NOT NULL""" + time_cond.replace('created_at', 'donor_confirmed_at'))
+        params.extend(time_params)
     
     # 4. Создание целей
     if source in ('all', 'goals'):
-        q = "SELECT id, user_id, title, type, status, created_at FROM goals WHERE 1=1"
-        params = []
-        if time_filter:
-            q += " AND created_at > datetime('now', ?)"
-            params.append(time_filter)
-        q += " ORDER BY id DESC LIMIT 100"
-        for r in db.execute(q, params).fetchall():
-            events.append({
-                'time': r['created_at'],
-                'source': 'goal',
-                'icon': '🎯',
-                'label': f"Цель: {(r['title'] or '')[:60]}",
-                'user_id': r['user_id'],
-                'data': f"type: {r['type']}, status: {r['status']}",
-            })
+        parts.append("""
+            SELECT 
+                created_at as time,
+                'goal' as source,
+                '🎯' as icon,
+                'Цель: ' || SUBSTR(COALESCE(title, ''), 1, 60) as label,
+                user_id,
+                'type: ' || COALESCE(type, '') || ', status: ' || COALESCE(status, '') as data
+            FROM goals
+            WHERE 1=1""" + time_cond)
+        params.extend(time_params)
     
     # 5. Жалобы
     if source in ('all', 'reports'):
-        q = "SELECT id, reporter_id as user_id, goal_id, reason, created_at FROM reports WHERE 1=1"
-        params = []
-        if time_filter:
-            q += " AND created_at > datetime('now', ?)"
-            params.append(time_filter)
-        q += " ORDER BY id DESC LIMIT 100"
-        for r in db.execute(q, params).fetchall():
+        parts.append("""
+            SELECT 
+                created_at as time,
+                'report' as source,
+                '⚠️' as icon,
+                'Жалоба на цель #' || CAST(goal_id AS TEXT) as label,
+                reporter_id as user_id,
+                COALESCE(reason, '') as data
+            FROM reports
+            WHERE 1=1""" + time_cond)
+        params.extend(time_params)
+    
+    events = []
+    if parts:
+        # Оборачиваем UNION ALL в подзапрос, чтобы применить search к результату
+        union_sql = "SELECT * FROM (" + " UNION ALL ".join(parts) + ") WHERE 1=1"
+        if search:
+            union_sql += " AND (label LIKE ? OR data LIKE ? OR CAST(user_id AS TEXT) = ?)"
+            params.extend([f'%{search}%', f'%{search}%', search])
+        union_sql += " ORDER BY time DESC LIMIT 300"
+        
+        rows = db.execute(union_sql, params).fetchall()
+        for r in rows:
             events.append({
-                'time': r['created_at'],
-                'source': 'report',
-                'icon': '⚠️',
-                'label': f"Жалоба на цель #{r['goal_id']}",
+                'time': r['time'],
+                'source': r['source'],
+                'icon': r['icon'],
+                'label': r['label'],
                 'user_id': r['user_id'],
-                'data': r['reason'],
+                'data': r['data'],
             })
-    
-    # Сортируем по времени
-    # Если flagged=1 — оставляем только события-флаги
-    if flagged:
-        events = [e for e in events if e['source'] == 'flag']
-    
-    # Нормализация дат — разные источники могут давать разный формат
-    def _norm_dt(s):
-        return (s or '').replace('T', ' ')[:19]
-    
-    events.sort(key=lambda x: _norm_dt(x['time']), reverse=True)
-    events = events[:300]
     
     # Обогащаем данными юзера
     user_ids = set(e['user_id'] for e in events if e['user_id'])

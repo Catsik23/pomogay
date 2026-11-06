@@ -9,12 +9,14 @@
 <!-- Фильтры -->
 <div class="m-section" style="margin-bottom: 16px;">
     <form method="GET" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="hidden" name="period" value="{{ period }}">
         <div style="display: flex; gap: 6px;">
-            <a href="?period=1h&source={{ source }}" class="m-badge {% if period == '1h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">1 час</a>
-            <a href="?period=24h&source={{ source }}" class="m-badge {% if period == '24h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">24 часа</a>
-            <a href="?period=7d&source={{ source }}" class="m-badge {% if period == '7d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">7 дней</a>
-            <a href="?period=30d&source={{ source }}" class="m-badge {% if period == '30d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">30 дней</a>
-            <a href="?period=all&source={{ source }}" class="m-badge {% if period == 'all' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Всё</a>
+            {% set _q = '&search=' + (search|urlencode) if search else '' %}
+            <a href="?period=1h&source={{ source }}{{ _q }}" class="m-badge {% if period == '1h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">1 час</a>
+            <a href="?period=24h&source={{ source }}{{ _q }}" class="m-badge {% if period == '24h' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">24 часа</a>
+            <a href="?period=7d&source={{ source }}{{ _q }}" class="m-badge {% if period == '7d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">7 дней</a>
+            <a href="?period=30d&source={{ source }}{{ _q }}" class="m-badge {% if period == '30d' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">30 дней</a>
+            <a href="?period=all&source={{ source }}{{ _q }}" class="m-badge {% if period == 'all' %}info{% else %}muted{% endif %}" style="text-decoration: none; padding: 6px 12px;">Всё</a>
         </div>
         
         <select name="source" onchange="this.form.submit()" style="padding: 6px 12px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit;">
@@ -25,6 +27,28 @@
             <option value="goals" {% if source == 'goals' %}selected{% endif %}>Цели</option>
             <option value="reports" {% if source == 'reports' %}selected{% endif %}>Жалобы</option>
         </select>
+        
+        <input type="text" name="search" value="{{ search }}" placeholder="ID юзера, текст, детали..." 
+               style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text); font-size: 13px; font-family: inherit; flex: 1; min-width: 200px; transition: border-color 0.15s;"
+               onfocus="this.style.borderColor='var(--m-sunset-1)'"
+               onblur="this.style.borderColor='var(--m-border)'">
+        
+        <button type="submit" 
+                style="padding: 6px 18px; background: var(--m-gradient); border: none; border-radius: 8px; color: white; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; box-shadow: 0 2px 8px rgba(255,90,60,0.2); transition: transform 0.1s;"
+                onmousedown="this.style.transform='scale(0.97)'"
+                onmouseup="this.style.transform='scale(1)'"
+                onmouseleave="this.style.transform='scale(1)'">
+            Найти
+        </button>
+        
+        {% if search %}
+        <a href="?period={{ period }}&source={{ source }}" 
+           style="padding: 6px 14px; background: var(--m-bg-3); border: 1px solid var(--m-border); border-radius: 8px; color: var(--m-text-2); text-decoration: none; font-size: 13px; font-weight: 600; transition: background 0.15s;"
+           onmouseover="this.style.background='var(--m-bg-2)'"
+           onmouseout="this.style.background='var(--m-bg-3)'">
+            Сброс
+        </a>
+        {% endif %}
     </form>
 </div>
 
