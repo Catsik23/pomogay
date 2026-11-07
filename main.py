@@ -2652,8 +2652,13 @@ def metrics_users():
     # Счётчики
     counts_total = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     counts_banned = db.execute("SELECT COUNT(*) FROM users WHERE is_banned = 1").fetchone()[0]
-    counts_flagged = db.execute("SELECT COUNT(DISTINCT user_id) FROM content_guard_log WHERE user_id IS NOT NULL").fetchone()[0]
-    counts_active = db.execute("SELECT COUNT(DISTINCT donor_id) FROM donations WHERE donor_id IS NOT NULL").fetchone()[0]
+    row = db.execute("""
+        SELECT 
+            (SELECT COUNT(DISTINCT user_id) FROM content_guard_log WHERE user_id IS NOT NULL) as flagged,
+            (SELECT COUNT(DISTINCT donor_id) FROM donations WHERE donor_id IS NOT NULL) as active
+    """).fetchone()
+    counts_flagged = row['flagged'] or 0
+    counts_active = row['active'] or 0
     
     counts = get_sidebar_counts(db)
     
