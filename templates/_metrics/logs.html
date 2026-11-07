@@ -81,7 +81,24 @@
                     <span style="margin-right: 6px;">{{ e.icon }}</span>
                     <span style="font-size: 13px; font-weight: 500;">{{ e.label }}</span>
                 </td>
-                <td class="muted" style="font-size: 12px; max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ e.data }}">{{ e.data }}</td>
+                <td class="muted" style="font-size: 12px; max-width: 350px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ e.data }}">
+                    {% if e.source == 'donation' and e.data.startswith('Статус: ') %}
+                        {% set st = e.data.replace('Статус: ', '') %}
+                        {% if st == 'подтверждён получателем' %}
+                            <span class="m-badge success">{{ st }}</span>
+                        {% elif st == 'засчитан' %}
+                            <span class="m-badge info">{{ st }}</span>
+                        {% elif st == 'ожидает подтверждения' %}
+                            <span class="m-badge warning">{{ st }}</span>
+                        {% elif st == 'спорный' %}
+                            <span class="m-badge danger">{{ st }}</span>
+                        {% else %}
+                            <span class="m-badge muted">{{ st }}</span>
+                        {% endif %}
+                    {% else %}
+                        {{ e.data }}
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

@@ -4028,12 +4028,19 @@ def metrics_logs():
                 d.donor_confirmed_at as time,
                 'donation' as source,
                 '💰' as icon,
-                'Донат ' || CAST(CAST(COALESCE(amount_reported, 0) AS INTEGER) AS TEXT) || ' ₽' as label,
+                'Донат ' || CAST(CAST(COALESCE(d.amount_reported, 0) AS INTEGER) AS TEXT) || ' ₽ на «' || SUBSTR(COALESCE(g.title, '—'), 1, 40) || '»' as label,
                 d.donor_id as user_id,
-                'status: ' || COALESCE(d.status, '') as data,
+                'Статус: ' || CASE d.status
+                    WHEN 'donor_confirmed' THEN 'ожидает подтверждения'
+                    WHEN 'recipient_confirmed' THEN 'подтверждён получателем'
+                    WHEN 'completed' THEN 'засчитан'
+                    WHEN 'disputed' THEN 'спорный'
+                    ELSE COALESCE(d.status, '—')
+                END as data,
                 COALESCE(u.phone, '') as user_phone
             FROM donations d
             LEFT JOIN users u ON d.donor_id = u.id
+            LEFT JOIN goals g ON d.goal_id = g.id
             WHERE d.donor_confirmed_at IS NOT NULL""" + time_cond.replace('created_at', 'd.donor_confirmed_at'))
         params.extend(time_params)
     
