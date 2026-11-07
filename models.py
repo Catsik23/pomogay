@@ -137,6 +137,9 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )""")
     c.execute("CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_analytics_event ON analytics_events(event_type)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_analytics_time ON analytics_events(created_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_analytics_login ON analytics_events(event_type, event_data, created_at)")
     
     c.execute("CREATE TABLE IF NOT EXISTS notifications_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, type TEXT NOT NULL, donation_id INTEGER NULL, goal_id INTEGER NULL, channel TEXT DEFAULT 'fcm', sent_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS analytics_events (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NULL, event_type TEXT NOT NULL, event_data TEXT NULL, created_at TEXT DEFAULT (datetime('now')))")
