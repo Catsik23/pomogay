@@ -115,6 +115,8 @@
                 <td>
                     {% if d.status == 'recipient_confirmed' %}<span class="m-badge success">подтверждён</span>
                     {% elif d.status == 'donor_confirmed' %}<span class="m-badge warning">ожидает</span>
+                    {% elif d.status == 'completed' %}<span class="m-badge info">засчитан</span>
+                    {% elif d.status == 'disputed' %}<span class="m-badge danger">спорный</span>
                     {% else %}<span class="m-badge muted">{{ d.status }}</span>{% endif %}
                 </td>
             </tr>

@@ -3625,6 +3625,32 @@ def metrics_moderation():
     
     # Парсим photos в Python
     import json as _json
+    
+    # Один запрос для всех prev_rejections — вместо N+1
+    all_goal_ids = [str(row['id']) for row in pending_rows]
+    rejections_by_goal = {}
+    if all_goal_ids:
+        placeholders = ','.join('?' * len(all_goal_ids))
+        prev_all = db.execute(f"""
+            SELECT target_id, details, created_at FROM admin_actions
+            WHERE action_type = 'reject_goal' AND target_type = 'goal' 
+            AND target_id IN ({placeholders})
+            ORDER BY id DESC
+        """, all_goal_ids).fetchall()
+        for pr in prev_all:
+            gid = pr['target_id']
+            if gid not in rejections_by_goal:
+                rejections_by_goal[gid] = []
+            try:
+                det = _json.loads(pr['details'])
+                rejections_by_goal[gid].append({
+                    'categories': det.get('categories', []),
+                    'comment': det.get('comment', ''),
+                    'created_at': pr['created_at']
+                })
+            except (ValueError, TypeError):
+                pass
+    
     pending = []
     for row in pending_rows:
         d = dict(row)
@@ -3632,31 +3658,12 @@ def metrics_moderation():
         if d.get('photos'):
             try:
                 photos = _json.loads(d['photos'])
-            except:
+            except (ValueError, TypeError):
                 pass
         if not photos and d.get('photo_url'):
             photos = [d['photo_url']]
         d['photos_list'] = photos
-        
-        # История предыдущих отказов (из admin_actions)
-        prev_rejections = db.execute("""
-            SELECT details, created_at FROM admin_actions
-            WHERE action_type = 'reject_goal' AND target_type = 'goal' AND target_id = ?
-            ORDER BY id DESC
-        """, (str(d['id']),)).fetchall()
-        
-        d['prev_rejections'] = []
-        for pr in prev_rejections:
-            try:
-                det = _json.loads(pr['details'])
-                d['prev_rejections'].append({
-                    'categories': det.get('categories', []),
-                    'comment': det.get('comment', ''),
-                    'created_at': pr['created_at']
-                })
-            except:
-                pass
-        
+        d['prev_rejections'] = rejections_by_goal.get(str(d['id']), [])
         pending.append(d)
     
     # История модерации (последние 20)
