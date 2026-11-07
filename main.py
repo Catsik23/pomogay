@@ -3981,7 +3981,7 @@ def metrics_logs():
         # Правильная сборка с параметрами
         parts[-1] = """
             SELECT 
-                created_at as time,
+                a.created_at as time,
                 'analytics' as source,
                 '🔵' as icon,
                 CASE event_type
@@ -3996,10 +3996,12 @@ def metrics_logs():
                     WHEN 'dialog_message' THEN '💬 Сообщение в диалоге'
                     ELSE event_type
                 END as label,
-                user_id,
-                event_data as data
-            FROM analytics_events
-            WHERE 1=1""" + time_cond
+                a.user_id as user_id,
+                a.event_data as data,
+                COALESCE(u.phone, '') as user_phone
+            FROM analytics_events a
+            LEFT JOIN users u ON a.user_id = u.id
+            WHERE 1=1""" + time_cond.replace('created_at', 'a.created_at')
         params.extend(time_params)
     
     # 2. Content Guard flags
@@ -4007,56 +4009,64 @@ def metrics_logs():
         status_cond = "status = 'flagged'" if flagged else "status IN ('blocked', 'flagged')"
         parts.append(f"""
             SELECT 
-                created_at as time,
+                c.created_at as time,
                 'flag' as source,
                 '🚩' as icon,
                 'FLAG: ' || COALESCE(found_word, '') || ' (' || COALESCE(category, '') || ')' as label,
-                user_id,
-                SUBSTR(COALESCE(original_text, ''), 1, 100) as data
-            FROM content_guard_log
-            WHERE {status_cond}""" + time_cond)
+                c.user_id as user_id,
+                SUBSTR(COALESCE(c.original_text, ''), 1, 100) as data,
+                COALESCE(u.phone, '') as user_phone
+            FROM content_guard_log c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE {status_cond}""" + time_cond.replace('created_at', 'c.created_at'))
         params.extend(time_params)
     
     # 3. Донаты
     if source in ('all', 'donations'):
         parts.append("""
             SELECT 
-                donor_confirmed_at as time,
+                d.donor_confirmed_at as time,
                 'donation' as source,
                 '💰' as icon,
                 'Донат ' || CAST(CAST(COALESCE(amount_reported, 0) AS INTEGER) AS TEXT) || ' ₽' as label,
-                donor_id as user_id,
-                'status: ' || COALESCE(status, '') as data
-            FROM donations
-            WHERE donor_confirmed_at IS NOT NULL""" + time_cond.replace('created_at', 'donor_confirmed_at'))
+                d.donor_id as user_id,
+                'status: ' || COALESCE(d.status, '') as data,
+                COALESCE(u.phone, '') as user_phone
+            FROM donations d
+            LEFT JOIN users u ON d.donor_id = u.id
+            WHERE d.donor_confirmed_at IS NOT NULL""" + time_cond.replace('created_at', 'd.donor_confirmed_at'))
         params.extend(time_params)
     
     # 4. Создание целей
     if source in ('all', 'goals'):
         parts.append("""
             SELECT 
-                created_at as time,
+                g.created_at as time,
                 'goal' as source,
                 '🎯' as icon,
                 'Цель: ' || SUBSTR(COALESCE(title, ''), 1, 60) as label,
-                user_id,
-                'type: ' || COALESCE(type, '') || ', status: ' || COALESCE(status, '') as data
-            FROM goals
-            WHERE 1=1""" + time_cond)
+                g.user_id as user_id,
+                'type: ' || COALESCE(g.type, '') || ', status: ' || COALESCE(g.status, '') as data,
+                COALESCE(u.phone, '') as user_phone
+            FROM goals g
+            LEFT JOIN users u ON g.user_id = u.id
+            WHERE 1=1""" + time_cond.replace('created_at', 'g.created_at'))
         params.extend(time_params)
     
     # 5. Жалобы
     if source in ('all', 'reports'):
         parts.append("""
             SELECT 
-                created_at as time,
+                r.created_at as time,
                 'report' as source,
                 '⚠️' as icon,
                 'Жалоба на цель #' || CAST(goal_id AS TEXT) as label,
-                reporter_id as user_id,
-                COALESCE(reason, '') as data
-            FROM reports
-            WHERE 1=1""" + time_cond)
+                r.reporter_id as user_id,
+                COALESCE(r.reason, '') as data,
+                COALESCE(u.phone, '') as user_phone
+            FROM reports r
+            LEFT JOIN users u ON r.reporter_id = u.id
+            WHERE 1=1""" + time_cond.replace('created_at', 'r.created_at'))
         params.extend(time_params)
     
     events = []
@@ -4064,8 +4074,8 @@ def metrics_logs():
         # Оборачиваем UNION ALL в подзапрос, чтобы применить search к результату
         union_sql = "SELECT * FROM (" + " UNION ALL ".join(parts) + ") WHERE 1=1"
         if search:
-            union_sql += " AND (label LIKE ? OR data LIKE ? OR CAST(user_id AS TEXT) = ?)"
-            params.extend([f'%{search}%', f'%{search}%', search])
+            union_sql += " AND (label LIKE ? OR data LIKE ? OR user_phone LIKE ? OR CAST(user_id AS TEXT) = ?)"
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%', search])
         union_sql += " ORDER BY time DESC LIMIT 300"
         
         rows = db.execute(union_sql, params).fetchall()
