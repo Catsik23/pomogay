@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% if mode == 'received' %}Мне помогли{% else %}Я помог{% endif %} — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -240,7 +241,10 @@
             
             fetch('/api/confirm/' + donationId, {
                 method: 'POST',
-                headers: {'X-Requested-With': 'XMLHttpRequest'}
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ get_csrf_token() }}'
+                }
             })
             .then(r => r.json())
             .then(data => {
@@ -293,6 +297,6 @@
         }
     </script>
 
-<script src="/static/notifications.js"></script>
+<script src="/static/notifications.js?v=2"></script>
 </body>
 </html>

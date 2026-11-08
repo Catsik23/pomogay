@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Создать цель — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -533,6 +534,7 @@
         {% endif %}
 
         <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
             <label>Название цели *</label>
             <div class="field-error" id="titleError"></div>
             <div class="field-wrap">
@@ -660,7 +662,7 @@
             try {
                 var resp = await fetch('/api/guard-check', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
                     body: JSON.stringify({text: text, context: context})
                 });
                 var data = await resp.json();

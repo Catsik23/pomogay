@@ -186,6 +186,25 @@ def check_csrf():
     return bool(token) and bool(expected) and _secrets.compare_digest(token, expected)
 
 
+# CSRF: эндпоинты, исключённые из проверки (внешние вебхуки)
+CSRF_EXEMPT_ENDPOINTS = set()
+
+
+@app.before_request
+def csrf_protect():
+    """ЭТАП 3: блокируем POST без валидного CSRF."""
+    if request.method != 'POST':
+        return
+    endpoint = request.endpoint or 'unknown'
+    if endpoint in CSRF_EXEMPT_ENDPOINTS:
+        return
+    if not check_csrf():
+        token = request.form.get('csrf_token') or request.headers.get('X-CSRFToken')
+        expected = session.get('csrf_token')
+        logger.warning(f'[CSRF] POST {request.path} — БЛОК. token={token[:20] if token else None}, expected={expected[:20] if expected else None}')
+        abort(403)
+
+
 def record_event(event_type, db, *, actor_user_id=None, target_user_id=None,
                  goal_id=None, donation_id=None, report_id=None,
                  source='user', severity='info', payload=None, correlation_id=None):
@@ -1984,7 +2003,7 @@ def api_report_photo():
         return jsonify({'error': 'Цель не найдена'}), 404
     if goal['user_id'] == user['id']:
         return jsonify({'error': 'Нельзя жаловаться на свою цель'}), 403
-    if goal.get('status') and goal['status'] != 'active':
+    if goal['status'] and goal['status'] != 'active':
         return jsonify({'error': 'Цель уже неактивна'}), 400
 
     # Проверяем, что фото с таким индексом существует

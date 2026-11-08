@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Цели — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -1011,6 +1012,7 @@
             {% endif %}
             
             <form method="POST" action="/logout" style="flex: 1; margin: 0; display: flex;">
+                <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                 <button type="submit" class="sidebar-logout-btn">
                     <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     <span>Выйти</span>
@@ -1191,7 +1193,7 @@
 
         fetch('/api/onboarding/step', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
             body: JSON.stringify(data)
         })
         .then(function(r) { return r.json(); })
@@ -1320,7 +1322,7 @@
     function onboardFinish() {
         fetch('/api/onboarding/step', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
             body: JSON.stringify({ step: 4 })
         })
         .then(function() {
@@ -1380,6 +1382,6 @@
 </script>
 {% endif %}
 <script src="/static/toast.js"></script>
-<script src="/static/notifications.js"></script>
+<script src="/static/notifications.js?v=2"></script>
 </body>
 </html>

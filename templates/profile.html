@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Профиль — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -951,6 +952,7 @@
 
         <div class="logout-wrap">
             <form method="POST" action="/logout" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                 <button type="submit" class="logout-btn">Выйти</button>
             </form>
         </div>
@@ -1137,6 +1139,7 @@
                    oninput="document.getElementById('deleteConfirmBtn').disabled = (this.value.trim().toUpperCase() !== 'УДАЛИТЬ');">
         </div>
         <form method="POST" action="/delete_account">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
             <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
             <button type="submit" id="deleteConfirmBtn" disabled
                     style="width: 100%; padding: 14px; background: #E57373; color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: opacity 0.15s; opacity: 0.5;">

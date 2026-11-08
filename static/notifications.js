@@ -2,6 +2,16 @@
 // Система уведомлений — общая для всех страниц
 // ============================================
 
+function getCsrfToken() {
+    // 1. Из meta-тега (если есть)
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.getAttribute('content');
+    // 2. Из скрытого input (на любой странице)
+    var input = document.querySelector('input[name="csrf_token"]');
+    if (input) return input.value;
+    return '';
+}
+
 // Очистка старого localStorage (миграция на sessionStorage)
 try { localStorage.removeItem('dismissed_notifs'); } catch (e) {}
 
@@ -231,7 +241,10 @@ function sendDialogMessage() {
     
     fetch('/api/dialogs/' + currentDialogId + '/send', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
         body: JSON.stringify({message: text})
     })
     .then(function(r) { return r.json(); })

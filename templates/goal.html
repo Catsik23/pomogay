@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ goal.title }} — Помогай</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -1317,6 +1318,7 @@
                     <h3 class="modal-title">Что не так?</h3>
                     <p class="modal-subtitle">Анонимно. Помогает сделать платформу безопаснее.</p>
                     <form method="POST" action="/report/{{ goal.id }}" id="reportForm">
+                        <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                         <input type="hidden" name="reason" id="reportReason">
                         <div class="tile-group">
                             <button type="button" class="tile" data-reason="Мошенничество" onclick="selectReason(this)">
@@ -1457,6 +1459,7 @@
                 <div class="donation-amount">{{ "%.0f"|format(d.amount_reported) }} ₽</div>
                 {% if is_author and d.status == 'donor_confirmed' %}
                 <form method="POST" action="/confirm/{{ d.id }}" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                     <button type="submit" class="confirm-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5B9A6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" stroke="white"></polyline></svg> Подтверждаю</button>
                 </form>
                 {% endif %}
@@ -1519,6 +1522,7 @@
                 </div>
 
                 <form method="POST" action="/donate/{{ goal.id }}" id="confirmForm" style="display:none;">
+                    <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
                     <input type="hidden" name="amount" id="confirmAmount">
                     <input type="hidden" name="warm_word" id="confirmWarmWord">
                     <input type="hidden" name="anonymous" id="confirmAnonymous">
@@ -1775,7 +1779,7 @@
 
             fetch('/api/goal/' + goalId + '/photos/update', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
                 body: JSON.stringify({ order: order, angles: angles, deleted: deletedPaths })
             })
             .then(function(r) { return r.json(); })
@@ -1873,7 +1877,10 @@
 
             fetch('/api/report-photo', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
                 body: JSON.stringify({
                     goal_id: goalId,
                     photo_index: photoReportIndex,
@@ -1939,6 +1946,7 @@
 
                     fetch('/api/goal/' + goalId + '/photos/upload', {
                         method: 'POST',
+                        headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
                         body: formData
                     })
                     .then(function(r) { return r.json(); })
@@ -2052,7 +2060,7 @@
 
         fetch('/api/goal/' + goalId + '/update-description', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
             body: JSON.stringify({ description: newDesc })
         })
         .then(function(r) { return r.json(); })
@@ -2118,7 +2126,7 @@
                 ? '/api/goal/' + goalId + '/unlike'
                 : '/api/goal/' + goalId + '/like';
 
-            fetch(url, { method: 'POST' })
+            fetch(url, { method: 'POST', headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''} })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (!data.ok) return;
@@ -2175,7 +2183,7 @@
 
         fetch('/api/deferred/set', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
             body: JSON.stringify(payload)
         })
         .then(function(r) { return r.json(); })

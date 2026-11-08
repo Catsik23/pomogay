@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -170,6 +171,7 @@
         <script id="toast-data" type="application/json">[{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}{"category":{{ category|tojson }},"text":{{ message|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}{% endwith %}]</script>
 
         <form method="POST" id="loginForm">
+            <input type="hidden" name="csrf_token" value="{{ get_csrf_token() }}">
             <div class="field">
                 <label>Номер телефона</label>
                 <div class="phone-wrap">

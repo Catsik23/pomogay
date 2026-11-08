@@ -5,6 +5,7 @@
     <link rel="preload" href="/static/fonts/Inter-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
 
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ get_csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Анкета — помогай.рф</title>
     <link rel="stylesheet" href="/static/style.css?v=7">
@@ -939,7 +940,7 @@
 
         fetch('/api/profile/save', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
             body: JSON.stringify(payload)
         })
         .then(function(r) { return r.json(); })
@@ -1002,6 +1003,7 @@
 
         fetch('/api/identity/upload', {
             method: 'POST',
+            headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
             body: formData
         })
         .then(function(r) { return r.json(); })
@@ -1133,6 +1135,7 @@
 
             fetch('/api/identity/upload', {
                 method: 'POST',
+                headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
                 body: formData
             })
             .then(function(r) { return r.json(); })
