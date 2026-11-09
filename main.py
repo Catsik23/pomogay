@@ -2853,7 +2853,13 @@ def metrics_user_ban(user_id):
         flash('Выберите минимум одну категорию.', 'danger')
         return redirect(url_for('metrics_user_detail', user_id=user_id))
     
-    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    ALLOWED_CATEGORIES = {'spam', 'fraud', 'insults', 'fake_goal', 'bypass', 'suspicious', 'other'}
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip() and c.strip() in ALLOWED_CATEGORIES]
+    if not categories:
+        flash('Некорректные категории.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
+    comment = comment[:500]
     
     db = get_db()
     u = db.execute("""SELECT id, phone, name, email, avatar_url, max_id, vk_id, fcm_token,
@@ -2870,6 +2876,10 @@ def metrics_user_ban(user_id):
         abort(404)
     if u['is_admin']:
         flash('Нельзя забанить админа.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
+    if u['is_banned']:
+        flash('Пользователь уже забанен.', 'info')
         return redirect(url_for('metrics_user_detail', user_id=user_id))
     
     db.execute("UPDATE users SET is_banned = 1 WHERE id = ?", (user_id,))
@@ -2893,6 +2903,17 @@ def metrics_user_ban(user_id):
     )
     db.commit()
     
+    record_event(
+        'user_banned',
+        db=db,
+        actor_user_id=admin['id'],
+        target_user_id=user_id,
+        source='admin',
+        severity='warning',
+        payload={'categories': categories, 'hidden_goals': hidden_count, 'comment': comment}
+    )
+    db.commit()
+    
     if hidden_count > 0:
         flash(f'Пользователь #{user_id} забанен. Скрыто целей: {hidden_count}.', 'success')
     else:
@@ -2913,7 +2934,13 @@ def metrics_user_unban(user_id):
         flash('Выберите минимум одну причину разбана.', 'danger')
         return redirect(url_for('metrics_user_detail', user_id=user_id))
     
-    categories = [c.strip() for c in categories_raw.split(',') if c.strip()]
+    ALLOWED_UNBAN_CATEGORIES = {'appeal', 'mistake', 'expired', 'warning', 'other'}
+    categories = [c.strip() for c in categories_raw.split(',') if c.strip() and c.strip() in ALLOWED_UNBAN_CATEGORIES]
+    if not categories:
+        flash('Некорректные категории.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
+    comment = comment[:500]
     
     db = get_db()
     u = db.execute("""SELECT id, phone, name, email, avatar_url, max_id, vk_id, fcm_token,
@@ -2928,6 +2955,14 @@ def metrics_user_unban(user_id):
         FROM users WHERE id = ?""", (user_id,)).fetchone()
     if not u:
         abort(404)
+    
+    if u['is_admin']:
+        flash('Нельзя разбанить админа.', 'danger')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
+    
+    if not u['is_banned']:
+        flash('Пользователь не забанен.', 'info')
+        return redirect(url_for('metrics_user_detail', user_id=user_id))
     
     db.execute("UPDATE users SET is_banned = 0 WHERE id = ?", (user_id,))
     
@@ -2947,6 +2982,17 @@ def metrics_user_unban(user_id):
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'unban_user', 'user', ?, ?)",
         (admin['id'], str(user_id), details)
+    )
+    db.commit()
+    
+    record_event(
+        'user_unbanned',
+        db=db,
+        actor_user_id=admin['id'],
+        target_user_id=user_id,
+        source='admin',
+        severity='info',
+        payload={'categories': categories, 'restored_goals': restored_count, 'comment': comment}
     )
     db.commit()
     
