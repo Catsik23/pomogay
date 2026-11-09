@@ -2069,15 +2069,55 @@ def api_report_photo():
     if existing:
         return jsonify({'error': 'Вы уже жаловались на это фото'}), 400
 
+    # Определяем независимость жалобы
+    ip_address = request.remote_addr
+    is_independent = 1
+    dependency_reason = None
+    
+    # 1. Аккаунт старше 1 дня
+    account_age_ok = db.execute(
+        "SELECT created_at < datetime('now', '-1 day') FROM users WHERE id = ?",
+        (user['id'],)
+    ).fetchone()[0]
+    if not account_age_ok:
+        is_independent = 0
+        dependency_reason = 'young_account'
+    
+    # 2. Trust Score >= 30
+    if is_independent and (user['trust_score'] or 0) < 30:
+        is_independent = 0
+        dependency_reason = 'low_trust'
+    
+    # 3. Нет другой жалобы с этого IP на это же фото
+    if is_independent:
+        same_ip = db.execute(
+            'SELECT id FROM reports WHERE goal_id = ? AND photo_index = ? AND ip_address = ? LIMIT 1',
+            (goal_id, photo_index, ip_address)
+        ).fetchone()
+        if same_ip:
+            is_independent = 0
+            dependency_reason = 'same_ip'
+    
     db.execute(
-        "INSERT INTO reports (goal_id, reporter_id, reason, photo_index) VALUES (?, ?, ?, ?)",
-        (goal_id, user['id'], reason, photo_index)
+        "INSERT INTO reports (goal_id, reporter_id, reason, photo_index, ip_address, is_independent, dependency_reason) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (goal_id, user['id'], reason, photo_index, ip_address, is_independent, dependency_reason)
     )
     db.commit()
     
-    # Порог: 3+ жалобы на фото → скрытие цели
+    # Событие
+    record_event(
+        'report_photo_created',
+        db=db,
+        actor_user_id=user['id'],
+        goal_id=goal_id,
+        source='user',
+        payload={'photo_index': photo_index, 'is_independent': bool(is_independent), 'reason': dependency_reason}
+    )
+    db.commit()
+    
+    # Порог: 3+ НЕЗАВИСИМЫЕ жалобы на фото → скрытие цели
     photo_report_count = db.execute(
-        "SELECT COUNT(DISTINCT reporter_id) FROM reports WHERE goal_id = ? AND photo_index = ?",
+        "SELECT COUNT(*) FROM reports WHERE goal_id = ? AND photo_index = ? AND is_independent = 1",
         (goal_id, photo_index)
     ).fetchone()[0]
     
