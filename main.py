@@ -987,6 +987,8 @@ def report_goal(goal_id):
         flash('Укажите причину жалобы.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
+    reason = reason[:500]
+    
     db = get_db()
     goal = db.execute('SELECT * FROM goals WHERE id = ?', (goal_id,)).fetchone()
     if not goal:
@@ -1008,15 +1010,55 @@ def report_goal(goal_id):
         flash('Вы уже жаловались на эту цель.', 'info')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
+    # Определяем независимость жалобы
+    ip_address = request.remote_addr
+    is_independent = 1
+    dependency_reason = None
+    
+    # 1. Аккаунт старше 1 дня
+    account_age_ok = db.execute(
+        "SELECT created_at < datetime('now', '-1 day') FROM users WHERE id = ?",
+        (user['id'],)
+    ).fetchone()[0]
+    if not account_age_ok:
+        is_independent = 0
+        dependency_reason = 'young_account'
+    
+    # 2. Trust Score >= 30
+    if is_independent and (user['trust_score'] or 0) < 30:
+        is_independent = 0
+        dependency_reason = 'low_trust'
+    
+    # 3. Нет другой жалобы с этого IP на эту цель
+    if is_independent:
+        same_ip = db.execute(
+            'SELECT id FROM reports WHERE goal_id = ? AND ip_address = ? LIMIT 1',
+            (goal_id, ip_address)
+        ).fetchone()
+        if same_ip:
+            is_independent = 0
+            dependency_reason = 'same_ip'
+    
     db.execute(
-        'INSERT INTO reports (goal_id, reporter_id, reason) VALUES (?, ?, ?)',
-        (goal_id, user['id'], reason)
+        'INSERT INTO reports (goal_id, reporter_id, reason, ip_address, is_independent, dependency_reason) VALUES (?, ?, ?, ?, ?, ?)',
+        (goal_id, user['id'], reason, ip_address, is_independent, dependency_reason)
     )
     db.commit()
     
-    # Считаем жалобы
+    # Событие
+    record_event(
+        'report_created',
+        db=db,
+        actor_user_id=user['id'],
+        goal_id=goal_id,
+        source='user',
+        payload={'is_independent': bool(is_independent), 'reason': dependency_reason}
+    )
+    db.commit()
+    
+    # Считаем только НЕЗАВИСИМЫЕ жалобы
     report_count = db.execute(
-        'SELECT COUNT(*) FROM reports WHERE goal_id = ?',
+        'SELECT COUNT(*) FROM reports WHERE goal_id = ? AND is_independent = 1',
         (goal_id,)
     ).fetchone()[0]
     
@@ -3198,7 +3240,7 @@ def metrics_reports():
     query += " ORDER BY r.id DESC LIMIT 200"
     reports = db.execute(query, params).fetchall()
     
-    # Группируем по цели — сколько жалоб на каждую
+    # Группируем по цели — сколько жалоб на каждую (все / независимые)
     goal_reports = {}
     for r in reports:
         gid = r['goal_id']
@@ -3209,9 +3251,12 @@ def metrics_reports():
                 'goal_status': r['goal_status'],
                 'goal_author_name': r['goal_author_name'],
                 'goal_author_id': r['goal_author_id'],
-                'count': 0
+                'count': 0,
+                'independent_count': 0,
             }
         goal_reports[gid]['count'] += 1
+        if r['is_independent'] == 1:
+            goal_reports[gid]['independent_count'] += 1
     
     # Счётчики
     counts_total = len(reports)
@@ -3225,7 +3270,9 @@ def metrics_reports():
     ).fetchone()[0]
     counts_goals_with_3 = db.execute("""
         SELECT COUNT(*) FROM (
-            SELECT goal_id FROM reports GROUP BY goal_id HAVING COUNT(*) >= 3
+            SELECT goal_id FROM reports 
+            WHERE is_independent = 1 
+            GROUP BY goal_id HAVING COUNT(*) >= 3
         )
     """).fetchone()[0]
     

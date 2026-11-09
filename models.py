@@ -111,6 +111,21 @@ def migrate_db():
             cur.execute("ALTER TABLE goals ADD COLUMN photos TEXT")
         except sqlite3.OperationalError:
             pass
+    
+    # reports: ip_address, is_independent, dependency_reason
+    cur.execute("PRAGMA table_info(reports)")
+    report_cols = [row[1] for row in cur.fetchall()]
+    for col_name, col_def in {
+        'ip_address': 'TEXT',
+        'is_independent': 'INTEGER DEFAULT 1',
+        'dependency_reason': 'TEXT',
+    }.items():
+        if col_name not in report_cols:
+            try:
+                cur.execute(f"ALTER TABLE reports ADD COLUMN {col_name} {col_def}")
+            except sqlite3.OperationalError:
+                pass
+    
     conn.commit()
     conn.close()
 
@@ -143,7 +158,7 @@ def init_db():
     
     c.execute("CREATE TABLE IF NOT EXISTS notifications_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, type TEXT NOT NULL, donation_id INTEGER NULL, goal_id INTEGER NULL, channel TEXT DEFAULT 'fcm', sent_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS analytics_events (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NULL, event_type TEXT NOT NULL, event_data TEXT NULL, created_at TEXT DEFAULT (datetime('now')))")
-    c.execute("CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, goal_id INTEGER NOT NULL, reporter_id INTEGER NOT NULL, reason TEXT NULL, photo_index INTEGER NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (goal_id) REFERENCES goals(id), FOREIGN KEY (reporter_id) REFERENCES users(id))")
+    c.execute("CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, goal_id INTEGER NOT NULL, reporter_id INTEGER NOT NULL, reason TEXT NULL, photo_index INTEGER NULL, ip_address TEXT NULL, is_independent INTEGER DEFAULT 1, dependency_reason TEXT NULL, created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (goal_id) REFERENCES goals(id), FOREIGN KEY (reporter_id) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS deferred_donations (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, goal_id INTEGER NOT NULL, remind_at TEXT NULL, status TEXT DEFAULT 'pending', frequency TEXT DEFAULT 'once', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (user_id) REFERENCES users(id), FOREIGN KEY (goal_id) REFERENCES goals(id))")
     c.execute("CREATE TABLE IF NOT EXISTS community_pots (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, description TEXT NULL, created_by INTEGER NOT NULL, status TEXT DEFAULT 'active', created_at TEXT DEFAULT (datetime('now')), FOREIGN KEY (created_by) REFERENCES users(id))")
     c.execute("CREATE TABLE IF NOT EXISTS community_pot_goals (id INTEGER PRIMARY KEY AUTOINCREMENT, pot_id INTEGER NOT NULL, goal_id INTEGER NOT NULL, FOREIGN KEY (pot_id) REFERENCES community_pots(id), FOREIGN KEY (goal_id) REFERENCES goals(id))")

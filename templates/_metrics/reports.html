@@ -34,7 +34,12 @@
                 <td>
                     <a href="/_metrics/users/{{ gr.goal_author_id }}" style="color: var(--m-text-2); text-decoration: none;">{{ gr.goal_author_name }}</a>
                 </td>
-                <td><span class="m-badge danger">{{ gr.count }}</span></td>
+                <td>
+                    <span class="m-badge danger">{{ gr.count }}</span>
+                    {% if gr.independent_count and gr.independent_count > 0 %}
+                    <span class="m-badge warning" style="margin-left: 4px;">{{ gr.independent_count }} независ.</span>
+                    {% endif %}
+                </td>
                 <td>
                     {% if gr.goal_status == 'hidden' %}<span class="m-badge danger">скрыта</span>
                     {% elif gr.goal_status == 'active' %}<span class="m-badge warning">активна</span>
@@ -69,6 +74,8 @@
                 <th>Цель</th>
                 <th>Жалобщик</th>
                 <th>Причина</th>
+                <th>IP</th>
+                <th>Независимость</th>
                 <th>Фото N</th>
                 <th></th>
             </tr>
@@ -90,6 +97,19 @@
                     {% endif %}
                 </td>
                 <td>{{ r.reason or '-' }}</td>
+                <td class="muted" style="font-size: 11px;">{{ r.ip_address or '-' }}</td>
+                <td>
+                    {% if r.is_independent == 1 %}
+                        <span class="m-badge success" style="font-size: 10px;">независ.</span>
+                    {% else %}
+                        <span class="m-badge muted" style="font-size: 10px;" title="{{ r.dependency_reason or '' }}">
+                            {% if r.dependency_reason == 'young_account' %}молодой акк
+                            {% elif r.dependency_reason == 'low_trust' %}низкий trust
+                            {% elif r.dependency_reason == 'same_ip' %}тот же IP
+                            {% else %}зависимая{% endif %}
+                        </span>
+                    {% endif %}
+                </td>
                 <td class="muted">{{ r.photo_index if r.photo_index is not none else '-' }}</td>
                 <td>
                     <a href="/_metrics/goals/{{ r.goal_id }}" style="color: var(--m-text-3); text-decoration: none; font-size: 12px;">Открыть</a>
