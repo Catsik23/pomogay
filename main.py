@@ -3882,6 +3882,19 @@ def metrics_moderation_approve(goal_id):
         (goal['user_id'], '/goal/' + str(goal_id))
     )
     db.commit()
+    
+    record_event(
+        'goal_approved',
+        db=db,
+        actor_user_id=admin['id'],
+        target_user_id=goal['user_id'],
+        goal_id=goal_id,
+        source='admin',
+        severity='info',
+        payload={'title': goal['title']}
+    )
+    db.commit()
+    
     flash('Цель одобрена.', 'success')
     return redirect(url_for('metrics_moderation'))
 
@@ -3934,7 +3947,25 @@ def metrics_moderation_reject(goal_id):
         "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_rejected', 'Цель отклонена', ?, ?)",
         (old_goal['user_id'], 'Причина: ' + comment, '/goal/' + str(goal_id))
     )
+    # Увеличиваем счётчик повторных публикаций
+    db.execute(
+        "UPDATE goals SET resubmission_count = COALESCE(resubmission_count, 0) + 1, is_resubmission = 1 WHERE id = ?",
+        (goal_id,)
+    )
     db.commit()
+    
+    record_event(
+        'goal_rejected',
+        db=db,
+        actor_user_id=admin['id'],
+        target_user_id=old_goal['user_id'],
+        goal_id=goal_id,
+        source='admin',
+        severity='warning',
+        payload={'categories': categories, 'comment': comment}
+    )
+    db.commit()
+    
     flash('Цель отклонена.', 'success')
     return redirect(url_for('metrics_moderation'))
 
