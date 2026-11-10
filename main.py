@@ -2,6 +2,7 @@ import os, re, time, uuid, math
 import sqlite3
 from datetime import datetime, timedelta, timezone, timezone
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_from_directory, abort, jsonify
+import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import init_db, get_db, close_db
 from trust_engine import add_trust_score, get_trust_perks, can_create_goal
@@ -243,6 +244,45 @@ def record_event(event_type, db, *, actor_user_id=None, target_user_id=None,
         ))
     except Exception as e:
         logger.error(f'[record_event] Ошибка записи {event_type}: {e}')
+
+
+def parse_photos_urls(raw):
+    """JSON-массив строк или объектов → список URL (только public)."""
+    if not raw:
+        return []
+    try:
+        items = json.loads(raw)
+    except Exception:
+        return []
+    urls = []
+    for item in items:
+        if isinstance(item, str):
+            urls.append(item)
+        elif isinstance(item, dict) and 'url' in item:
+            if item.get('status', 'public') == 'public':
+                urls.append(item['url'])
+    return urls
+
+
+def parse_photos_full(raw):
+    """JSON-массив строк или объектов → список dict {url, status, nsfw_score}."""
+    if not raw:
+        return []
+    try:
+        items = json.loads(raw)
+    except Exception:
+        return []
+    result = []
+    for item in items:
+        if isinstance(item, str):
+            result.append({'url': item, 'status': 'public', 'nsfw_score': None})
+        elif isinstance(item, dict) and 'url' in item:
+            result.append({
+                'url': item['url'],
+                'status': item.get('status', 'public'),
+                'nsfw_score': item.get('nsfw_score'),
+            })
+    return result
 
 
 def _safe_count(db, query, params=None):
@@ -908,13 +948,7 @@ def goal_page(goal_id):
             abort(404)
     
     # Парсим photos — JSON-массив путей
-    import json as _json
-    photos_list = []
-    if goal['photos']:
-        try:
-            photos_list = _json.loads(goal['photos'])
-        except Exception:
-            photos_list = []
+    photos_list = parse_photos_urls(goal['photos'])
     if not photos_list and goal['photo_url']:
         photos_list = [goal['photo_url']]
     
@@ -1607,7 +1641,7 @@ def api_photos_update(goal_id):
         return jsonify({'error': 'deleted содержит не строки'}), 400
 
     # Валидация: все пути должны быть из текущей цели
-    current_photos = _json.loads(goal['photos']) if goal['photos'] else []
+    current_photos = parse_photos_urls(goal['photos'])
     if not current_photos and goal['photo_url']:
         current_photos = [goal['photo_url']]
 
@@ -2060,11 +2094,14 @@ def api_report_photo():
     
     if photo_index >= len(photos):
         return jsonify({'error': 'Фото не найдено'}), 404
+    
+    # Сохраняем URL фото (не индекс — индекс съезжает)
+    photo_url = photos[photo_index]
 
-    # Проверяем, не жаловался ли уже
+    # Проверяем, не жаловался ли уже (по URL, а не индексу)
     existing = db.execute(
-        "SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ? AND photo_index = ?",
-        (goal_id, user['id'], photo_index)
+        "SELECT id FROM reports WHERE goal_id = ? AND reporter_id = ? AND photo_url = ?",
+        (goal_id, user['id'], photo_url)
     ).fetchone()
     if existing:
         return jsonify({'error': 'Вы уже жаловались на это фото'}), 400
@@ -2091,16 +2128,16 @@ def api_report_photo():
     # 3. Нет другой жалобы с этого IP на это же фото
     if is_independent:
         same_ip = db.execute(
-            'SELECT id FROM reports WHERE goal_id = ? AND photo_index = ? AND ip_address = ? LIMIT 1',
-            (goal_id, photo_index, ip_address)
+            'SELECT id FROM reports WHERE goal_id = ? AND photo_url = ? AND ip_address = ? LIMIT 1',
+            (goal_id, photo_url, ip_address)
         ).fetchone()
         if same_ip:
             is_independent = 0
             dependency_reason = 'same_ip'
     
     db.execute(
-        "INSERT INTO reports (goal_id, reporter_id, reason, photo_index, ip_address, is_independent, dependency_reason) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (goal_id, user['id'], reason, photo_index, ip_address, is_independent, dependency_reason)
+        "INSERT INTO reports (goal_id, reporter_id, reason, photo_index, photo_url, ip_address, is_independent, dependency_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (goal_id, user['id'], reason, photo_index, photo_url, ip_address, is_independent, dependency_reason)
     )
     db.commit()
     
@@ -2111,16 +2148,50 @@ def api_report_photo():
         actor_user_id=user['id'],
         goal_id=goal_id,
         source='user',
-        payload={'photo_index': photo_index, 'is_independent': bool(is_independent), 'reason': dependency_reason}
+        payload={'photo_index': photo_index, 'photo_url': photo_url, 'is_independent': bool(is_independent), 'reason': dependency_reason}
     )
     db.commit()
     
-    # Порог: 3+ НЕЗАВИСИМЫЕ жалобы на фото → скрытие цели
+    # Порог: 1+ НЕЗАВИСИМАЯ жалоба на фото → пометить фото как rejected
     photo_report_count = db.execute(
-        "SELECT COUNT(*) FROM reports WHERE goal_id = ? AND photo_index = ? AND is_independent = 1",
-        (goal_id, photo_index)
+        "SELECT COUNT(*) FROM reports WHERE goal_id = ? AND photo_url = ? AND is_independent = 1",
+        (goal_id, photo_url)
     ).fetchone()[0]
     
+    if photo_report_count >= 1:
+        # Обновляем статус конкретного фото в массиве
+        # Поддержка двух форматов: старый (строки) и новый (объекты)
+        raw_photos = _json.loads(goal['photos']) if goal['photos'] else []
+        if not raw_photos and goal['photo_url']:
+            raw_photos = [goal['photo_url']]
+        
+        updated_photos = []
+        for item in raw_photos:
+            if isinstance(item, str):
+                # Старый формат — конвертируем в объект
+                if item == photo_url:
+                    updated_photos.append({'url': item, 'status': 'rejected', 'nsfw_score': None})
+                else:
+                    updated_photos.append({'url': item, 'status': 'public', 'nsfw_score': None})
+            elif isinstance(item, dict) and 'url' in item:
+                if item['url'] == photo_url:
+                    item['status'] = 'rejected'
+                updated_photos.append(item)
+        
+        # Пересчитываем главное фото (первое public)
+        new_main_photo = None
+        for item in updated_photos:
+            if item.get('status') == 'public':
+                new_main_photo = item['url']
+                break
+        
+        db.execute(
+            "UPDATE goals SET photos = ?, photo_url = ? WHERE id = ?",
+            (_json.dumps(updated_photos) if updated_photos else None, new_main_photo, goal_id)
+        )
+        db.commit()
+    
+    # Порог: 3+ НЕЗАВИСИМЫЕ жалобы на фото → скрытие цели
     if photo_report_count >= 3:
         cur = db.execute(
             "UPDATE goals SET status = 'hidden', moderation_status = 'reported' "
@@ -3206,16 +3277,12 @@ def metrics_goal_detail(goal_id):
         return (s or '').replace('T', ' ')[:19]
     moderation_history.sort(key=lambda x: _norm_dt(x.get('created_at')), reverse=True)
     
-    # Парсим фото
-    photos = []
-    if g['photos']:
-        try:
-            import json as _json
-            photos = _json.loads(g['photos'])
-        except:
-            pass
-    elif g['photo_url']:
+    # Парсим фото с статусами для админки
+    photos_full = parse_photos_full(g['photos'])
+    photos = [p['url'] for p in photos_full]
+    if not photos and g['photo_url']:
         photos = [g['photo_url']]
+        photos_full = [{'url': g['photo_url'], 'status': 'public', 'nsfw_score': None}]
     
     counts = get_sidebar_counts(db)
     
@@ -4496,13 +4563,7 @@ def goal_edit(goal_id):
         flash('Эту цель нельзя редактировать.', 'warning')
         return redirect(url_for('goal_page', goal_id=goal_id))
     
-    import json as _json
-    photos_list = []
-    if goal['photos']:
-        try:
-            photos_list = _json.loads(goal['photos'])
-        except Exception:
-            photos_list = []
+    photos_list = parse_photos_urls(goal['photos'])
     if not photos_list and goal['photo_url']:
         photos_list = [goal['photo_url']]
     
