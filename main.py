@@ -285,6 +285,37 @@ def parse_photos_full(raw):
     return result
 
 
+def notify(user_id, notif_type, title=None, message=None, action_url=None,
+           donation_id=None, goal_id=None, channel='fcm', db=None):
+    """
+    Единая точка создания уведомления.
+    Пишет в notifications (UI-колокольчик) и notifications_log (лог отправки).
+    Commit — на вызывающем коде.
+    """
+    if user_id is None:
+        return
+    own_db = False
+    if db is None:
+        db = get_db()
+        own_db = True
+    try:
+        db.execute(
+            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, ?, ?, ?, ?)",
+            (user_id, notif_type, title or '', message or '', action_url)
+        )
+        db.execute(
+            "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, ?, ?, ?, ?)",
+            (user_id, notif_type, donation_id, goal_id, channel)
+        )
+        if own_db:
+            db.commit()
+    except Exception as e:
+        logger.error(f'[notify] Ошибка для {notif_type}: {e}')
+    finally:
+        if own_db:
+            db.close()
+
+
 def _safe_count(db, query, params=None):
     """Безопасный COUNT — возвращает 0 если таблица или колонка отсутствует."""
     try:
@@ -3944,9 +3975,13 @@ def metrics_moderation_approve(goal_id):
     )
     
     # Уведомление автору
-    db.execute(
-        "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_approved', 'Цель одобрена', 'Цель одобрена и появится в ленте.', ?)",
-        (goal['user_id'], '/goal/' + str(goal_id))
+    notify(
+        goal['user_id'], 'goal_approved',
+        title='Цель одобрена',
+        message='Цель одобрена и появится в ленте.',
+        action_url='/goal/' + str(goal_id),
+        goal_id=goal_id,
+        db=db
     )
     db.commit()
     
@@ -4010,9 +4045,13 @@ def metrics_moderation_reject(goal_id):
         (admin['id'], str(goal_id), details)
     )
     # Уведомление автору
-    db.execute(
-        "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_rejected', 'Цель отклонена', ?, ?)",
-        (old_goal['user_id'], 'Причина: ' + comment, '/goal/' + str(goal_id))
+    notify(
+        old_goal['user_id'], 'goal_rejected',
+        title='Цель отклонена',
+        message='Причина: ' + comment,
+        action_url='/goal/' + str(goal_id),
+        goal_id=goal_id,
+        db=db
     )
     # Увеличиваем счётчик повторных публикаций
     db.execute(
@@ -4643,9 +4682,13 @@ def goal_edit(goal_id):
             }
         )
         
-        db.execute(
-            "INSERT INTO notifications (user_id, type, title, message, action_url) VALUES (?, 'goal_resubmitted', 'Цель отправлена на повторную проверку', ?, '/goal/" + str(goal_id) + "')",
-            (user['id'], 'Мы проверим её в ближайшее время.')
+        notify(
+            user['id'], 'goal_resubmitted',
+            title='Цель отправлена на повторную проверку',
+            message='Мы проверим её в ближайшее время.',
+            action_url='/goal/' + str(goal_id),
+            goal_id=goal_id,
+            db=db
         )
         
         db.commit()
