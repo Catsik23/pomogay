@@ -1136,9 +1136,14 @@ def report_goal(goal_id):
         )
         if cur.rowcount > 0:
             # Скрыли впервые — уведомление автору и trust -20
-            db.execute(
-                "INSERT INTO notifications_log (user_id, type, goal_id, channel) VALUES (?, 'goal_reported_hidden', ?, 'admin')",
-                (goal['user_id'], goal_id)
+            notify(
+                goal['user_id'], 'goal_reported_hidden',
+                title='Цель скрыта по жалобам',
+                message='Цель скрыта после нескольких жалоб. Администратор проверит её.',
+                action_url='/goal/' + str(goal_id),
+                goal_id=goal_id,
+                channel='admin',
+                db=db
             )
             add_trust_score(goal['user_id'], 'goal_hidden_reports', db)
             # +3 каждому жалобщику за подтверждённую жалобу
@@ -1382,7 +1387,7 @@ def donate(goal_id):
         )
         db.commit()
 
-        # Напоминания получателю
+        # Напоминания получателю (лог для cron)
         goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
         if goal:
             db.execute(
@@ -1396,6 +1401,21 @@ def donate(goal_id):
             db.execute(
                 "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_6h', ?, ?, 'fcm')",
                 (goal['user_id'], donation_id, goal_id)
+            )
+            # UI-уведомление получателю — «Подтвердите перевод»
+            donor_display = 'Аноним' if is_anonymous else 'Донатор'
+            if donor_id:
+                donor_row = db.execute("SELECT name, phone FROM users WHERE id = ?", (donor_id,)).fetchone()
+                if donor_row:
+                    donor_display = donor_row['name'] or ('+' + donor_row['phone'])
+            notify(
+                goal['user_id'], 'donation_pending',
+                title='Новый перевод — подтвердите',
+                message=f'{donor_display} перевёл {amount:.0f} ₽. Подтвердите получение.',
+                action_url='/profile/received',
+                donation_id=donation_id,
+                goal_id=goal_id,
+                db=db
             )
             db.commit()
 
@@ -1456,7 +1476,15 @@ def confirm_donation(donation_id):
             add_xp(p['donor_id'], 'goal_closed', db=db)
     db.execute("INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_recipient', ?)", (user['id'], '{"donation_id":' + str(donation_id) + '}'))
     if donation['donor_id']:
-        db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
+        notify(
+            donation['donor_id'], 'donation_confirmed',
+            title='Донат подтверждён',
+            message=f'Ваш перевод на {donation["amount_reported"]:.0f} ₽ подтверждён получателем.',
+            action_url='/goal/' + str(donation['goal_id']),
+            donation_id=donation_id,
+            goal_id=donation['goal_id'],
+            db=db
+        )
     # XP за confirm — только если не самоподтверждение
     is_self_confirmation = donation['donor_id'] == user['id']
     if not is_self_confirmation:
@@ -1498,7 +1526,15 @@ def confirm_donation(donation_id):
             add_xp(p['donor_id'], 'goal_closed', db=db)
     db.execute("INSERT INTO analytics_events (user_id, event_type, event_data) VALUES (?, 'transfer_confirmed_recipient', ?)", (user['id'], '{"donation_id":' + str(donation_id) + '}'))
     if donation['donor_id']:
-        db.execute("INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'goal_almost_closed', ?, ?, 'fcm')", (donation['donor_id'], donation_id, donation['goal_id']))
+        notify(
+            donation['donor_id'], 'donation_confirmed',
+            title='Донат подтверждён',
+            message=f'Ваш перевод на {donation["amount_reported"]:.0f} ₽ подтверждён получателем.',
+            action_url='/goal/' + str(donation['goal_id']),
+            donation_id=donation_id,
+            goal_id=donation['goal_id'],
+            db=db
+        )
     db.commit()
     # XP за confirm — только если это не самоподтверждение
     is_self_confirmation = donation['donor_id'] == user['id']
