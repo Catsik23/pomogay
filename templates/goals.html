@@ -320,7 +320,14 @@
             resize: none;
             min-height: 40px;
             max-height: 100px;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             outline: none;
+        }
+        .sidebar-chat-input textarea::-webkit-scrollbar {
+            display: none;
+            width: 0;
         }
         .sidebar-chat-input textarea:focus {
             border-color: #FF5A3C;
@@ -394,6 +401,17 @@
         @keyframes dialogPulse {
             0%, 100% { box-shadow: 0 2px 12px rgba(212,168,83,0.15); }
             50% { box-shadow: 0 4px 20px rgba(212,168,83,0.35); }
+        }
+        .notif-badge {
+            display: inline-block;
+            background: #FF5A3C;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
+            margin-left: 6px;
+            vertical-align: middle;
         }
         .notif-title {
             font-size: 13px;
@@ -993,7 +1011,7 @@
             </div>
             <div class="sidebar-chat-messages" id="dialogChatMessages"></div>
             <div class="sidebar-chat-input">
-                <textarea id="dialogChatInput" placeholder="Сообщение..." rows="1" onkeydown="if(event.ctrlKey&&event.key==='Enter'){sendDialogMessage();event.preventDefault();}"></textarea>
+                <textarea id="dialogChatInput" placeholder="Сообщение..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){sendDialogMessage();event.preventDefault();}"></textarea>
                 <button onclick="sendDialogMessage()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                 </button>

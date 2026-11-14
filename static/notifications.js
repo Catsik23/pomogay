@@ -89,8 +89,12 @@ function renderNotifications(actions) {
             item.classList.add('dialog-item');
         }
         item.href = a.action_url || '#';
-        item.innerHTML =
-            '<div class="notif-title">' + escapeHtml(a.title) + '</div>' +
+        var titleHtml = '<div class="notif-title">' + escapeHtml(a.title);
+        if (a.type === 'dialog' && a.unread_count && a.unread_count > 0) {
+            titleHtml += ' <span class="notif-badge">' + a.unread_count + '</span>';
+        }
+        titleHtml += '</div>';
+        item.innerHTML = titleHtml +
             '<div class="notif-message">' + escapeHtml(a.message) + '</div>';
         item.addEventListener('click', function(e) {
             if (a.type === 'dialog') {
@@ -109,7 +113,7 @@ function renderNotifications(actions) {
         count.classList.add('active');
     }
     if (dot) {
-        dot.textContent = actions.length > 9 ? '9+' : actions.length;
+        dot.textContent = '1';  // всегда 1 — есть непрочитанные
         dot.classList.add('active');
     }
 }
@@ -175,8 +179,18 @@ function openDialogChat(dialogId, subject) {
     
     document.getElementById('dialogChat').style.display = 'flex';
     
-    // Загружаем сообщения
-    loadDialogMessages();
+    // Автоувеличение textarea
+    var _ci = document.getElementById('dialogChatInput');
+    if (_ci && !_ci._resizeAttached) {
+        _ci._resizeAttached = true;
+        _ci.addEventListener('input', function() {
+            this.style.height = '40px';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+    }
+    
+    // Загружаем сообщения с пометкой прочитанным
+    loadDialogMessages(true);
     
     // Запускаем polling каждые 5 секунд
     if (dialogPollTimer) clearInterval(dialogPollTimer);
@@ -203,10 +217,11 @@ function closeDialogChat() {
     loadState();
 }
 
-function loadDialogMessages() {
+function loadDialogMessages(markRead) {
     if (!currentDialogId) return;
     
-    fetch('/api/dialogs/' + currentDialogId)
+    var url = '/api/dialogs/' + currentDialogId + (markRead ? '?mark_read=1' : '');
+    fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (!data.ok) return;
@@ -261,3 +276,14 @@ function sendDialogMessage() {
         input.value = text;
     });
 }
+
+// Автоувеличение textarea чата
+document.addEventListener('DOMContentLoaded', function() {
+    var chatInput = document.getElementById('dialogChatInput');
+    if (chatInput) {
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+    }
+});

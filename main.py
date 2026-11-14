@@ -2563,6 +2563,19 @@ def identity_file(filename):
     return send_from_directory(os.path.join(BASE_DIR, 'uploads', 'identity'), filename)
 
 
+def plural_messages(n):
+    """Русские склонения: 1 сообщение, 2 сообщения, 5 сообщений."""
+    n100 = n % 100
+    n10 = n % 10
+    if 11 <= n100 <= 14:
+        return f'{n} новых сообщений'
+    if n10 == 1:
+        return f'{n} новое сообщение'
+    if 2 <= n10 <= 4:
+        return f'{n} новых сообщения'
+    return f'{n} новых сообщений'
+
+
 @app.route('/api/state')
 @login_required
 def api_state():
@@ -2647,14 +2660,13 @@ def api_state():
         total_unread = sum(d['unread'] for d in open_dialogs)
         first_dialog = open_dialogs[0]
         if total_unread > 0:
-            message = str(total_unread) + ' новых сообщений.'
-        else:
-            message = 'Диалог с администрацией открыт.'
-        actions.append({
+            message = plural_messages(total_unread)
+            actions.append({
             'type': 'dialog',
             'priority': 1,
             'title': 'Сообщение от администрации',
             'message': message,
+            'unread_count': total_unread,
             'action_url': '/dialogs/' + str(first_dialog['id']),
             'action_label': 'Открыть'
         })
@@ -2670,7 +2682,7 @@ def api_state():
             'type': 'events',
             'priority': 5,
             'title': 'Новые события',
-            'message': str(unread_events) + ' новых уведомлений.',
+            'message': plural_messages(unread_events),
             'action_url': '/notifications',
             'action_label': 'Открыть'
         })
@@ -2679,6 +2691,26 @@ def api_state():
         'actions': actions,
         'count': len(actions)
     })
+
+
+@app.route('/notifications')
+@login_required
+def notifications_page():
+    """Страница уведомлений — полный список."""
+    user = get_current_user()
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 100",
+        (user['id'],)
+    ).fetchall()
+    unread = db.execute(
+        "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0",
+        (user['id'],)
+    ).fetchone()[0]
+    # Помечаем все прочитанными при открытии
+    db.execute("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0", (user['id'],))
+    db.commit()
+    return render_template('notifications.html', user=user, notifications=rows, unread=unread)
 
 
 @app.route('/api/notifications')
@@ -3657,12 +3689,14 @@ def metrics_dialog_messages(dialog_id):
         ORDER BY id ASC
     """, (dialog_id,)).fetchall()
     
-    # Помечаем сообщения пользователя прочитанными
-    db.execute(
-        "UPDATE admin_dialog_messages SET is_read = 1 WHERE dialog_id = ? AND sender_type = 'user' AND is_read = 0",
-        (dialog_id,)
-    )
-    db.commit()
+    # Юзер читает — помечаем сообщения АДМИНА прочитанными
+    # Помечаем прочитанным только если явно запрошено (открытие чата, не polling)
+    if request.args.get('mark_read') == '1':
+        db.execute(
+            "UPDATE admin_dialog_messages SET is_read = 1 WHERE dialog_id = ? AND sender_type = 'admin' AND is_read = 0",
+            (dialog_id,)
+        )
+        db.commit()
     
     # Форматируем даты
     def fmt_date(s):
