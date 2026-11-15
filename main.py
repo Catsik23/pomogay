@@ -2661,7 +2661,9 @@ def api_state():
         first_dialog = open_dialogs[0]
         if total_unread > 0:
             message = plural_messages(total_unread)
-            actions.append({
+        else:
+            message = 'Открыть чат'
+        actions.append({
             'type': 'dialog',
             'priority': 1,
             'title': 'Сообщение от администрации',
@@ -2672,20 +2674,7 @@ def api_state():
         })
 
     # 5. Непрочитанные события
-    unread_events = db.execute(
-        "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0",
-        (user['id'],)
-    ).fetchone()[0]
 
-    if unread_events:
-        actions.append({
-            'type': 'events',
-            'priority': 5,
-            'title': 'Новые события',
-            'message': plural_messages(unread_events),
-            'action_url': '/notifications',
-            'action_label': 'Открыть'
-        })
 
     return jsonify({
         'actions': actions,

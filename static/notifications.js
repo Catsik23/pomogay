@@ -1,5 +1,47 @@
-// ============================================
-// Система уведомлений — общая для всех страниц
+var currentNotifTab = 'new';
+
+function switchNotifTab(tab) {
+    currentNotifTab = tab;
+    var tabs = document.querySelectorAll('.notif-tab');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.toggle('active', tabs[i].dataset.tab === tab);
+    }
+    if (tab === 'new') {
+        loadState();
+    } else {
+        loadAllNotifications();
+    }
+}
+
+function loadAllNotifications() {
+    fetch('/api/notifications')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var items = (data && data.items) || [];
+            var list = document.getElementById('notifList');
+            var dot = document.getElementById('hamburgerDot');
+            var count = document.getElementById('notifCount');
+            if (!list) return;
+            
+            if (!items.length) {
+                list.innerHTML = '<div class="notif-empty">Пока тихо</div>';
+                return;
+            }
+            
+            list.innerHTML = '';
+            items.forEach(function(n) {
+                var item = document.createElement('a');
+                item.className = 'notif-item ' + (n.type || '');
+                item.href = n.action_url || '#';
+                item.innerHTML = 
+                    '<div class="notif-title">' + escapeHtml(n.title) + '</div>' +
+                    '<div class="notif-message">' + escapeHtml(n.message || '') + '</div>';
+                list.appendChild(item);
+            });
+        })
+        .catch(function() {});
+}
+
 // ============================================
 
 function getCsrfToken() {
@@ -25,6 +67,9 @@ try {
 } catch (e) {}
 
 function loadState() {
+    // Если открыта вкладка "Все" — не перезаписываем её
+    if (currentNotifTab === 'all') return;
+    
     fetch('/api/state')
         .then(function(r) { return r.json(); })
         .then(function(data) {
@@ -108,13 +153,23 @@ function renderNotifications(actions) {
         list.appendChild(item);
     });
 
+    // Считаем непрочитанные: dialog — по unread_count, остальные — по 1
+    var totalUnread = 0;
+    actions.forEach(function(a) {
+        if (a.type === 'dialog') {
+            totalUnread += (a.unread_count || 0);
+        } else {
+            totalUnread += 1;
+        }
+    });
+
     if (count) {
-        count.textContent = actions.length;
-        count.classList.add('active');
+        count.textContent = totalUnread;
+        count.classList.toggle('active', totalUnread > 0);
     }
     if (dot) {
-        dot.textContent = '1';  // всегда 1 — есть непрочитанные
-        dot.classList.add('active');
+        dot.textContent = totalUnread > 0 ? '1' : '';
+        dot.classList.toggle('active', totalUnread > 0);
     }
 }
 
