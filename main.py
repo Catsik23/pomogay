@@ -40,36 +40,6 @@ init_db()
 
 
 
-# Seed-пользователи создаются ТОЛЬКО при SEED_USERS=1 (для разработки)
-if os.environ.get('SEED_USERS') == '1':
-    db = get_db()
-    seed = db.execute("SELECT id FROM users WHERE phone = '79885260358'").fetchone()
-    if not seed:
-        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79885260358', ?)", (generate_password_hash('123456', method='scrypt'),))
-        db.commit()
-        logger.info('Seed 1 создан: 79885260358')
-
-    seed2 = db.execute("SELECT id FROM users WHERE phone = '7999999999'").fetchone()
-    if not seed2:
-        db.execute("INSERT INTO users (phone, password_hash) VALUES ('7999999999', ?)", (generate_password_hash('123456', method='scrypt'),))
-        db.commit()
-        logger.info('Seed 2 создан: 7999999999')
-
-    # Seed 3 с готовой целью
-    seed3 = db.execute("SELECT id FROM users WHERE phone = '79888888888'").fetchone()
-    if not seed3:
-        db.execute("INSERT INTO users (phone, password_hash) VALUES ('79888888888', ?)", (generate_password_hash('123456', method='scrypt'),))
-        db.commit()
-        seed3_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-        ends = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
-        db.execute(
-            "INSERT INTO goals (user_id, type, title, description, amount_goal, amount_collected, ends_at, status, moderation_status) VALUES (?, 'blitz', 'на ноутбук', 'для работы', 25000, 0, ?, 'active', 'approved')",
-            (seed3_id, ends)
-        )
-        db.commit()
-        logger.info('Seed 3 создан: 79888888888 с целью')
-    db.close()
-
 def get_current_user():
     if 'user_id' in session:
         db = get_db()
@@ -373,8 +343,8 @@ def validate_phone(phone):
     # 11 цифр, начинается с 7 или 8 -> 7XXXXXXXXXX
     if len(digits) == 11 and (digits.startswith('7') or digits.startswith('8')):
         return '7' + digits[1:]
-    # 10 цифр -> добавляем 7
-    if len(digits) == 10 and digits[0] == '9':
+    # 10 цифр -> добавляем 7 (принимаем любую, не только с 9)
+    if len(digits) == 10:
         return '7' + digits
     return None
 
@@ -1458,6 +1428,11 @@ def confirm_donation(donation_id):
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     # Удаляем напоминания — получатель уже подтвердил
     db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
+    # Удаляем UI-уведомления о напоминаниях по этой цели
+    db.execute(
+        "DELETE FROM notifications WHERE user_id = ? AND type LIKE 'confirm_reminder_%' AND action_url = ?",
+        (user['id'], '/goal/' + str(donation['goal_id']))
+    )
     db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
     # Если цель закрылась — выдаём брошь автору и XP участникам
     goal_data = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
@@ -1508,6 +1483,11 @@ def confirm_donation(donation_id):
         return redirect(url_for('goal_page', goal_id=donation['goal_id']))
     # Удаляем напоминания — получатель уже подтвердил
     db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
+    # Удаляем UI-уведомления о напоминаниях по этой цели
+    db.execute(
+        "DELETE FROM notifications WHERE user_id = ? AND type LIKE 'confirm_reminder_%' AND action_url = ?",
+        (user['id'], '/goal/' + str(donation['goal_id']))
+    )
     db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
     # Если цель закрылась — выдаём брошь автору и XP участникам
     goal_data = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
@@ -1572,6 +1552,11 @@ def api_confirm_donation(donation_id):
         return jsonify({'ok': False, 'error': 'Уже обработан'}), 400
     
     db.execute("DELETE FROM notifications_log WHERE donation_id = ? AND type LIKE 'confirm_reminder_%'", (donation_id,))
+    # Удаляем UI-уведомления о напоминаниях по этой цели
+    db.execute(
+        "DELETE FROM notifications WHERE user_id = ? AND type LIKE 'confirm_reminder_%' AND action_url = ?",
+        (user['id'], '/goal/' + str(donation['goal_id']))
+    )
     db.execute("UPDATE goals SET amount_collected = amount_collected + ? WHERE id = ?", (donation['amount_reported'], donation['goal_id']))
     
     goal_data = db.execute("SELECT * FROM goals WHERE id = ?", (donation['goal_id'],)).fetchone()
