@@ -937,7 +937,7 @@ def goal_page(goal_id):
         return redirect(url_for('goals_list'))
     
     # Проверка видимости
-    if goal['status'] in ('draft', 'failed'):
+    if goal['status'] in ('draft', 'failed', 'rejected'):
         is_author = user and user['id'] == goal['user_id']
         is_admin = user and user['is_admin']
         if not (is_author or is_admin):
@@ -2643,6 +2643,28 @@ def api_state():
             'action_label': 'Перейти'
         })
 
+    # 3.5. Отклонённые цели, требующие доработки
+    rejected_goals = db.execute("""
+        SELECT id, title, moderation_comment
+        FROM goals
+        WHERE user_id = ? AND status = 'rejected'
+        ORDER BY moderated_at DESC LIMIT 3
+    """, (user['id'],)).fetchall()
+
+    for rg in rejected_goals:
+        title_short = (rg['title'] or '')[:40]
+        msg = 'Требуется доработка'
+        if rg['moderation_comment']:
+            msg = (rg['moderation_comment'] or '')[:60]
+        actions.append({
+            'type': 'goal_rejected',
+            'priority': 2,
+            'title': f'Цель отклонена: {title_short}',
+            'message': msg,
+            'action_url': f'/goal/{rg["id"]}',
+            'action_label': 'Доработать'
+        })
+
     # 4. Открытые диалоги с админом
     open_dialogs = db.execute("""
         SELECT d.id, d.subject,
@@ -4085,7 +4107,7 @@ def metrics_moderation_reject(goal_id):
     
     # Атомарное отклонение: только если ещё pending
     cur = db.execute(
-        "UPDATE goals SET moderation_status = 'rejected', status = 'failed', moderation_comment = ?, rejection_categories = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ? AND moderation_status = 'pending'",
+        "UPDATE goals SET moderation_status = 'rejected', status = 'rejected', moderation_comment = ?, rejection_categories = ?, moderated_at = datetime('now'), moderated_by = ? WHERE id = ? AND moderation_status = 'pending'",
         (comment, _json.dumps(categories, ensure_ascii=False), admin['id'], goal_id)
     )
     if cur.rowcount == 0:
