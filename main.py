@@ -1387,21 +1387,16 @@ def donate(goal_id):
         )
         db.commit()
 
-        # Напоминания получателю (лог для cron)
+        # Напоминания получателю (лог для cron, sent_at=NULL — ждут отправки)
         goal = db.execute("SELECT user_id FROM goals WHERE id = ?", (goal_id,)).fetchone()
         if goal:
-            db.execute(
-                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_2m', ?, ?, 'fcm')",
-                (goal['user_id'], donation_id, goal_id)
-            )
-            db.execute(
-                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_1h', ?, ?, 'fcm')",
-                (goal['user_id'], donation_id, goal_id)
-            )
-            db.execute(
-                "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel) VALUES (?, 'confirm_reminder_6h', ?, ?, 'fcm')",
-                (goal['user_id'], donation_id, goal_id)
-            )
+            for reminder_type in ('confirm_reminder_5m', 'confirm_reminder_1h',
+                                   'confirm_reminder_6h', 'confirm_reminder_12h',
+                                   'confirm_reminder_23h'):
+                db.execute(
+                    "INSERT INTO notifications_log (user_id, type, donation_id, goal_id, channel, sent_at) VALUES (?, ?, ?, ?, 'fcm', NULL)",
+                    (goal['user_id'], reminder_type, donation_id, goal_id)
+                )
             # UI-уведомление получателю — «Подтвердите перевод»
             donor_display = 'Аноним' if is_anonymous else 'Донатор'
             if donor_id:
@@ -2605,24 +2600,43 @@ def api_state():
                 'action_label': 'Заполнить'
             })
 
-    # 2. Неподтверждённые донаты
-    unconfirmed = db.execute("""
-        SELECT d.id, d.amount_reported, g.title as goal_title,
-               COALESCE(NULLIF(u.name, ''), 'Донатор') as donor_name
+    # 2. Неподтверждённые донаты — по целям (один action на цель)
+    unconfirmed_by_goal = db.execute("""
+        SELECT g.id as goal_id, g.title as goal_title,
+               COUNT(*) as cnt,
+               SUM(d.amount_reported) as total,
+               MIN(d.donor_confirmed_at) as oldest
         FROM donations d
         JOIN goals g ON d.goal_id = g.id
-        LEFT JOIN users u ON d.donor_id = u.id
         WHERE g.user_id = ? AND d.status = 'donor_confirmed'
+        GROUP BY g.id
+        ORDER BY MIN(d.donor_confirmed_at) ASC
     """, (user['id'],)).fetchall()
 
-    if unconfirmed:
+    now_for_days = datetime.now(timezone.utc)
+    for ug in unconfirmed_by_goal:
+        # Считаем дней ожидания самого старого
+        days = 0
+        try:
+            oldest_dt = datetime.fromisoformat(ug['oldest'].replace('Z', '+00:00'))
+            if oldest_dt.tzinfo is None:
+                oldest_dt = oldest_dt.replace(tzinfo=timezone.utc)
+            days = (now_for_days - oldest_dt).days
+        except Exception:
+            pass
+
+        if days >= 1:
+            msg = f'{int(ug["total"] or 0)} ₽ · ждёт {days} дн.'
+        else:
+            msg = f'{int(ug["total"] or 0)} ₽ · ждёт подтверждения'
+
         actions.append({
             'type': 'donation',
             'priority': 2,
-            'title': 'Переводы ожидают подтверждения',
-            'message': str(len(unconfirmed)) + ' перевод(а) ждут вашего подтверждения.',
-            'action_url': '/profile/received',
-            'action_label': 'Проверить'
+            'title': f'Подтвердите: {ug["goal_title"]}',
+            'message': msg,
+            'action_url': f'/goal/{ug["goal_id"]}',
+            'action_label': 'Открыть'
         })
 
     # 3. Отложенные напоминания (созревшие)
