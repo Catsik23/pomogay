@@ -136,7 +136,7 @@ def set_setting(db, key, value, admin_id=None):
         import json as _json
         details_json = _json.dumps({'value': str(value)}, ensure_ascii=False)
         db.execute(
-            "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'update_setting', 'setting', ?, ?)",
+            "INSERT INTO admin_actions (admin_id, action_type, target_type, target_key, details) VALUES (?, 'update_setting', 'setting', ?, ?)",
             (admin_id, key, details_json)
         )
 
@@ -3119,7 +3119,7 @@ def metrics_user_ban(user_id):
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'ban_user', 'user', ?, ?)",
-        (admin['id'], str(user_id), details)
+        (admin['id'], user_id, details)
     )
     db.commit()
     
@@ -3201,7 +3201,7 @@ def metrics_user_unban(user_id):
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'unban_user', 'user', ?, ?)",
-        (admin['id'], str(user_id), details)
+        (admin['id'], user_id, details)
     )
     db.commit()
     
@@ -3341,7 +3341,7 @@ def metrics_goal_detail(goal_id):
         LEFT JOIN users u ON aa.admin_id = u.id
         WHERE aa.target_type = 'goal' AND aa.target_id = ?
         ORDER BY aa.id DESC
-    """, (str(goal_id),)).fetchall()
+    """, (goal_id,)).fetchall()
     
     # История событий — из platform_events (действия автора и системы)
     platform_events_rows = db.execute("""
@@ -3438,7 +3438,7 @@ def metrics_goal_hide(goal_id):
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'hide_goal', 'goal', ?, ?)",
-        (admin['id'], str(goal_id), details)
+        (admin['id'], goal_id, details)
     )
     db.commit()
     flash(f'Цель #{goal_id} скрыта.', 'success')
@@ -3463,7 +3463,7 @@ def metrics_goal_restore(goal_id):
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'restore_goal', 'goal', ?, ?)",
-        (admin['id'], str(goal_id), details)
+        (admin['id'], goal_id, details)
     )
     db.commit()
     flash(f'Цель #{goal_id} восстановлена.', 'success')
@@ -3753,7 +3753,7 @@ def metrics_dialog_close(dialog_id):
     details = _json.dumps({'old_value': 'open', 'new_value': 'closed'}, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'close_dialog', 'dialog', ?, ?)",
-        (admin['id'], str(dialog_id), details)
+        (admin['id'], dialog_id, details)
     )
     db.commit()
     flash('Диалог закрыт.', 'success')
@@ -3799,7 +3799,7 @@ def metrics_dialog_new():
         
         db.execute(
             "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'create_dialog', 'user', ?, ?)",
-            (admin['id'], str(user_id), '{"dialog_id": ' + str(dialog_id) + '}')
+            (admin['id'], user_id, '{"dialog_id": ' + str(dialog_id) + '}')
         )
         
         db.commit()
@@ -3962,7 +3962,7 @@ def metrics_moderation():
     import json as _json
     
     # Один запрос для всех prev_rejections — вместо N+1
-    all_goal_ids = [str(row['id']) for row in pending_rows]
+    all_goal_ids = [row['id'] for row in pending_rows]
     rejections_by_goal = {}
     if all_goal_ids:
         placeholders = ','.join('?' * len(all_goal_ids))
@@ -4051,7 +4051,7 @@ def metrics_moderation_approve(goal_id):
     
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'approve_goal', 'goal', ?, NULL)",
-        (admin['id'], str(goal_id))
+        (admin['id'], goal_id)
     )
     
     # Уведомление автору
@@ -4122,7 +4122,7 @@ def metrics_moderation_reject(goal_id):
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'reject_goal', 'goal', ?, ?)",
-        (admin['id'], str(goal_id), details)
+        (admin['id'], goal_id, details)
     )
     # Уведомление автору
     notify(
@@ -4265,7 +4265,7 @@ def metrics_suspicious_resolve(activity_id):
     }, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'resolve_suspicious', 'suspicious', ?, ?)",
-        (admin['id'], str(activity_id), details)
+        (admin['id'], activity_id, details)
     )
     db.commit()
     flash('Помечено как обработанное.', 'success')
@@ -4293,7 +4293,7 @@ def metrics_suspicious_review(activity_id):
     details = _json.dumps({'old_value': 'new', 'new_value': 'reviewed'}, ensure_ascii=False)
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'review_suspicious', 'suspicious', ?, ?)",
-        (admin['id'], str(activity_id), details)
+        (admin['id'], activity_id, details)
     )
     db.commit()
     flash('Взято в работу.', 'info')
@@ -4599,7 +4599,7 @@ def metrics_settings_save():
     
     for key, rules in EDITABLE.items():
         if rules['type'] == 'bool':
-            new_value = '1' if request.form.get(key) == '1' else '0'
+            new_value = '1' if '1' in request.form.getlist(key) else '0'
         elif rules['type'] == 'int':
             raw = request.form.get(key, '').strip()
             if not raw:
@@ -4656,7 +4656,7 @@ def metrics_settings_toggle_flag(flag_id):
     db.execute("UPDATE feature_flags SET enabled = ?, updated_at = datetime('now') WHERE id = ?", (new_value, flag_id))
     db.execute(
         "INSERT INTO admin_actions (admin_id, action_type, target_type, target_id, details) VALUES (?, 'toggle_flag', 'feature_flag', ?, ?)",
-        (admin['id'], str(flag_id), '{"key": "' + flag['flag_key'] + '", "new": ' + str(new_value) + '}')
+        (admin['id'], flag_id, '{"key": "' + flag['flag_key'] + '", "new": ' + str(new_value) + '}')
     )
     db.commit()
     flash(f'Флаг {flag["flag_key"]} переключён.', 'success')
